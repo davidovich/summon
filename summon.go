@@ -1,20 +1,20 @@
 package summon
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/gobuffalo/packr/v2"
 )
 
 // Main entrypoint
-func Main(args []string) int {
-	root := os.Args[1]
+func Main(args []string, box *packr.Box) int {
+	s, err := box.FindString(args[1])
 
-	packr.New("Main Box", root)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return 1
+	}
+
+	fmt.Println(s)
 	return 0
-}
-
-// AddAssetRoot adds an asset root dir that will be bundled
-func AddAssetRoot(root string) {
-
 }
