@@ -5,23 +5,82 @@ Summon is used to create a central location to gather scripts, or
 go executable references.
 
 It solves the maintenance problem of mutliple copies of same
-code snippets distributed in many repos.
+code snippets distributed in many repos, leveraging go modules and version
+management.
 
-It builds upon gobin and packr to pack arbitrary files in an executable
-which you then bootstrap at destination using [gobin](https://github.com/myitcv/gobin):
+> NOTE: This is still a WIP and experimental.
+
+It builds upon packr to pack arbitrary files in an executable
+which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
+
+Configuration
+-------------
+
+Create a data repository with this structure (summon-cli will allow bootstrapping this structure in the future):
+
+```
+.
+├── Makefile
+├── assets
+│   ├── bin
+│   │   └── packr2.summon
+│   └── text.txt
+├── boxer
+│   └── box.go
+├── go.mod
+├── go.sum
+└── summon
+    └── summon.go
+```
+
+You just need to populate the `assets` directory with your own.
+
+You may follow an example at https://github.com/davidovich/summon-example-assets
+
+The `boxer` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
+
+Build
+-----
+
+In an asset data repository:
+
+0) (Comming soon) invoke summon-cli create
+    This will create code template similar as above
+1) Use the provided Makefile to invoke the packr2 process: make
+2) Commit the resulting -packr files so clients can go get the data repo
+3) Tag the repo with semantic version (with the `v`) prefix
+
+Install
+-------
+
+Install using gobin the asset repo which will become the summon executable.
+If the consuming repo needs to version the data alonside the consumer (each consumer repo could have a specific version of data),
+you have two alternatives:
+
+* use gobin to install summon in the consuming repo:
 
 ```
 GO111MODULE=off go get -u github.com/myitcv/gobin
-gobin github.com/davidovich/summon
+# install the data repository as summon executable
+GOBIN=./ gobin [your-go-repo-import]/summon[@wanted-version-or-branch]
 ```
 
-Usages
-------
+* declare a [tools.go](https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module) file (will update when I get to testing this).
 
-In makefiles it can be useful to centralize certain portions that never change:
+Use-cases
+---------
+
+### Makefile library
+
+In makefiles it can be useful to centralize certain libraries, notice how
+summon returns the path ot where the resource was instantiated:
 
 ```
 include $(shell summon version.mk)
 ```
 
-By default, summon will put scripts at the `.summon/` directory at root of the current directory.
+By default, summon will put summoned scripts at the `.summon/` directory at root of the current directory.
+
+### Running a go binary
+
+`summon run [executable]` allows to run go gettable executables referenced in the `/bin` directory of the assets folder
