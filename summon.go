@@ -1,20 +1,22 @@
 package summon
 
 import (
-	"fmt"
-
 	"github.com/gobuffalo/packr/v2"
+
+	"github.com/davidovich/summon/cmd"
+	"github.com/davidovich/summon/pkg/config"
 )
 
-// Main entrypoint
+// Main entrypoint, typically called from a data repository
 func Main(args []string, box *packr.Box) int {
-	s, err := box.FindString(args[1])
+
+	config.SetBox(box)
+
+	err := cmd.Execute()
 
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
 		return 1
 	}
 
-	fmt.Println(s)
 	return 0
 }
