@@ -8,7 +8,8 @@ It solves the maintenance problem of mutliple copies of same
 code snippets distributed in many repos, leveraging go modules and version
 management.
 
-> NOTE: This is still a WIP and experimental.
+> NOTE: This is still a WIP and experimental. This readme is a design document and
+not every feature is implemented yet.
 
 It builds upon packr to pack arbitrary files in an executable
 which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
@@ -79,7 +80,7 @@ summon returns the path ot where the resource was instantiated:
 include $(shell summon version.mk)
 ```
 
-By default, summon will put summoned scripts at the `.summon/` directory at root of the current directory.
+By default, summon will put summoned scripts at the `.summoned/` directory at root of the current directory.
 
 ### Running a go binary
 

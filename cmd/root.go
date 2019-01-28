@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -18,14 +19,33 @@ func createRoot() *cobra.Command {
 		Short: biName + " main command",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := config.Box().FindString(args[0])
+			fn := args[0]
+			b, err := config.Box().Open(fn)
 
 			if err != nil {
 				return err
 			}
 
-			fmt.Println(s)
-			return nil
+			// Write the file and print it's path
+			fp := filepath.Join(config.OutputDir, fn)
+			err = os.MkdirAll(config.OutputDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			out, err := os.Create(fp)
+			if err != nil {
+				return err
+			}
+			defer out.Close()
+
+			_, err = io.Copy(out, b)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(fp)
+			return out.Close()
 		},
 	}
 }
