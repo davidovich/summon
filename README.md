@@ -1,8 +1,8 @@
 Summon
 ======
 
-Summon is used to create a central location to gather scripts, or
-go executable references.
+Summon is used to manage a central location of data or
+go executable references, and distribute them to any go-enabled environment.
 
 It solves the maintenance problem of mutliple copies of same
 code snippets distributed in many repos, leveraging go modules and version
@@ -11,7 +11,7 @@ management.
 > NOTE: This is still a WIP and experimental. This readme is a design document and
 not every feature is implemented yet.
 
-It builds upon packr to pack arbitrary files in an executable
+Summon builds upon [packr](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
 which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
 
 Configuration
