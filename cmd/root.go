@@ -12,9 +12,9 @@ import (
 )
 
 // CreateRoot creates the root command
-func createRoot() *cobra.Command {
+func createRootCmd() *cobra.Command {
 	biName := filepath.Base(os.Args[0])
-	return &cobra.Command{
+	root := &cobra.Command{
 		Use:   biName + " [file to summon]",
 		Short: biName + " main command",
 		Args:  cobra.MinimumNArgs(1),
@@ -48,9 +48,15 @@ func createRoot() *cobra.Command {
 			return out.Close()
 		},
 	}
+
+	//root.Flags().BoolVarP()
+
+	root.AddCommand(newListCmd())
+
+	return root
 }
 
-var rootCmd = createRoot()
+var rootCmd = createRootCmd()
 
 // Execute is the main command entry point
 func Execute() error {

@@ -8,16 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "list all summonables",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(strings.Join(config.Box().List(), "\n"))
+func newListCmd() *cobra.Command {
+	lcmd := &cobra.Command{
+		Use:   "list",
+		Short: "list all summonables",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println(strings.Join(config.Box().List(), "\n"))
 
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(listCmd)
+			return nil
+		},
+	}
+	return lcmd
 }

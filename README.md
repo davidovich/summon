@@ -25,7 +25,8 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
 ├── assets
 │   ├── bin
 │   │   └── packr2.summon
-│   └── text.txt
+│   ├── text.txt
+│   └── config.yaml
 ├── boxer
 │   └── box.go
 ├── go.mod
@@ -34,11 +35,19 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
     └── summon.go
 ```
 
-You just need to populate the `assets` directory with your own.
+You just need to populate the `assets` directory with your own data.
 
-You may follow an example at https://github.com/davidovich/summon-example-assets
+The `boxer/` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
+The `summon/` direcotry is the entry point to the summon library, and creates the main executable.
 
-The `boxer` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
+There is an example setup at https://github.com/davidovich/summon-example-assets.
+
+The `assets/config.yaml` contains a configuration file to customize summon. You can define:
+
+    * aliases
+    * default output-dir
+    * gobin flags
+    * go gettable executables
 
 Build
 -----
@@ -82,6 +91,12 @@ include $(shell summon version.mk)
 
 By default, summon will put summoned scripts at the `.summoned/` directory at root of the current directory.
 
-### Running a go binary
+### Running a go binary (soon)
 
 `summon run [executable]` allows to run go gettable executables referenced in the `/bin` directory of the assets folder
+
+### dumping the data at a location (soon)
+
+```
+summon --all --to .dir
+```
