@@ -11,6 +11,22 @@ management.
 > NOTE: This is still a WIP and experimental. This readme is a design document and
 not every feature is implemented yet.
 
+Why not use git directly? 
+
+While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
+while in summon you leverage go execution to bootstrap in one phase. So your data can do: 
+
+```
+go run github.com/davidovich/summon-example-assets/summon --help
+# or list the data deliverables
+go run github.com/davidovich/summon-example-assets/summon list
+# or
+# let summon configure the path so it can invoke a go executable 
+# (here go-gettable-executable is a reference to a go gettable repo), and will
+# result in an executable tailored for your destination os and architecture (because built on the fly).
+go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
+```
+
 Summon builds upon [packr](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
 which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
 
@@ -100,3 +116,5 @@ By default, summon will put summoned scripts at the `.summoned/` directory at ro
 ```
 summon --all --to .dir
 ```
+
+### developing custom plugins to augment the functionality offered by summon-lib core.
