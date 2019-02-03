@@ -1,19 +1,56 @@
 package summon
 
-// Summoner manages functionality off summon
-type Summoner struct {
-	opts options
-}
+import (
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 
-// New creates the summoner
-func New(opts ...Option) *Summoner {
-	var s Summoner
+	"github.com/gobuffalo/packr/v2/file"
+	"github.com/spf13/afero"
+)
 
-	return s.configure(opts...)
-}
+// AppFs abstracts away the filesystem
+var AppFs = afero.NewOsFs()
 
-func (s *Summoner) configure(opts ...Option) *Summoner {
-	for _, opt := range opts {
-		opt(&s.opts)
+// Summon is the main comnand invocation
+func (s *Summoner) Summon(opts ...Option) (string, error) {
+	s.Configure(opts...)
+
+	if s.opts.all {
+		return s.opts.destination, s.box.Walk(func(path string, info file.File) error {
+			_, err := s.copyOneFile(info, s.opts.destination)
+			return err
+		})
 	}
+
+	boxedFile, err := s.box.Open(s.opts.filename)
+	if err != nil {
+		return "", err
+	}
+	return s.copyOneFile(boxedFile, s.opts.destination)
+}
+
+func (s *Summoner) copyOneFile(boxedFile http.File, destination string) (string, error) {
+	// Write the file and print it's path
+	stat, _ := boxedFile.Stat()
+	filename := stat.Name()
+	summonedFile := filepath.Join(destination, filename)
+	err := AppFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
+	if err != nil {
+		return "", err
+	}
+
+	out, err := AppFs.Create(summonedFile)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, boxedFile)
+	if err != nil {
+		return "", err
+	}
+
+	return summonedFile, out.Close()
 }
