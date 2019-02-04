@@ -1,8 +1,8 @@
 Summon
 ======
 
-Summon is used to create a central location to gather scripts, or
-go executable references.
+Summon is used to manage a central location of data or
+go executable references, and distribute them to any go-enabled environment.
 
 It solves the maintenance problem of mutliple copies of same
 code snippets distributed in many repos, leveraging go modules and version
@@ -11,7 +11,23 @@ management.
 > NOTE: This is still a WIP and experimental. This readme is a design document and
 not every feature is implemented yet.
 
-It builds upon packr to pack arbitrary files in an executable
+Why not use git directly? 
+
+While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
+while in summon you leverage go execution to bootstrap in one phase. So your data can do: 
+
+```
+go run github.com/davidovich/summon-example-assets/summon --help
+# or list the data deliverables
+go run github.com/davidovich/summon-example-assets/summon list
+# or
+# let summon configure the path so it can invoke a go executable 
+# (here go-gettable-executable is a reference to a go gettable repo), and will
+# result in an executable tailored for your destination os and architecture (because built on the fly).
+go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
+```
+
+Summon builds upon [packr](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
 which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
 
 Configuration
@@ -25,7 +41,8 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
 ├── assets
 │   ├── bin
 │   │   └── packr2.summon
-│   └── text.txt
+│   ├── text.txt
+│   └── config.yaml
 ├── boxer
 │   └── box.go
 ├── go.mod
@@ -34,11 +51,19 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
     └── summon.go
 ```
 
-You just need to populate the `assets` directory with your own.
+You just need to populate the `assets` directory with your own data.
 
-You may follow an example at https://github.com/davidovich/summon-example-assets
+The `boxer/` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
+The `summon/` direcotry is the entry point to the summon library, and creates the main executable.
 
-The `boxer` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
+There is an example setup at https://github.com/davidovich/summon-example-assets.
+
+The `assets/config.yaml` contains a configuration file to customize summon. You can define:
+
+    * aliases
+    * default output-dir
+    * gobin flags
+    * go gettable executables
 
 Build
 -----
@@ -82,6 +107,14 @@ include $(shell summon version.mk)
 
 By default, summon will put summoned scripts at the `.summoned/` directory at root of the current directory.
 
-### Running a go binary
+### Running a go binary (soon)
 
 `summon run [executable]` allows to run go gettable executables referenced in the `/bin` directory of the assets folder
+
+### dumping the data at a location (soon)
+
+```
+summon --all --to .dir
+```
+
+### developing custom plugins to augment the functionality offered by summon-lib core.

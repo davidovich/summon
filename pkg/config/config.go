@@ -1,28 +1,15 @@
 package config
 
-import (
-	"github.com/gobuffalo/packr/v2"
-)
-
 const (
-	// OutputDir is where the files will be instantiated
-	OutputDir = ".summoned"
+	// DefaultOutputDir is where the files will be instantiated
+	DefaultOutputDir = ".summoned"
+
+	// ConfigFile is the name of the summon config file
+	ConfigFile = "summon.config.yaml"
 )
 
-// Box is the main box of the program
-var mainBox *packr.Box
+// OutputDir is the resolved output dir
+var OutputDir = DefaultOutputDir
 
-// SetBox sets the main data box
-func SetBox(box *packr.Box) {
-	mainBox = box
-}
-
-// Box returns the main data box
-func Box() *packr.Box {
-	return mainBox
-}
-
-// AddAlias
-func AddAlias(source, destination string) {
-
+type configFile struct {
 }
