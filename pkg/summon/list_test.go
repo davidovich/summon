@@ -1,0 +1,26 @@
+package summon
+
+import (
+	"io/ioutil"
+	"os"
+	"testing"
+
+	"github.com/gobuffalo/packr/v2"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSummoner_List(t *testing.T) {
+	defer replaceFs()()
+
+	dir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(dir)
+
+	box := packr.New("test box", dir)
+	box.AddString("a", "this is a text")
+	box.AddString("b", "another text")
+
+	s := New(box)
+	got, _ := s.List()
+
+	assert.Equal(t, got, []string{"a", "b"}, "Summoner.List() = %v, want %v", got, []string{"a", "b"})
+}
