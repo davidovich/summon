@@ -19,7 +19,7 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 
 	if s.opts.all {
 		return s.opts.destination, s.box.Walk(func(path string, info file.File) error {
-			_, err := s.copyOneFile(info, s.opts.destination)
+			_, err := copyOneFile(info, s.opts.destination)
 			return err
 		})
 	}
@@ -28,10 +28,10 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.copyOneFile(boxedFile, s.opts.destination)
+	return copyOneFile(boxedFile, s.opts.destination)
 }
 
-func (s *Summoner) copyOneFile(boxedFile http.File, destination string) (string, error) {
+func copyOneFile(boxedFile http.File, destination string) (string, error) {
 	// Write the file and print it's path
 	stat, _ := boxedFile.Stat()
 	filename := stat.Name()
