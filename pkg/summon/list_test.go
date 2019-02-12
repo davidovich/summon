@@ -17,8 +17,8 @@ func TestSummoner_List(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	box := packr.New("test box", dir)
-	box.AddString("a", "this is a text")
-	box.AddString("b", "another text")
+	box.AddString("a", "a content")
+	box.AddString("b", "b content")
 
 	s := New(box)
 	got, _ := s.List()

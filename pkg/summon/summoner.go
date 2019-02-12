@@ -4,23 +4,16 @@ import (
 	"github.com/gobuffalo/packr/v2"
 )
 
-// BaseSummoner implements options and options setup
-type BaseSummoner struct {
-	opts options
-	box  *packr.Box
-}
-
 // Summoner manages functionality of summon
 type Summoner struct {
-	BaseSummoner
+	opts options
+	box  *packr.Box
 }
 
 // New creates the summoner
 func New(box *packr.Box, opts ...Option) *Summoner {
 	s := &Summoner{
-		BaseSummoner{
-			box: box,
-		},
+		box: box,
 	}
 
 	s.Configure(opts...)
@@ -29,7 +22,7 @@ func New(box *packr.Box, opts ...Option) *Summoner {
 }
 
 // Configure is used to extract options to the object.
-func (b *BaseSummoner) Configure(opts ...Option) {
+func (b *Summoner) Configure(opts ...Option) {
 	for _, opt := range opts {
 		opt(&b.opts)
 	}
