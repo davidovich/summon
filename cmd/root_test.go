@@ -63,6 +63,28 @@ func Test_mainCmd_run(t *testing.T) {
 			},
 			out: ".s/a\n",
 		},
+		{
+			name: "copyAll",
+			fields: fields{
+				copyAll: true,
+				dest:    ".s",
+				driver: &fakeSummon{
+					Summoner: summon.New(box),
+					wantErr:  false,
+				},
+			},
+			out: ".s\n", // note dest dir
+		},
+		{
+			name: "error",
+			fields: fields{
+				driver: &fakeSummon{
+					Summoner: summon.New(box),
+					wantErr:  true,
+				},
+			},
+			out: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
