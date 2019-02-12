@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2/file"
 	"github.com/spf13/afero"
 )
 
-// AppFs abstracts away the filesystem
-var AppFs = afero.NewOsFs()
+var appFs = afero.NewOsFs()
 
 // Summon is the main comnand invocation
 func (s *Summoner) Summon(opts ...Option) (string, error) {
@@ -36,12 +36,12 @@ func (s *Summoner) copyOneFile(boxedFile http.File, destination string) (string,
 	stat, _ := boxedFile.Stat()
 	filename := stat.Name()
 	summonedFile := filepath.Join(destination, filename)
-	err := AppFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
+	err := appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
 	if err != nil {
 		return "", err
 	}
 
-	out, err := AppFs.Create(summonedFile)
+	out, err := appFs.Create(summonedFile)
 	if err != nil {
 		return "", err
 	}
@@ -53,4 +53,9 @@ func (s *Summoner) copyOneFile(boxedFile http.File, destination string) (string,
 	}
 
 	return summonedFile, out.Close()
+}
+
+func init() {
+	testutil.SetFs = func(fs afero.Fs) { appFs = fs }
+	testutil.GetFs = func() afero.Fs { return appFs }
 }

@@ -5,12 +5,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSummoner_List(t *testing.T) {
-	defer replaceFs()()
+	defer testutil.ReplaceFs()()
 
 	dir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(dir)
