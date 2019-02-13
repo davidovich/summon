@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -13,11 +14,50 @@ import (
 )
 
 func Test_createRootCmd(t *testing.T) {
-	a := assert.New(t)
+	defer testutil.ReplaceFs()()
 
-	rootCmd := createRootCmd(&fakeSummon{})
+	box := packr.New("test box", "")
+	box.AddString("a", "a content")
+	box.AddString("b", "b content")
 
-	a.NotNil(rootCmd)
+	makeRootCmd := func(args ...string) *cobra.Command {
+		rootCmd := createRootCmd(&fakeSummon{
+			Summoner: summon.New(box),
+		})
+		rootCmd.SetArgs(args)
+
+		return rootCmd
+	}
+
+	tests := []struct {
+		name string
+		//args    args
+		rootCmd *cobra.Command
+		wantErr bool
+	}{
+		{
+			name:    "no-args-no-all",
+			rootCmd: makeRootCmd(),
+			wantErr: true,
+		},
+		{
+			name:    "all",
+			rootCmd: makeRootCmd("-a"),
+			wantErr: false,
+		},
+		{
+			name:    "file",
+			rootCmd: makeRootCmd("b"),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.rootCmd.Execute(); (err != nil) != tt.wantErr {
+				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }
 
 type fakeSummon struct {
