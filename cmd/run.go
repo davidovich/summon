@@ -2,18 +2,15 @@ package cmd
 
 import (
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/gobuffalo/packr/v2"
 	"github.com/spf13/cobra"
 )
 
 type runCmdOpts struct {
-	box    *packr.Box
 	driver summon.Interface
 }
 
-func newRunCmd(box *packr.Box, driver summon.Interface) *cobra.Command {
+func newRunCmd(driver summon.Interface) *cobra.Command {
 	runCmd := &runCmdOpts{
-		box:    box,
 		driver: driver,
 	}
 	rcmd := &cobra.Command{
@@ -27,10 +24,8 @@ func newRunCmd(box *packr.Box, driver summon.Interface) *cobra.Command {
 	return rcmd
 }
 
-func (l *runCmdOpts) run() error {
-	if l.driver == nil {
-		l.driver = summon.New(l.box)
-	}
+func (r *runCmdOpts) run() error {
+	r.driver.Configure()
 
-	return l.driver.Run()
+	return r.driver.Run()
 }

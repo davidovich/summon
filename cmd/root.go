@@ -14,7 +14,6 @@ import (
 )
 
 type mainCmd struct {
-	box      *packr.Box
 	copyAll  bool
 	dest     string
 	driver   summon.Interface
@@ -23,17 +22,16 @@ type mainCmd struct {
 }
 
 // CreateRoot creates the root command
-func createRootCmd(box *packr.Box, driver summon.Interface) *cobra.Command {
-	biName := filepath.Base(os.Args[0])
+func createRootCmd(driver summon.Interface) *cobra.Command {
+	cmdName := filepath.Base(os.Args[0])
 
 	main := &mainCmd{
 		driver: driver,
-		box:    box,
 	}
 
 	rootCmd := &cobra.Command{
-		Use:   biName + " [file to summon]",
-		Short: biName + " main command",
+		Use:   cmdName + " [file to summon]",
+		Short: cmdName + " main command",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if main.copyAll {
 				return nil
@@ -57,20 +55,19 @@ func createRootCmd(box *packr.Box, driver summon.Interface) *cobra.Command {
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
 	rootCmd.Flags().StringVar(&main.dest, "to", config.OutputDir, "destination directory")
 
-	rootCmd.AddCommand(newListCmd(box, driver))
-	rootCmd.AddCommand(newRunCmd(box, driver))
+	rootCmd.AddCommand(newListCmd(driver))
+	rootCmd.AddCommand(newRunCmd(driver))
 
 	return rootCmd
 }
 
 func (m *mainCmd) run() error {
-	if m.driver == nil {
-		m.driver = summon.New(
-			m.box,
-			summon.All(m.copyAll),
-			summon.Dest(m.dest),
-		)
-	}
+	m.driver.Configure(
+		summon.All(m.copyAll),
+		summon.Dest(m.dest),
+		summon.Filename(m.filename),
+	)
+
 	resultFilepath, err := m.driver.Summon()
 	if err != nil {
 		return err
@@ -81,6 +78,6 @@ func (m *mainCmd) run() error {
 
 // Execute is the main command entry point
 func Execute(box *packr.Box) error {
-	rootCmd := createRootCmd(box, nil)
+	rootCmd := createRootCmd(summon.New(box))
 	return rootCmd.Execute()
 }

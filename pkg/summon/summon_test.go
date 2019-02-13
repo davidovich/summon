@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/spf13/afero"
 
@@ -11,16 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func replaceFs() func() {
-	oldFs := AppFs
-	AppFs = afero.NewMemMapFs()
-	return func() {
-		AppFs = oldFs
-	}
-}
-
 func TestMultifileInstanciation(t *testing.T) {
-	defer replaceFs()()
+	defer testutil.ReplaceFs()()
 
 	box := packr.New("test box", "")
 
@@ -33,15 +26,15 @@ func TestMultifileInstanciation(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "", path)
 
-	_, err = AppFs.Stat("text.txt")
+	_, err = appFs.Stat("text.txt")
 	assert.Nil(t, err)
 
-	_, err = AppFs.Stat("another.txt")
+	_, err = appFs.Stat("another.txt")
 	assert.Nil(t, err)
 }
 
 func TestOneFileInstanciation(t *testing.T) {
-	defer replaceFs()()
+	defer testutil.ReplaceFs()()
 
 	a := assert.New(t)
 
@@ -55,7 +48,7 @@ func TestOneFileInstanciation(t *testing.T) {
 	a.Nil(err)
 	a.Equal(filepath.Join(config.OutputDir, "text.txt"), path)
 
-	bytes, err := afero.ReadFile(AppFs, path)
+	bytes, err := afero.ReadFile(appFs, path)
 	a.Nil(err)
 
 	a.Equal("this is a text", string(bytes))
