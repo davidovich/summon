@@ -12,6 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestErrorOnMissingFiles(t *testing.T) {
+	defer testutil.ReplaceFs()()
+
+	box := packr.New("test box", "")
+	s := New(box, Filename("missing"))
+	path, err := s.Summon()
+
+	assert.NotNil(t, err)
+	assert.Empty(t, path)
+}
+
 func TestMultifileInstanciation(t *testing.T) {
 	defer testutil.ReplaceFs()()
 

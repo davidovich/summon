@@ -17,8 +17,8 @@ func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
 	box := packr.New("test box", "")
-	box.AddString("a", "a content")
-	box.AddString("b", "b content")
+	box.AddString("a.txt", "a content")
+	box.AddString("b.txt", "b content")
 
 	makeRootCmd := func(args ...string) *cobra.Command {
 		rootCmd := createRootCmd(&fakeSummon{
@@ -30,8 +30,7 @@ func Test_createRootCmd(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		//args    args
+		name    string
 		rootCmd *cobra.Command
 		wantErr bool
 	}{
@@ -47,7 +46,7 @@ func Test_createRootCmd(t *testing.T) {
 		},
 		{
 			name:    "file",
-			rootCmd: makeRootCmd("b"),
+			rootCmd: makeRootCmd("b.txt"),
 			wantErr: false,
 		},
 	}
@@ -77,8 +76,8 @@ func Test_mainCmd_run(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
 	box := packr.New("test box", "")
-	box.AddString("a", "a content")
-	box.AddString("b", "b content")
+	box.AddString("a.txt", "a content")
+	box.AddString("b.txt", "b content")
 
 	type fields struct {
 		copyAll  bool
@@ -95,13 +94,13 @@ func Test_mainCmd_run(t *testing.T) {
 			name: "base",
 			fields: fields{
 				dest:     ".s",
-				filename: "a",
+				filename: "a.txt",
 				driver: &fakeSummon{
 					Summoner: summon.New(box),
 					wantErr:  false,
 				},
 			},
-			out: ".s/a\n",
+			out: ".s/a.txt\n",
 		},
 		{
 			name: "copyAll",
