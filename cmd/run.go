@@ -7,6 +7,7 @@ import (
 
 type runCmdOpts struct {
 	driver summon.Interface
+	ref    string
 }
 
 func newRunCmd(driver summon.Interface) *cobra.Command {
@@ -16,7 +17,9 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 	rcmd := &cobra.Command{
 		Use:   "run",
 		Short: "launch executable from summonables",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runCmd.ref = args[0]
 			return runCmd.run()
 		},
 	}
@@ -25,7 +28,7 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 }
 
 func (r *runCmdOpts) run() error {
-	r.driver.Configure()
+	r.driver.Configure(summon.Ref(r.ref))
 
 	return r.driver.Run()
 }
