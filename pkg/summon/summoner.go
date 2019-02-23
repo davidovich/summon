@@ -3,7 +3,6 @@ package summon
 import (
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
-	"gopkg.in/yaml.v2"
 )
 
 // Summoner manages functionality of summon
@@ -29,8 +28,7 @@ func (b *Summoner) Configure(opts ...Option) {
 	// try to find a config file in the box
 	config, err := b.box.Find(config.ConfigFile)
 	if err == nil {
-		yaml.Unmarshal(config, &b.config)
-
+		b.config.Unmarshal(config)
 		b.opts.DefaultsFrom(b.config)
 	}
 

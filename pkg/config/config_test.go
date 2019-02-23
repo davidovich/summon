@@ -48,8 +48,8 @@ func TestConfigReader(t *testing.T) {
         hello: print("hello")
 	`)
 
-	var c Config
-	err := yaml.Unmarshal([]byte(config), &c)
+	c := Config{}
+	err := c.Unmarshal([]byte(config))
 
 	require.Nil(t, err)
 	assert.Equal(t, "print(\"hello\")", c.Executables["python -c"]["hello"])

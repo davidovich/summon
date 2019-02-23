@@ -1,5 +1,7 @@
 package config
 
+import "gopkg.in/yaml.v2"
+
 const (
 	// DefaultOutputDir is where the files will be instantiated
 	DefaultOutputDir = ".summoned"
@@ -23,4 +25,9 @@ type Config struct {
 	Aliases     Alias                 `yaml:"aliases"`
 	OutputDir   string                `yaml:"outputdir"`
 	Executables map[string]Executable `yaml:"exec"`
+}
+
+// Unmarshal hidrates the config from config bytes
+func (c *Config) Unmarshal(config []byte) error {
+	return yaml.Unmarshal(config, c)
 }
