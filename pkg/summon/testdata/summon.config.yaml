@@ -1,0 +1,6 @@
+version: 1
+aliases: {}
+outputdir: "overriden_dir"
+exec:
+  bash:
+    hello-bash: hello.sh
