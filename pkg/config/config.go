@@ -11,5 +11,16 @@ const (
 // OutputDir is the resolved output dir
 var OutputDir = DefaultOutputDir
 
-type configFile struct {
+// Alias gives a shortcut to a name in data
+type Alias map[string]string
+
+// Executable describes a Name and an invocable target
+type Executable map[string]string
+
+// Config is the summon config
+type Config struct {
+	Version     int
+	Aliases     Alias                 `yaml:"aliases"`
+	OutputDir   string                `yaml:"outputdir"`
+	Executables map[string]Executable `yaml:"exec"`
 }

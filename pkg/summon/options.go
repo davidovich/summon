@@ -1,5 +1,7 @@
 package summon
 
+import "github.com/davidovich/summon/pkg/config"
+
 // options fir all summon commands
 type options struct {
 	// copy all the tree
@@ -41,5 +43,12 @@ func Dest(dest string) Option {
 func ShowTree(tree bool) Option {
 	return func(opts *options) {
 		opts.tree = tree
+	}
+}
+
+// DefaultsFrom sets options from user config
+func (o *options) DefaultsFrom(conf config.Config) {
+	if conf.OutputDir != "" {
+		o.destination = conf.OutputDir
 	}
 }

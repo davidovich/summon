@@ -41,10 +41,8 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
 .
 ├── Makefile
 ├── assets
-│   ├── bin
-│   │   └── packr2.summon
 │   ├── text.txt
-│   └── config.yaml
+│   └── summon.config.yaml
 ├── boxer
 │   └── box.go
 ├── go.mod
@@ -56,16 +54,35 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
 You just need to populate the `assets` directory with your own data.
 
 The `boxer/` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
-The `summon/` direcotry is the entry point to the summon library, and creates the main executable.
+The `summon/` directory is the entry point to the summon library, and creates the main executable.
 
 There is an example setup at https://github.com/davidovich/summon-example-assets.
 
-The `assets/config.yaml` contains a configuration file to customize summon. You can define:
+The `assets/summon.config.yaml` contains a configuration file to customize summon. You can define:
 
     * aliases
     * default output-dir
     * gobin flags
-    * go gettable executables
+    * executables
+
+
+```yaml
+version: 1
+
+# exec section declares invokables with their handle
+# a same handle name cannot be in two invokers at the same time
+exec:
+    bash -c:
+    # ^ invoker
+        # (notice script can be inlined because of invoker type)
+        hello: echo hello
+        # ^ handle to script (must be unique)
+
+    go: # go gettable executables
+        gobin: github.com/myitcv/gobin
+        gohack: github.com/rogppepe/gohack
+```
+
 
 Build
 -----
@@ -81,7 +98,7 @@ In an asset data repository:
 Install
 -------
 
-Install using gobin the asset repo which will become the summon executable.
+Install (using gobin) the asset repo which will become the summon executable.
 If the consuming repo needs to version the data alonside the consumer (each consumer repo could have a specific version of data),
 you have two alternatives:
 
@@ -111,7 +128,7 @@ By default, summon will put summoned scripts at the `.summoned/` directory at ro
 
 ### Running a go binary (soon)
 
-`summon run [executable]` allows to run go gettable executables referenced in the `/bin` directory of the assets folder
+`summon run [executable]` allows to run executables declared in the config file
 
 ### dumping the data at a location (soon)
 
