@@ -1,6 +1,8 @@
 package summon
 
-import "os/exec"
+import (
+	"os/exec"
+)
 
 var execCommand = exec.Command
 
@@ -13,10 +15,15 @@ func (s *Summoner) Run(opts ...Option) error {
 		if c, ok := v[s.opts.ref]; ok {
 			executor = k
 			command = c
+			break
 		}
 	}
-	_ = executor
-	_ = command
-	//cmd := execCommand(executor, append([]string{command}, s.opts.args))
-	return nil // cmd.Run()
+
+	finalCommand := append([]string{command}, s.opts.args...)
+
+	cmd := execCommand(executor, finalCommand...)
+
+	err := cmd.Run()
+
+	return err
 }
