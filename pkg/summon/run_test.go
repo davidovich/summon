@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +16,7 @@ import (
 func TestRun(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, nil)
-	defer func() { execCommand = exec.Command }()
+	defer func() { execCommand = command.New }()
 
 	box := packr.New("test run box", "testdata")
 

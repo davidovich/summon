@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/spf13/afero"
 )
 
@@ -24,14 +25,25 @@ func ReplaceFs() func() {
 	}
 }
 
+type fakeCommand struct {
+	*exec.Cmd
+}
+
+func (c *fakeCommand) SetStdStreams(stdin io.Reader, stdout, stderr io.Writer) {
+}
+
+func (c *fakeCommand) Run() error {
+	return c.Cmd.Run()
+}
+
 // FakeExecCommand resturns a fake function which calls into testToCall
 // this is used to mock an exec.Cmd
 // Adapted from https://npf.io/2015/06/testing-exec-command/
-func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) *exec.Cmd {
-	return func(command string, args ...string) *exec.Cmd {
-		cs := []string{"-test.run=" + testToCall, "--", command}
+func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) command.Commander {
+	return func(c string, args ...string) command.Commander {
+		cs := []string{"-test.run=" + testToCall, "--", c}
 		cs = append(cs, args...)
-		cmd := exec.Command(os.Args[0], cs...)
+		cmd := &fakeCommand{exec.Command(os.Args[0], cs...)}
 
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr

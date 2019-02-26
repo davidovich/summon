@@ -1,29 +1,48 @@
 package summon
 
 import (
-	"os/exec"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/pkg/config"
 )
 
-var execCommand = exec.Command
+var execCommand = command.New
 
 // Run will run go or executable scripts in the context of the data
 func (s *Summoner) Run(opts ...Option) error {
+	s.Configure(opts...)
+	exec, commands, err := s.findExecutor()
+	if err != nil {
+		return err
+	}
+
+	finalCommand := append(commands, s.opts.args...)
+
+	cmd := execCommand(exec, finalCommand...)
+	cmd.SetStdStreams(os.Stdin, os.Stdout, os.Stderr)
+
+	return cmd.Run()
+}
+
+func (s *Summoner) findExecutor() (string, []string, error) {
 	var executor string
-	var command string
+	var commands []string
 
 	for k, v := range s.config.Executables {
 		if c, ok := v[s.opts.ref]; ok {
-			executor = k
-			command = c
+			exec := strings.Split(k, " ")
+			executor = exec[0]
+			commands = append(exec[1:], c)
 			break
 		}
 	}
 
-	finalCommand := append([]string{command}, s.opts.args...)
+	if executor == "" {
+		return "", []string{}, fmt.Errorf("could not find exec reference %s in config %s", s.opts.ref, config.ConfigFile)
+	}
 
-	cmd := execCommand(executor, finalCommand...)
-
-	err := cmd.Run()
-
-	return err
+	return executor, commands, nil
 }
