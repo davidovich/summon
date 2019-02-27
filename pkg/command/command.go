@@ -1,31 +1,22 @@
 package command
 
 import (
-	"io"
 	"os/exec"
 )
 
-// Commander describes a subset of a exec.Cmd functionality for testing
-type Commander interface {
-	SetStdStreams(stdin io.Reader, stdout, stderr io.Writer)
-	Run() error
-}
-
-type cmd struct {
+// Cmd is an exec.Cmd with a configurable Run function
+type Cmd struct {
 	*exec.Cmd
+	Run func() error
 }
 
-// New creates a concrete commander
-func New(c string, args ...string) Commander {
-	return &cmd{exec.Command(c, args...)}
-}
-
-func (c *cmd) Run() error {
-	return c.Cmd.Run()
-}
-
-func (c *cmd) SetStdStreams(stdin io.Reader, stdout, stderr io.Writer) {
-	c.Stdin = stdin
-	c.Stdout = stdout
-	c.Stderr = stderr
+// New creates a Cmd with a real exec.Cmd Run function
+func New(c string, args ...string) *Cmd {
+	cmd := &Cmd{
+		Cmd: exec.Command(c, args...),
+	}
+	cmd.Run = func() error {
+		return cmd.Cmd.Run()
+	}
+	return cmd
 }

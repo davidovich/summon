@@ -25,29 +25,23 @@ func ReplaceFs() func() {
 	}
 }
 
-type fakeCommand struct {
-	*exec.Cmd
-}
-
-func (c *fakeCommand) SetStdStreams(stdin io.Reader, stdout, stderr io.Writer) {
-}
-
-func (c *fakeCommand) Run() error {
-	return c.Cmd.Run()
-}
-
 // FakeExecCommand resturns a fake function which calls into testToCall
 // this is used to mock an exec.Cmd
 // Adapted from https://npf.io/2015/06/testing-exec-command/
-func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) command.Commander {
-	return func(c string, args ...string) command.Commander {
+func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) *command.Cmd {
+	return func(c string, args ...string) *command.Cmd {
 		cs := []string{"-test.run=" + testToCall, "--", c}
 		cs = append(cs, args...)
-		cmd := &fakeCommand{exec.Command(os.Args[0], cs...)}
+		cmd := &command.Cmd{
+			Cmd: exec.Command(os.Args[0], cs...),
+		}
+		cmd.Run = func() error {
+			cmd.Stdout = stdout
+			cmd.Stderr = stderr
+			cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
+			return cmd.Cmd.Run()
+		}
 
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 		return cmd
 	}
 }

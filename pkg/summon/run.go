@@ -22,7 +22,9 @@ func (s *Summoner) Run(opts ...Option) error {
 	finalCommand := append(commands, s.opts.args...)
 
 	cmd := execCommand(exec, finalCommand...)
-	cmd.SetStdStreams(os.Stdin, os.Stdout, os.Stderr)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
 }
