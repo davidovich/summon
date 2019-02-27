@@ -31,9 +31,9 @@ func (s *Summoner) findExecutor() (string, []string, error) {
 	var executor string
 	var commands []string
 
-	for k, v := range s.config.Executables {
-		if c, ok := v[s.opts.ref]; ok {
-			exec := strings.Split(k, " ")
+	for ex, handles := range s.config.Executables {
+		if c, ok := handles[s.opts.ref]; ok {
+			exec := strings.Split(ex, " ")
 			executor = exec[0]
 			commands = append(exec[1:], c)
 			break

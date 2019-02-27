@@ -14,17 +14,65 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, nil)
 	defer func() { execCommand = command.New }()
 
 	box := packr.New("test run box", "testdata")
 
-	s := New(box, Ref("hello"))
-	err := s.Run()
+	tests := []struct {
+		name    string
+		helper  string
+		ref     string
+		expect  string
+		wantErr bool
+	}{
+		{
+			name:    "composite-invoker", // python -c
+			helper:  "TestSummonRunHelper",
+			ref:     "hello",
+			expect:  "python -c print(\"hello from python!\")",
+			wantErr: false,
+		},
+		{
+			name:    "simple-invoker", // bash
+			helper:  "TestSummonRunHelper",
+			ref:     "hello-bash",
+			expect:  "bash hello.sh",
+			wantErr: false,
+		},
+		{
+			name:    "fail",
+			ref:     "hello",
+			helper:  "TestFailRunHelper",
+			wantErr: true,
+		},
+		{
+			name:    "fail-no-ref",
+			ref:     "does-not-exist",
+			helper:  "TestSummonRunHelper",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stdout := &bytes.Buffer{}
+			execCommand = testutil.FakeExecCommand(tt.helper, stdout, nil)
 
-	assert.Nil(t, err)
-	assert.Equal(t, "python -c print(\"hello from python!\")", stdout.String())
+			s := New(box, Ref(tt.ref))
+			if err := s.Run(); (err != nil) != tt.wantErr {
+				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			assert.Equal(t, tt.expect, stdout.String())
+		})
+	}
+}
+
+func TestFailRunHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	os.Exit(1)
 }
 
 func TestSummonRunHelper(t *testing.T) {

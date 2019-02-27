@@ -20,6 +20,7 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runCmd.ref = args[0]
+			cmd.SilenceUsage = true
 			return runCmd.run()
 		},
 	}
