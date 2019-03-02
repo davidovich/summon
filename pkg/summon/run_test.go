@@ -2,7 +2,6 @@ package summon
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -62,7 +61,15 @@ func TestRun(t *testing.T) {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			assert.Equal(t, tt.expect, stdout.String())
+			c, err := testutil.GetCalls(stdout)
+			assert.Nil(t, err)
+
+			if tt.wantErr {
+				assert.Len(t, c.Calls, 0)
+
+			} else {
+				assert.Equal(t, tt.expect, c.Calls[0].Args)
+			}
 		})
 	}
 }
@@ -81,6 +88,10 @@ func TestSummonRunHelper(t *testing.T) {
 	}
 	defer os.Exit(0)
 
-	args := testutil.CleanHelperArgs(os.Args)
-	fmt.Fprintf(os.Stdout, strings.Join(args, " "))
+	call := testutil.Call{
+		Args: strings.Join(testutil.CleanHelperArgs(os.Args), " "),
+		Env:  os.Environ(),
+	}
+
+	testutil.WriteCall(call, os.Stdout)
 }

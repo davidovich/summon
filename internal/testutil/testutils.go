@@ -1,8 +1,10 @@
 package testutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -25,25 +27,76 @@ func ReplaceFs() func() {
 	}
 }
 
+//Call is a recording of a fake call
+type Call struct {
+	Args string
+	Env  []string
+}
+
+// Calls is the array of calls
+type Calls struct {
+	Calls []Call
+}
+
 // FakeExecCommand resturns a fake function which calls into testToCall
 // this is used to mock an exec.Cmd
 // Adapted from https://npf.io/2015/06/testing-exec-command/
 func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) *command.Cmd {
+	calls := 0
 	return func(c string, args ...string) *command.Cmd {
 		cs := []string{"-test.run=" + testToCall, "--", c}
 		cs = append(cs, args...)
 		cmd := &command.Cmd{
 			Cmd: exec.Command(os.Args[0], cs...),
 		}
+		if calls == 0 {
+			startCall(stdout)
+		}
 		cmd.Run = func() error {
+			if calls > 0 {
+				willAppendCall(stdout)
+			}
 			cmd.Stdout = stdout
 			cmd.Stderr = stderr
-			cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
-			return cmd.Cmd.Run()
+			cmd.Env = append(cmd.Env, "GO_WANT_HELPER_PROCESS=1")
+			err := cmd.Cmd.Run()
+			calls++
+			return err
 		}
 
 		return cmd
 	}
+}
+
+func startCall(out io.Writer) {
+	out.Write([]byte("{\"Calls\":["))
+}
+
+func willAppendCall(out io.Writer) {
+	out.Write([]byte(","))
+}
+
+// WriteCall marshals the executable call with env
+func WriteCall(c Call, w io.Writer) error {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	w.Write(b)
+	return nil
+}
+
+// GetCalls ends and returns a call sequence
+func GetCalls(out io.Reader) (*Calls, error) {
+	c := &Calls{}
+	buf, _ := ioutil.ReadAll(out)
+	if len(buf) == 0 {
+		return c, nil
+	}
+	buf = append(buf, []byte("]}")...)
+	err := json.Unmarshal(buf, c)
+
+	return c, err
 }
 
 // CleanHelperArgs removes the helper process arguments
