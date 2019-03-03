@@ -25,6 +25,10 @@ func New(box *packr.Box, opts ...Option) *Summoner {
 
 // Configure is used to extract options to the object.
 func (b *Summoner) Configure(opts ...Option) {
+	if b.opts.destination == "" {
+		b.opts.destination = config.DefaultOutputDir
+	}
+
 	// try to find a config file in the box
 	config, err := b.box.Find(config.ConfigFile)
 	if err == nil {
