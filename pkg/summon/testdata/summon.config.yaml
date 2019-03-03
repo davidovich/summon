@@ -4,8 +4,8 @@ outputdir: "overridden_dir"
 exec:
   bash:
     hello-bash: hello.sh
-  go:
-    gobin: github.com/myitcv/gobin
-    gohack: github.com/rogppepe/gohack
+  gobin:
+    gobin: github.com/myitcv/gobin@v0.0.8
+    gohack: github.com/rogpeppe/gohack
   python -c:
     hello: print("hello from python!")

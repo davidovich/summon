@@ -16,7 +16,7 @@ not every feature is implemented yet.
 Why not use git directly?
 
 While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
-while in summon you leverage go execution to bootstrap in one phase. So your data can do:
+In summon you leverage go execution to bootstrap in one phase. So your data can do:
 
 ```
 go run github.com/davidovich/summon-example-assets/summon --help
@@ -62,13 +62,12 @@ The `assets/summon.config.yaml` contains a configuration file to customize summo
 
     * aliases
     * default output-dir
-    * gobin flags
     * executables
 
 
 ```yaml
 version: 1
-
+outputdir: .summoned
 # exec section declares invokables with their handle
 # a same handle name cannot be in two invokers at the same time
 exec:
@@ -78,11 +77,21 @@ exec:
         hello: echo hello
         # ^ handle to script (must be unique)
 
-    go: # go gettable executables
-        gobin: github.com/myitcv/gobin
+    gobin: # go gettable executables
+        gobin: github.com/myitcv/gobin@v0.0.8
         gohack: github.com/rogppepe/gohack
+
+    python -c:
+        hello: print("hello from python!")
 ```
 
+You can then invoke the executable like so:
+
+```
+summon run gohack ...
+```
+
+This will install gohack and forward the arguments that you provide.
 
 Build
 -----
@@ -126,7 +135,7 @@ include $(shell summon version.mk)
 
 By default, summon will put summoned scripts at the `.summoned/` directory at root of the current directory.
 
-### Running a go binary (soon)
+### Running a go binary
 
 `summon run [executable]` allows to run executables declared in the config file
 
