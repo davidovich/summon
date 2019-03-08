@@ -29,7 +29,7 @@ func (s *Summoner) Run(opts ...Option) error {
 		return err
 	}
 
-	eu, err = s.resolve(eu)
+	eu, err = s.resolve(eu, os.Environ())
 	if err != nil {
 		return errors.Wrapf(err, "resolving %s", eu.invoker)
 	}
@@ -68,23 +68,25 @@ func (s *Summoner) findExecutor() (execUnit, error) {
 	return eu, nil
 }
 
-func (s *Summoner) resolve(execu execUnit) (execUnit, error) {
-	if strings.HasPrefix("gobin", execu.invoker) {
-		return s.prepareGoBinExecutable(execu)
+// resolve prepares special invokers for execution
+// presently supported: gobin
+func (s *Summoner) resolve(execu execUnit, environ []string) (execUnit, error) {
+	if strings.HasPrefix(execu.invoker, "gobin") {
+		return s.prepareGoBinExecutable(execu, environ)
 	}
 	return execu, nil
 }
 
-func (s *Summoner) prepareGoBinExecutable(execu execUnit) (execUnit, error) {
+func (s *Summoner) prepareGoBinExecutable(execu execUnit, environ []string) (execUnit, error) {
 	// install in OutputDir
+	dest := s.opts.destination
 	target := strings.Split(execu.target, "@")[0]
-	targetDir := filepath.Join(s.opts.destination, filepath.Dir(target))
+	targetDir := filepath.Join(dest, filepath.Dir(target))
 	cmd := execCommand(execu.invoker, execu.target)
-	cmd.Env = append(os.Environ(), "GOBIN="+targetDir)
+	cmd.Env = append(environ, "GOBIN="+targetDir)
 	buf := &bytes.Buffer{}
 	cmd.Stdout = buf
 	cmd.Stderr = buf
-	//fmt.Printf("executing: %s\n", cmd.Args)
 	err := cmd.Run()
 
 	if err != nil {
