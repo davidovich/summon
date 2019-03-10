@@ -26,7 +26,7 @@ func TestErrorOnMissingFiles(t *testing.T) {
 func TestMultifileInstanciation(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "")
+	box := packr.New("test box multifile", "")
 
 	box.AddString("text.txt", "this is a text")
 	box.AddString("another.txt", "another text")
@@ -35,12 +35,12 @@ func TestMultifileInstanciation(t *testing.T) {
 
 	path, err := s.Summon()
 	assert.Nil(t, err)
-	assert.Equal(t, "", path)
+	assert.Equal(t, ".summoned", path)
 
-	_, err = appFs.Stat("text.txt")
+	_, err = appFs.Stat(".summoned/text.txt")
 	assert.Nil(t, err)
 
-	_, err = appFs.Stat("another.txt")
+	_, err = appFs.Stat(".summoned/another.txt")
 	assert.Nil(t, err)
 }
 
@@ -49,7 +49,7 @@ func TestOneFileInstanciation(t *testing.T) {
 
 	a := assert.New(t)
 
-	box := packr.New("t", "")
+	box := packr.New("t1", "")
 	box.AddString("text.txt", "this is a text")
 
 	// create a summoner to summon text.txt at

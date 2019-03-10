@@ -7,6 +7,7 @@ require (
 	github.com/gobuffalo/meta v0.0.0-20190207205153-50a99e08b8cf // indirect
 	github.com/gobuffalo/packr/v2 v2.0.1
 	github.com/lithammer/dedent v1.1.0
+	github.com/pkg/errors v0.8.1
 	github.com/rogpeppe/go-internal v1.2.1 // indirect
 	github.com/spf13/afero v1.2.1
 	github.com/spf13/cobra v0.0.3

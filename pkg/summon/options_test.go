@@ -12,5 +12,5 @@ func TestBoxedConfig(t *testing.T) {
 
 	s := New(box)
 
-	assert.Equal(t, "overriden_dir", s.opts.destination)
+	assert.Equal(t, "overridden_dir", s.opts.destination)
 }

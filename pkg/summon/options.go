@@ -12,11 +12,29 @@ type options struct {
 	filename string
 	// show tree of files
 	tree bool
+	// reference to an exec config entry
+	ref string
+
+	args []string
 }
 
 // Option allows specifying configuration settings
 // from the user
 type Option func(*options)
+
+// Args captures the arguments to be passed to run
+func Args(args ...string) Option {
+	return func(opts *options) {
+		opts.args = args
+	}
+}
+
+// Ref references an exec config entry
+func Ref(ref string) Option {
+	return func(opts *options) {
+		opts.ref = ref
+	}
+}
 
 // All specifies to download all config files
 func All(all bool) Option {

@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/davidovich/summon/pkg/summon"
 	"github.com/spf13/cobra"
 )
 
 type runCmdOpts struct {
 	driver summon.Interface
+	ref    string
+	args   []string
 }
 
 func newRunCmd(driver summon.Interface) *cobra.Command {
@@ -16,7 +20,19 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 	rcmd := &cobra.Command{
 		Use:   "run",
 		Short: "launch executable from summonables",
+		FParseErrWhitelist: cobra.FParseErrWhitelist{
+			UnknownFlags: true,
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+
+			runCmd.ref = args[0]
+			// pass all Args down to the referenced executable
+			// this is due to a limitation in spf13/cobra which eats
+			// all unknown args or flags making it hard to wrap other commands
+			// we are lucky, we know the structure, just pass all args.
+			// see https://github.com/spf13/pflag/pull/160
+			runCmd.args = os.Args[3:] // 3 is [summon, run, handle]
 			return runCmd.run()
 		},
 	}
@@ -25,7 +41,10 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 }
 
 func (r *runCmdOpts) run() error {
-	r.driver.Configure()
+	r.driver.Configure(
+		summon.Ref(r.ref),
+		summon.Args(r.args...),
+	)
 
 	return r.driver.Run()
 }

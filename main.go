@@ -1,6 +1,8 @@
 package summon
 
 import (
+	"os/exec"
+
 	"github.com/gobuffalo/packr/v2"
 
 	"github.com/davidovich/summon/cmd"
@@ -11,7 +13,9 @@ func Main(args []string, box *packr.Box) int {
 	err := cmd.Execute(box)
 
 	if err != nil {
-		return 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return exitError.ExitCode()
+		}
 	}
 
 	return 0
