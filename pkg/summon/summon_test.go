@@ -49,7 +49,7 @@ func TestOneFileInstanciation(t *testing.T) {
 
 	a := assert.New(t)
 
-	box := packr.New("t", "")
+	box := packr.New("t1", "")
 	box.AddString("text.txt", "this is a text")
 
 	// create a summoner to summon text.txt at
