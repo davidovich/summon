@@ -4,9 +4,9 @@ Summon
 ======
 
 Summon is used to manage a central location of data or
-go executable references, and distribute them to any go-enabled environment.
+go executable references, allowing distribution to any go-enabled environment.
 
-It solves the maintenance problem of mutliple copies of same
+It solves the maintenance problem of multiple copies of same
 code snippets distributed in many repos, leveraging go modules and version
 management.
 
@@ -35,7 +35,9 @@ which you then bootstrap at destination using standard go get or [gobin](https:/
 Configuration
 -------------
 
-Create a data repository with this structure (summon-cli will allow bootstrapping this structure in the future):
+### Data repository
+
+Create a data repository with this structure
 
 ```
 .
@@ -43,20 +45,19 @@ Create a data repository with this structure (summon-cli will allow bootstrappin
 ├── assets
 │   ├── text.txt
 │   └── summon.config.yaml
-├── boxer
-│   └── box.go
 ├── go.mod
 ├── go.sum
 └── summon
     └── summon.go
 ```
 
+There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider.
+
 You just need to populate the `assets` directory with your own data.
 
 The `boxer/` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
 The `summon/` directory is the entry point to the summon library, and creates the main executable.
 
-There is an example setup at https://github.com/davidovich/summon-example-assets.
 
 The `assets/summon.config.yaml` contains a configuration file to customize summon. You can define:
 
@@ -96,13 +97,15 @@ This will install gohack and forward the arguments that you provide.
 Build
 -----
 
-In an asset data repository:
+In an empty asset data repository:
 
-0) (Comming soon) invoke summon-cli create
+0) invoke go run github.com/davidovich/summon/scaffold init
     This will create code template similar as above
-1) Use the provided Makefile to invoke the packr2 process: make
-2) Commit the resulting -packr files so clients can go get the data repo
-3) Tag the repo with semantic version (with the `v`) prefix
+1) add assets that need to be shared amongst consumers
+2) Use the provided Makefile to invoke the packr2 process: make
+3) Commit the resulting -packr files so clients can go get the data repo
+4) Tag the repo with semantic version (with the `v`) prefix
+
 
 Install
 -------
