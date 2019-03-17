@@ -18,6 +18,7 @@ type mainCmd struct {
 	dest     string
 	driver   summon.Interface
 	filename string
+	json     string
 	out      io.Writer
 }
 
@@ -52,6 +53,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 		},
 	}
 
+	rootCmd.Flags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
 	rootCmd.Flags().StringVar(&main.dest, "to", config.OutputDir, "destination directory")
 
@@ -66,6 +68,7 @@ func (m *mainCmd) run() error {
 		summon.All(m.copyAll),
 		summon.Dest(m.dest),
 		summon.Filename(m.filename),
+		summon.JSON(m.json),
 	)
 
 	resultFilepath, err := m.driver.Summon()

@@ -1,6 +1,10 @@
 package summon
 
-import "github.com/davidovich/summon/pkg/config"
+import (
+	"encoding/json"
+
+	"github.com/davidovich/summon/pkg/config"
+)
 
 // options fir all summon commands
 type options struct {
@@ -16,6 +20,8 @@ type options struct {
 	ref string
 
 	args []string
+
+	data *map[string]interface{}
 }
 
 // Option allows specifying configuration settings
@@ -66,6 +72,25 @@ func Dest(dest string) Option {
 func ShowTree(tree bool) Option {
 	return func(opts *options) error {
 		opts.tree = tree
+		return nil
+	}
+}
+
+// JSON configures the dictionary to use to render a templated asset
+func JSON(j string) Option {
+	return func(opts *options) error {
+		if j == "" {
+			opts.data = nil
+			return nil
+		}
+
+		var data map[string]interface{}
+		err := json.Unmarshal([]byte(j), &data)
+
+		if err != nil {
+			return err
+		}
+		opts.data = &data
 		return nil
 	}
 }

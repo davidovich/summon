@@ -65,3 +65,52 @@ func TestOneFileInstanciation(t *testing.T) {
 
 	a.Equal("this is a text", string(bytes))
 }
+
+func TestTemplateRendering(t *testing.T) {
+	defer testutil.ReplaceFs()()
+	assert := assert.New(t)
+
+	testCases := []struct {
+		desc             string
+		filename         string
+		json             string
+		expectedFileName string
+		expectedContent  string
+	}{
+		{
+			desc:             "file name render",
+			filename:         "renderableFileName",
+			json:             `{ "FileName": "aFileName" }`,
+			expectedFileName: "overridden_dir/aFileName",
+			expectedContent:  "",
+		},
+		{
+			desc:             "content render",
+			filename:         "template.file",
+			json:             `{ "Name": "World!" }`,
+			expectedFileName: "overridden_dir/template.file",
+			expectedContent:  "hello World!",
+		},
+		{
+			desc:             "no rendering",
+			filename:         "template.file",
+			expectedFileName: "overridden_dir/template.file",
+			expectedContent:  "hello {{ .Name }}",
+		},
+	}
+
+	box := packr.New("TestTemplateRendering", "testdata")
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			s, err := New(box, Filename(tC.filename), JSON(tC.json))
+			assert.NoError(err)
+			path, err := s.Summon()
+
+			assert.NoError(err)
+			assert.Equal(tC.expectedFileName, path)
+			bytes, _ := afero.ReadFile(appFs, path)
+			assert.Equal(tC.expectedContent, string(bytes))
+		})
+	}
+}
