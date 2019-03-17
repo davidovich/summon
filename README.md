@@ -139,10 +139,10 @@ By default, summon will put summoned scripts at the `.summoned/` directory at ro
 
 `summon run [executable]` allows to run executables declared in the config file
 
-### dumping the data at a location (soon)
+### dumping the data at a location
 
 ```
-summon --all --to .dir
+summon --all --out .dir
 ```
 
 ### developing custom plugins to augment the functionality offered by summon-lib core.

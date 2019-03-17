@@ -56,7 +56,7 @@ func TestRun(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			execCommand = testutil.FakeExecCommand(tt.helper, stdout, nil)
 
-			s := New(box, Ref(tt.ref))
+			s, _ := New(box, Ref(tt.ref))
 			if err := s.Run(); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -114,7 +114,7 @@ func TestResolveExecUnit(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, nil)
 
-			s := New(packr.New("t", "testdata"), Dest(".summoned"))
+			s, _ := New(packr.New("t", "testdata"), Dest(".summoned"))
 			eu, err := s.resolve(tC.execu, []string{})
 
 			assert.Nil(t, err)

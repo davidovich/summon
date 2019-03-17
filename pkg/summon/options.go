@@ -1,6 +1,10 @@
 package summon
 
-import "github.com/davidovich/summon/pkg/config"
+import (
+	"encoding/json"
+
+	"github.com/davidovich/summon/pkg/config"
+)
 
 // options fir all summon commands
 type options struct {
@@ -16,51 +20,78 @@ type options struct {
 	ref string
 
 	args []string
+
+	data *map[string]interface{}
 }
 
 // Option allows specifying configuration settings
 // from the user
-type Option func(*options)
+type Option func(*options) error
 
 // Args captures the arguments to be passed to run
 func Args(args ...string) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.args = args
+		return nil
 	}
 }
 
 // Ref references an exec config entry
 func Ref(ref string) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.ref = ref
+		return nil
 	}
 }
 
 // All specifies to download all config files
 func All(all bool) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.all = all
+		return nil
 	}
 }
 
 // Filename sets the reuqested filename in the boxed data
 func Filename(filename string) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.filename = filename
+		return nil
 	}
 }
 
 // Dest specifies where the file(s) will be rooted
 func Dest(dest string) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.destination = dest
+		return nil
 	}
 }
 
 // ShowTree will print a pretty graph of the data tree
 func ShowTree(tree bool) Option {
-	return func(opts *options) {
+	return func(opts *options) error {
 		opts.tree = tree
+		return nil
+	}
+}
+
+// JSON configures the dictionary to use to render a templated asset
+func JSON(j string) Option {
+	return func(opts *options) error {
+		if j == "" {
+			opts.data = nil
+			return nil
+		}
+
+		var data map[string]interface{}
+		err := json.Unmarshal([]byte(j), &data)
+
+		if err != nil {
+			return err
+		}
+		opts.data = &data
+		return nil
 	}
 }
 

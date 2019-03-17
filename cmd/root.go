@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -18,6 +19,8 @@ type mainCmd struct {
 	dest     string
 	driver   summon.Interface
 	filename string
+	json     string
+	jsonFile string
 	out      io.Writer
 }
 
@@ -39,6 +42,9 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 			if len(args) < 1 {
 				return fmt.Errorf("requires one file to summon, received %d", len(args))
 			}
+			if main.json != "" && main.jsonFile != "" {
+				return fmt.Errorf("--json and --json-file are mutually exclusive")
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,13 +53,29 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 				filename := args[0]
 				main.filename = filename
 			}
+			if main.jsonFile != "" {
+				var j []byte
+				var err error
+				if main.jsonFile == "-" {
+					j, err = ioutil.ReadAll(os.Stdin)
+				} else {
+					j, err = ioutil.ReadFile(main.jsonFile)
+				}
+				if err != nil {
+					return err
+				}
+
+				main.json = string(j)
+			}
 
 			return main.run()
 		},
 	}
 
+	rootCmd.Flags().StringVar(&main.json, "json", "", "json to use to render template")
+	rootCmd.Flags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
-	rootCmd.Flags().StringVar(&main.dest, "to", config.OutputDir, "destination directory")
+	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory")
 
 	rootCmd.AddCommand(newListCmd(driver))
 	rootCmd.AddCommand(newRunCmd(driver))
@@ -66,6 +88,7 @@ func (m *mainCmd) run() error {
 		summon.All(m.copyAll),
 		summon.Dest(m.dest),
 		summon.Filename(m.filename),
+		summon.JSON(m.json),
 	)
 
 	resultFilepath, err := m.driver.Summon()
@@ -78,6 +101,10 @@ func (m *mainCmd) run() error {
 
 // Execute is the main command entry point
 func Execute(box *packr.Box) error {
-	rootCmd := createRootCmd(summon.New(box))
+	s, err := summon.New(box)
+	if err != nil {
+		return err
+	}
+	rootCmd := createRootCmd(s)
 	return rootCmd.Execute()
 }

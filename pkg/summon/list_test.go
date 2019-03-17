@@ -20,7 +20,7 @@ func TestSummoner_List(t *testing.T) {
 	box.AddString("a", "a content")
 	box.AddString("b", "b content")
 
-	s := New(box)
+	s, _ := New(box)
 	got, _ := s.List()
 
 	assert.Equal(t, got, []string{"a", "b"}, "Summoner.List() = %v, want %v", got, []string{"a", "b"})

@@ -1,5 +1,6 @@
 version: 1
-aliases: {}
+aliases:
+  renderableFileName: "{{.FileName}}"
 outputdir: "overridden_dir"
 exec:
   bash:

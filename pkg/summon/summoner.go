@@ -13,18 +13,21 @@ type Summoner struct {
 }
 
 // New creates the summoner
-func New(box *packr.Box, opts ...Option) *Summoner {
+func New(box *packr.Box, opts ...Option) (*Summoner, error) {
 	s := &Summoner{
 		box: box,
 	}
 
-	s.Configure(opts...)
+	err := s.Configure(opts...)
+	if err != nil {
+		return nil, err
+	}
 
-	return s
+	return s, nil
 }
 
 // Configure is used to extract options to the object.
-func (b *Summoner) Configure(opts ...Option) {
+func (b *Summoner) Configure(opts ...Option) error {
 	if b.opts.destination == "" {
 		b.opts.destination = config.DefaultOutputDir
 	}
@@ -37,6 +40,11 @@ func (b *Summoner) Configure(opts ...Option) {
 	}
 
 	for _, opt := range opts {
-		opt(&b.opts)
+		err := opt(&b.opts)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

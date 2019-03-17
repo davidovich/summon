@@ -21,8 +21,9 @@ func Test_createRootCmd(t *testing.T) {
 	box.AddString("b.txt", "b content")
 
 	makeRootCmd := func(args ...string) *cobra.Command {
+		s, _ := summon.New(box)
 		rootCmd := createRootCmd(&fakeSummon{
-			Summoner: summon.New(box),
+			Summoner: s,
 		})
 		rootCmd.SetArgs(args)
 
@@ -96,7 +97,7 @@ func Test_mainCmd_run(t *testing.T) {
 				dest:     ".s",
 				filename: "a.txt",
 				driver: &fakeSummon{
-					Summoner: summon.New(box),
+					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
 					wantErr:  false,
 				},
 			},
@@ -108,7 +109,7 @@ func Test_mainCmd_run(t *testing.T) {
 				copyAll: true,
 				dest:    ".s",
 				driver: &fakeSummon{
-					Summoner: summon.New(box),
+					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
 					wantErr:  false,
 				},
 			},
@@ -118,7 +119,7 @@ func Test_mainCmd_run(t *testing.T) {
 			name: "error",
 			fields: fields{
 				driver: &fakeSummon{
-					Summoner: summon.New(box),
+					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
 					wantErr:  true,
 				},
 			},
