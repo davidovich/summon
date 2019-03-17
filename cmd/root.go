@@ -55,7 +55,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 
 	rootCmd.Flags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
-	rootCmd.Flags().StringVar(&main.dest, "to", config.OutputDir, "destination directory")
+	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory")
 
 	rootCmd.AddCommand(newListCmd(driver))
 	rootCmd.AddCommand(newRunCmd(driver))
