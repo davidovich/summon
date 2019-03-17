@@ -78,6 +78,10 @@ func (m *mainCmd) run() error {
 
 // Execute is the main command entry point
 func Execute(box *packr.Box) error {
-	rootCmd := createRootCmd(summon.New(box))
+	s, err := summon.New(box)
+	if err != nil {
+		return err
+	}
+	rootCmd := createRootCmd(s)
 	return rootCmd.Execute()
 }

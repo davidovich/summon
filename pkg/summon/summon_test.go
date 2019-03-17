@@ -16,7 +16,7 @@ func TestErrorOnMissingFiles(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
 	box := packr.New("test box", "")
-	s := New(box, Filename("missing"))
+	s, _ := New(box, Filename("missing"))
 	path, err := s.Summon()
 
 	assert.NotNil(t, err)
@@ -31,7 +31,7 @@ func TestMultifileInstanciation(t *testing.T) {
 	box.AddString("text.txt", "this is a text")
 	box.AddString("another.txt", "another text")
 
-	s := New(box, All(true))
+	s, _ := New(box, All(true))
 
 	path, err := s.Summon()
 	assert.Nil(t, err)
@@ -53,14 +53,15 @@ func TestOneFileInstanciation(t *testing.T) {
 	box.AddString("text.txt", "this is a text")
 
 	// create a summoner to summon text.txt at
-	s := New(box, Filename("text.txt"), Dest(config.OutputDir))
+	s, err := New(box, Filename("text.txt"), Dest(config.OutputDir))
+	a.NoError(err)
 
 	path, err := s.Summon()
-	a.Nil(err)
+	a.NoError(err)
 	a.Equal(filepath.Join(config.OutputDir, "text.txt"), path)
 
 	bytes, err := afero.ReadFile(appFs, path)
-	a.Nil(err)
+	a.NoError(err)
 
 	a.Equal("this is a text", string(bytes))
 }

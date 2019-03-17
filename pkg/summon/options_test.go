@@ -10,7 +10,7 @@ import (
 func TestBoxedConfig(t *testing.T) {
 	box := packr.New("testBoxedConfig", "testdata")
 
-	s := New(box)
+	s, _ := New(box)
 
 	assert.Equal(t, "overridden_dir", s.opts.destination)
 }
