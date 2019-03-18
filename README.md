@@ -48,18 +48,18 @@ Create a data repository with this structure
 ├── go.mod
 ├── go.sum
 └── summon
+    ├── go.mod
     └── summon.go
 ```
 
-There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider.
+There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider and this is automated using `github.com/davidovich/summon/scaffold init`. 
 
 You just need to populate the `assets` directory with your own data.
 
-The `boxer/` directory is used to provide Boxes to be found by [packr2](https://github.com/gobuffalo/packr/tree/master/v2).
-The `summon/` directory is the entry point to the summon library, and creates the main executable.
+The `summon/` directory is the entry point to the summon library, and creates the main executable. This directory will also host
+[packr2](https://github.com/gobuffalo/packr/tree/master/v2) which encodes data into go files.
 
-
-The `assets/summon.config.yaml` contains a configuration file to customize summon. You can define:
+The `assets/summon.config.yaml` contains an (optional) configuration file to customize summon. You can define:
 
     * aliases
     * default output-dir
@@ -99,7 +99,7 @@ Build
 
 In an empty asset data repository:
 
-0) invoke go run github.com/davidovich/summon/scaffold init
+0) invoke go run `github.com/davidovich/summon/scaffold init`
     This will create code template similar as above
 1) add assets that need to be shared amongst consumers
 2) Use the provided Makefile to invoke the packr2 process: make
@@ -137,6 +137,44 @@ include $(shell summon version.mk)
 ```
 
 By default, summon will put summoned scripts at the `.summoned/` directory at root of the current directory.
+
+### Templating
+
+Files in the asset directory can contain go templates. This allows customization using json data.
+
+For example, consider this file in an asset provider:
+
+```
+/assets
+   template.file
+```
+With this content:
+
+```
+Hello {{ .Name }}!
+```
+
+`summon template.file --json '{ "Name": "David" }'`
+
+You will get a summoned `template.file` file with this result:
+
+```
+Hello David!
+```
+
+Templates can also be used in the filenames given in the data hierarchy. This can be usefull to scaffold simple projects.
+
+```
+/assets
+   /template
+      {{.FileName}}
+```
+
+Then you can summon this file by introducing a FileName in json parameter.
+
+In a comming update, you will be able to leverage this filename templating functionality by summoning a whole asset hierarchy:
+
+`summon assets/template/* --json '{ "FileName": "myRenderedFileName" }'
 
 ### Running a go binary
 
