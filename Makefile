@@ -16,7 +16,7 @@ $(SCAFFOLD_BIN): $(PACKR_FILE)
 
 $(PACKR_FILE): $(ASSETS)
 ifndef HAS_PACKR2
-	$(error packr2 was not found on path and is needed to make assets)
+	go get -u github.com/gobuffalo/packr/v2/packr2
 endif
 	cd $(@D) && GO111MODULE=on packr2
 
