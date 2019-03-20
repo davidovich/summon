@@ -17,6 +17,11 @@ import (
 
 var appFs = afero.NewOsFs()
 
+// GetFs returns the current filesystem
+func GetFs() afero.Fs {
+	return appFs
+}
+
 // Summon is the main comnand invocation
 func (s *Summoner) Summon(opts ...Option) (string, error) {
 	if s == nil {

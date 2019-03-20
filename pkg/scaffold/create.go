@@ -23,7 +23,9 @@ func Create(destDir, modName, summonerName string, force bool) error {
 
 	empty, err := isEmptyDir(destDir)
 	if !force && !empty || err != nil {
-		return fmt.Errorf("destination directory is not empty")
+		if err == nil || !os.IsNotExist(err) {
+			return fmt.Errorf("destination directory is not empty")
+		}
 	}
 
 	_, err = s.Summon(
@@ -37,7 +39,7 @@ func Create(destDir, modName, summonerName string, force bool) error {
 
 // https://stackoverflow.com/a/30708914/28275
 func isEmptyDir(dir string) (bool, error) {
-	f, err := os.Open(dir)
+	f, err := summon.GetFs().Open(dir)
 	if err != nil {
 		return false, err
 	}

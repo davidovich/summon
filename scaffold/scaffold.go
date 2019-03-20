@@ -9,10 +9,19 @@ import (
 )
 
 func main() {
-	os.Exit(execute())
+	os.Exit(execute(newMainCmd()))
 }
 
-func execute() int {
+func execute(rootCmd *cobra.Command) int {
+	err := rootCmd.Execute()
+
+	if err != nil {
+		return 1
+	}
+	return 0
+}
+
+func newMainCmd() *cobra.Command {
 	var dest string
 	var force bool
 	var summonName string
@@ -40,11 +49,5 @@ func execute() int {
 	initCmd.Flags().BoolVarP(&force, "force", "f", false, "force overwrite")
 
 	rootCmd.AddCommand(initCmd)
-
-	err := rootCmd.Execute()
-
-	if err != nil {
-		return 1
-	}
-	return 0
+	return rootCmd
 }
