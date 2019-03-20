@@ -2,6 +2,8 @@ SHELL=/bin/bash
 
 HAS_PACKR2	:= $(shell command -v packr2)
 
+export GO111MODULE := on
+
 SCAFFOLD_BIN := bin/scaffold
 PACKR_FILE := pkg/scaffold/scaffold-packr.go
 
@@ -18,7 +20,7 @@ $(PACKR_FILE): $(ASSETS)
 ifndef HAS_PACKR2
 	go get -u github.com/gobuffalo/packr/v2/packr2
 endif
-	cd $(@D) && GO111MODULE=on packr2
+	packr2
 
 .PHONY: test
 test:
@@ -26,5 +28,5 @@ test:
 
 .PHONY: clean
 clean:
-	cd pkg/scaffold && packr2 clean
+	packr2 clean
 	rm -r bin

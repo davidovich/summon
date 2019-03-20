@@ -45,14 +45,12 @@ Create a data repository with this structure
 ├── assets
 │   ├── text.txt
 │   └── summon.config.yaml
-├── go.mod
-├── go.sum
 └── summon
     ├── go.mod
     └── summon.go
 ```
 
-There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider and this is automated using `github.com/davidovich/summon/scaffold init`. 
+There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider. This is now automated using `github.com/davidovich/summon/scaffold init [module name]`.
 
 You just need to populate the `assets` directory with your own data.
 
@@ -99,10 +97,10 @@ Build
 
 In an empty asset data repository:
 
-0) invoke go run `github.com/davidovich/summon/scaffold init`
+0) invoke `go run github.com/davidovich/summon/scaffold init [repo host (module name)]`
     This will create code template similar as above
 1) add assets that need to be shared amongst consumers
-2) Use the provided Makefile to invoke the packr2 process: make
+2) Use the provided Makefile to invoke the packr2 process: `make`
 3) Commit the resulting -packr files so clients can go get the data repo
 4) Tag the repo with semantic version (with the `v`) prefix
 

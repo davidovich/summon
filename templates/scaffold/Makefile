@@ -11,11 +11,11 @@ all: $(SUMMONER_NAME)/packrd/packed-packr.go bin/$(SUMMONER_NAME)
 
 bin/$(SUMMONER_NAME): $(SUMMON_DEPS)
 	@mkdir -p bin
-	go build -o $@ $(@F)/summon.go
+	cd $(SUMMONER_NAME) && go build -o ../$@ summon.go
 
 $(SUMMONER_NAME)/packrd/packed-packr.go: $(ASSETS)
 ifndef HAS_PACKR2
-	$(error packr2 was not found on path and is needed to make assets)
+	go get -u github.com/gobuffalo/packr/v2/packr2
 endif
 	cd $(SUMMONER_NAME) && GO111MODULE=on packr2
 

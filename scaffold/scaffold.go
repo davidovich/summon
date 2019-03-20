@@ -1,19 +1,50 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/davidovich/summon/pkg/scaffold"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	err := scaffold.Create(".", false)
+	os.Exit(execute())
+}
+
+func execute() int {
+	var dest string
+	var force bool
+	var summonName string
+
+	rootCmd := &cobra.Command{
+		Use:   "scaffold",
+		Short: "initialize an asset directory managed by summon",
+	}
+
+	initCmd := &cobra.Command{
+		Use:   "init",
+		Short: "scaffold [root go module name]",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := scaffold.Create(dest, args[0], summonName, force)
+			if err == nil {
+				fmt.Println("Successfully scaffolded a summon asset repo")
+			}
+			return err
+		},
+	}
+
+	initCmd.Flags().StringVarP(&dest, "out", "o", ".", "destination directory")
+	initCmd.Flags().StringVarP(&summonName, "name", "n", "summon", "summon executable name")
+	initCmd.Flags().BoolVarP(&force, "force", "f", false, "force overwrite")
+
+	rootCmd.AddCommand(initCmd)
+
+	err := rootCmd.Execute()
 
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitError.ExitCode())
-		}
+		return 1
 	}
-	os.Exit(0)
+	return 0
 }
