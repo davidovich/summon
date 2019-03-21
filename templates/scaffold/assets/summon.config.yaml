@@ -1,0 +1,6 @@
+# this is a sample summon config file
+# see https://github.com/davidovich/summon#configuration
+version: 1
+aliases: {}
+outputdir: ".summoned"
+exec: {}

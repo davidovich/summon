@@ -12,4 +12,4 @@ jobs:
     steps:
       - checkout
 
-      - run: go test -cover -v ./...
+      - run: make

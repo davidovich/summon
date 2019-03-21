@@ -76,6 +76,7 @@ func TestTemplateRendering(t *testing.T) {
 		json             string
 		expectedFileName string
 		expectedContent  string
+		wantError        bool
 	}{
 		{
 			desc:             "file name render",
@@ -97,6 +98,12 @@ func TestTemplateRendering(t *testing.T) {
 			expectedFileName: "overridden_dir/template.file",
 			expectedContent:  "hello {{ .Name }}",
 		},
+		{
+			desc:      "error in json input",
+			json:      `{ "Name": "World!"`,
+			filename:  "template.file",
+			wantError: true,
+		},
 	}
 
 	box := packr.New("TestTemplateRendering", "testdata")
@@ -104,10 +111,13 @@ func TestTemplateRendering(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			s, err := New(box, Filename(tC.filename), JSON(tC.json))
-			assert.NoError(err)
+			if tC.wantError {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+			}
 			path, err := s.Summon()
 
-			assert.NoError(err)
 			assert.Equal(tC.expectedFileName, path)
 			bytes, _ := afero.ReadFile(appFs, path)
 			assert.Equal(tC.expectedContent, string(bytes))
