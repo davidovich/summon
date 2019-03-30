@@ -3,7 +3,6 @@ package summon
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -54,14 +53,15 @@ func TestRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			stdout := &bytes.Buffer{}
-			execCommand = testutil.FakeExecCommand(tt.helper, stdout, nil)
+			stderr := &bytes.Buffer{}
+			execCommand = testutil.FakeExecCommand(tt.helper, stdout, stderr)
 
 			s, _ := New(box, Ref(tt.ref))
 			if err := s.Run(); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			c, err := testutil.GetCalls(stdout)
+			c, err := testutil.GetCalls(stderr)
 			assert.Nil(t, err)
 
 			if tt.wantErr {
@@ -80,6 +80,7 @@ func TestResolveExecUnit(t *testing.T) {
 		execu       execUnit
 		expected    execUnit
 		wantsCalls  bool
+		output      string
 		expectedArg string
 		expectedEnv string
 	}{
@@ -95,8 +96,9 @@ func TestResolveExecUnit(t *testing.T) {
 				invOpts: []string{},
 			},
 			wantsCalls:  true,
-			expectedArg: "gobin github.com/myitcv/gobin",
+			expectedArg: "gobin -p github.com/myitcv/gobin",
 			expectedEnv: "GOBIN=.summoned/github.com/myitcv",
+			output:      "/tmp/gobin/some/cached/gobin/github.com/myitcv/gobin/@v/v0.0.8/github.com/myitcv/gobin/gobin",
 		},
 		{
 			desc: "non-gobin",
@@ -111,8 +113,9 @@ func TestResolveExecUnit(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			stdout := &bytes.Buffer{}
-			execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, nil)
+			stderr := &bytes.Buffer{}
+			stdout := bytes.NewBufferString(tC.output)
+			execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
 
 			s, _ := New(packr.New("t", "testdata"), Dest(".summoned"))
 			eu, err := s.resolve(tC.execu, []string{})
@@ -121,7 +124,7 @@ func TestResolveExecUnit(t *testing.T) {
 			assert.Equal(t, tC.expected, eu)
 
 			if tC.wantsCalls {
-				c, err := testutil.GetCalls(stdout)
+				c, err := testutil.GetCalls(stderr)
 				assert.Nil(t, err)
 				assert.Len(t, c.Calls, 1)
 				assert.Contains(t, c.Calls[0].Env, tC.expectedEnv)
@@ -132,23 +135,17 @@ func TestResolveExecUnit(t *testing.T) {
 }
 
 func TestFailRunHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
+	if testutil.IsHelper() {
+		os.Exit(1)
 	}
-
-	os.Exit(1)
 }
 
 func TestSummonRunHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	defer os.Exit(0)
+	if testutil.IsHelper() {
+		defer os.Exit(0)
 
-	call := testutil.Call{
-		Args: strings.Join(testutil.CleanHelperArgs(os.Args), " "),
-		Env:  os.Environ(),
-	}
+		call := testutil.MakeCall()
 
-	testutil.WriteCall(call, os.Stdout)
+		testutil.WriteCall(call)
+	}
 }

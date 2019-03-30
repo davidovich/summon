@@ -1,12 +1,14 @@
 package testutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/spf13/afero"
@@ -31,6 +33,7 @@ func ReplaceFs() func() {
 type Call struct {
 	Args string
 	Env  []string
+	Out  string
 }
 
 // Calls is the array of calls
@@ -41,8 +44,12 @@ type Calls struct {
 // FakeExecCommand resturns a fake function which calls into testToCall
 // this is used to mock an exec.Cmd
 // Adapted from https://npf.io/2015/06/testing-exec-command/
-func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, ...string) *command.Cmd {
+func FakeExecCommand(testToCall string, stdout, stderr *bytes.Buffer) func(string, ...string) *command.Cmd {
 	calls := 0
+	var savedStdout io.Writer
+	if stderr == nil {
+		stderr = &bytes.Buffer{}
+	}
 	return func(c string, args ...string) *command.Cmd {
 		cs := []string{"-test.run=" + testToCall, "--", c}
 		cs = append(cs, args...)
@@ -50,22 +57,32 @@ func FakeExecCommand(testToCall string, stdout, stderr io.Writer) func(string, .
 			Cmd: exec.Command(os.Args[0], cs...),
 		}
 		if calls == 0 {
-			startCall(stdout)
+			startCall(stderr)
 		}
 		cmd.Run = func() error {
 			if calls > 0 {
-				willAppendCall(stdout)
+				willAppendCall(stderr)
 			}
+			savedStdout = cmd.Stdout
 			cmd.Stdout = stdout
 			cmd.Stderr = stderr
 			cmd.Env = append(cmd.Env, "GO_WANT_HELPER_PROCESS=1")
 			err := cmd.Cmd.Run()
+			io.Copy(savedStdout, stdout)
 			calls++
 			return err
 		}
 
 		return cmd
 	}
+}
+
+// IsHelper returns true if a process helper is wanted
+func IsHelper() bool {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return false
+	}
+	return true
 }
 
 func startCall(out io.Writer) {
@@ -76,8 +93,20 @@ func willAppendCall(out io.Writer) {
 	out.Write([]byte(","))
 }
 
+// MakeCall prepares a call structure
+func MakeCall() Call {
+	return Call{
+		Args: strings.Join(CleanHelperArgs(os.Args), " "),
+		Env:  os.Environ(),
+	}
+}
+
 // WriteCall marshals the executable call with env
-func WriteCall(c Call, w io.Writer) error {
+func WriteCall(c Call) error {
+	return writeCall(c, os.Stderr)
+}
+
+func writeCall(c Call, w io.Writer) error {
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err

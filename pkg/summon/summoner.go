@@ -35,7 +35,10 @@ func (b *Summoner) Configure(opts ...Option) error {
 	// try to find a config file in the box
 	config, err := b.box.Find(config.ConfigFile)
 	if err == nil {
-		b.config.Unmarshal(config)
+		err = b.config.Unmarshal(config)
+		if err != nil {
+			return err
+		}
 		b.opts.DefaultsFrom(b.config)
 	}
 

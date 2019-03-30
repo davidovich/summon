@@ -82,18 +82,20 @@ func (s *Summoner) prepareGoBinExecutable(execu execUnit, environ []string) (exe
 	dest := s.opts.destination
 	target := strings.Split(execu.target, "@")[0]
 	targetDir := filepath.Join(dest, filepath.Dir(target))
-	cmd := execCommand(execu.invoker, execu.target)
+	cmd := execCommand(execu.invoker, "-p", execu.target)
 	cmd.Env = append(environ, "GOBIN="+targetDir)
-	buf := &bytes.Buffer{}
-	cmd.Stdout = buf
-	cmd.Stderr = buf
+	errBuf := &bytes.Buffer{}
+	cmd.Stderr = errBuf
+	outBuf := &bytes.Buffer{}
+	cmd.Stdout = outBuf
 	err := cmd.Run()
 
 	if err != nil {
-		err = errors.Wrapf(err, "executing: %s: %s", cmd.Args, buf)
+		err = errors.Wrapf(err, "executing: %s: %s", cmd.Args, errBuf)
 	}
+	cachePath := strings.TrimSpace(outBuf.String())
 
-	execu.invoker = filepath.Join(targetDir, filepath.Base(target))
+	execu.invoker = filepath.Join(targetDir, filepath.Base(cachePath))
 	execu.invOpts = []string{}
 	execu.target = ""
 

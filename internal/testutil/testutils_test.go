@@ -22,9 +22,9 @@ func TestUnMarshallCall(t *testing.T) {
 
 	startCall(out)
 
-	WriteCall(call1, out)
+	writeCall(call1, out)
 	willAppendCall(out)
-	WriteCall(call2, out)
+	writeCall(call2, out)
 
 	c, err := GetCalls(out)
 
@@ -39,11 +39,12 @@ func TestMarshallCalls(t *testing.T) {
 		Call{
 			Args: "a b c",
 			Env:  []string{"a=b"},
+			Out:  "output",
 		},
 	}}
 
 	b, err := json.Marshal(c)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "{\"Calls\":[{\"Args\":\"a b c\",\"Env\":[\"a=b\"]}]}", string(b))
+	assert.Equal(t, "{\"Calls\":[{\"Args\":\"a b c\",\"Env\":[\"a=b\"],\"Out\":\"output\"}]}", string(b))
 }
