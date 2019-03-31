@@ -99,6 +99,12 @@ func TestTemplateRendering(t *testing.T) {
 			expectedContent:  "hello {{ .Name }}",
 		},
 		{
+			desc:             "alias",
+			filename:         "a",
+			expectedFileName: "overridden_dir/a/a.txt",
+			expectedContent:  "a",
+		},
+		{
 			desc:      "error in json input",
 			json:      `{ "Name": "World!"`,
 			filename:  "template.file",
