@@ -16,6 +16,7 @@ func Main(args []string, box *packr.Box) int {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return exitError.ExitCode()
 		}
+		return 1
 	}
 
 	return 0
