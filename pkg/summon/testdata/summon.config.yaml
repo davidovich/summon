@@ -1,7 +1,7 @@
 version: 1
 aliases:
   renderableFileName: "{{.FileName}}"
-  a: "a/a.txt"
+  a: "subdir/a/a.txt"
 outputdir: "overridden_dir"
 exec:
   bash:

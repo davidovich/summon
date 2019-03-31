@@ -1,7 +1,7 @@
 module github.com/davidovich/summon
 
 require (
-	github.com/gobuffalo/packr/v2 v2.0.7
+	github.com/gobuffalo/packr/v2 v2.0.10-0.20190331154738-11df0b070aa0
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/lithammer/dedent v1.1.0
 	github.com/pkg/errors v0.8.1

@@ -35,18 +35,28 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 
 	if s.opts.all {
 		return s.opts.destination, s.box.Walk(func(path string, info file.File) error {
-			_, err := s.copyOneFile(info)
+			_, err := s.copyOneFile(info, "")
 			return err
 		})
 	}
 
-	filename := s.resolveAlias(s.opts.filename)
+	filename := filepath.Clean(s.opts.filename)
+	filename = s.resolveAlias(filename)
+
+	// User wants to extract a subdirectory
+	if s.box.HasDir(filename) {
+		return s.opts.destination,
+			s.box.WalkPrefix(filename, func(path string, info file.File) error {
+				_, err := s.copyOneFile(info, filename)
+				return err
+			})
+	}
 
 	boxedFile, err := s.box.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	return s.copyOneFile(boxedFile)
+	return s.copyOneFile(boxedFile, "")
 }
 
 func renderTemplate(tmpl string, data *map[string]interface{}) (string, error) {
@@ -72,16 +82,27 @@ func (s *Summoner) resolveAlias(alias string) string {
 	return alias
 }
 
-func (s *Summoner) copyOneFile(boxedFile http.File) (string, error) {
+func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
 	destination := s.opts.destination
 	// Write the file and print it's path
-	stat, _ := boxedFile.Stat()
+	stat, err := boxedFile.Stat()
+	if err != nil {
+		return "", err
+	}
 	filename := stat.Name()
 
-	filename, _ = renderTemplate(filename, s.opts.data)
+	filename, err = renderTemplate(filename, s.opts.data)
+	if err != nil {
+		return "", err
+	}
+
+	filename, err = filepath.Rel(rootDir, filename)
+	if err != nil {
+		return "", err
+	}
 
 	summonedFile := filepath.Join(destination, filename)
-	err := appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
+	err = appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
 	if err != nil {
 		return "", err
 	}
