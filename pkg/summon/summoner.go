@@ -7,9 +7,10 @@ import (
 
 // Summoner manages functionality of summon
 type Summoner struct {
-	opts   options
-	config config.Config
-	box    *packr.Box
+	opts       options
+	config     config.Config
+	box        *packr.Box
+	configRead bool
 }
 
 // New creates the summoner
@@ -32,14 +33,17 @@ func (b *Summoner) Configure(opts ...Option) error {
 		b.opts.destination = config.DefaultOutputDir
 	}
 
-	// try to find a config file in the box
-	config, err := b.box.Find(config.ConfigFile)
-	if err == nil {
-		err = b.config.Unmarshal(config)
-		if err != nil {
-			return err
+	if !b.configRead {
+		// try to find a config file in the box
+		config, err := b.box.Find(config.ConfigFile)
+		if err == nil {
+			err = b.config.Unmarshal(config)
+			if err != nil {
+				return err
+			}
+			b.opts.DefaultsFrom(b.config)
+			b.configRead = true
 		}
-		b.opts.DefaultsFrom(b.config)
 	}
 
 	for _, opt := range opts {
