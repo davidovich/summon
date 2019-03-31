@@ -21,7 +21,7 @@ func newListCmd(driver summon.Interface) *cobra.Command {
 		driver: driver,
 	}
 	lcmd := &cobra.Command{
-		Use:   "list",
+		Use:   "ls",
 		Short: "list all summonables",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			listCmd.out = cmd.OutOrStdout()
