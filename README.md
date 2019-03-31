@@ -175,9 +175,16 @@ Templates can also be used in the filenames given in the data hierarchy. This ca
 
 Then you can summon this file by introducing a FileName in json parameter.
 
-In a comming update, you will be able to leverage this filename templating functionality by summoning a whole asset hierarchy:
+New in v0.2.0, summoning a whole asset hierarchy:
 
-`summon assets/template/* --json '{ "FileName": "myRenderedFileName" }'
+`summon assets/template/ --json '{ "FileName": "myRenderedFileName" }' -o dest-dir`
+
+will yield:
+
+```
+./dest-dir
+   myRenderedFileName
+```
 
 ### Running a go binary
 
