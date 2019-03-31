@@ -10,6 +10,9 @@ It solves the maintenance problem of multiple copies of same
 code snippets distributed in many repos, leveraging go modules and version
 management.
 
+You can make an analogy with a data singleton which always has the desired
+state (packed scripts or pinned versions of binaries).
+
 > NOTE: This is still a WIP and experimental. This readme is a design document and
 not every feature is implemented yet.
 
@@ -21,7 +24,7 @@ In summon you leverage go execution to bootstrap in one phase. So your data can 
 ```
 go run github.com/davidovich/summon-example-assets/summon --help
 # or list the data deliverables
-go run github.com/davidovich/summon-example-assets/summon list
+go run github.com/davidovich/summon-example-assets/summon ls
 # or
 # let summon configure the path so it can invoke a go executable
 # (here go-gettable-executable is a reference to a go gettable repo), and will
@@ -67,6 +70,8 @@ The `assets/summon.config.yaml` contains an (optional) configuration file to cus
 ```yaml
 version: 1
 outputdir: .summoned
+aliases:
+    simple-handle: a/file/in/asset-dir
 # exec section declares invokables with their handle
 # a same handle name cannot be in two invokers at the same time
 exec:
