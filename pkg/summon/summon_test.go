@@ -66,7 +66,32 @@ func TestOneFileInstanciation(t *testing.T) {
 	a.Equal("this is a text", string(bytes))
 }
 
-func TestTemplateRendering(t *testing.T) {
+func TestSubfolderHierarchy(t *testing.T) {
+	defer testutil.ReplaceFs()()
+	a := assert.New(t)
+
+	box := packr.New("hierarchy", "testdata")
+
+	// create a summoner to summon a complete hierarchy
+	s, err := New(box, Filename("subdir/"), Dest("o"), JSON(`{"TemplatedName":"b", "Content":"b content"}`))
+	a.NoError(err)
+
+	path, err := s.Summon()
+
+	a.NoError(err)
+	a.Equal("o", path)
+
+	a.True(afero.IsDir(GetFs(), "o/a"))
+	a.True(afero.IsDir(GetFs(), "o/b"))
+	a.True(afero.Exists(GetFs(), "o/b/b.txt"))
+
+	bytes, err := afero.ReadFile(GetFs(), "o/b/b.txt")
+	a.NoError(err)
+
+	a.Equal("b content", string(bytes))
+}
+
+func TestSummonScenarios(t *testing.T) {
 	defer testutil.ReplaceFs()()
 	assert := assert.New(t)
 
@@ -101,8 +126,8 @@ func TestTemplateRendering(t *testing.T) {
 		{
 			desc:             "alias",
 			filename:         "a",
-			expectedFileName: "overridden_dir/a/a.txt",
-			expectedContent:  "a",
+			expectedFileName: "overridden_dir/subdir/a/a.txt",
+			expectedContent:  "this is a.txt",
 		},
 		{
 			desc:      "error in json input",
