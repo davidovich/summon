@@ -6,7 +6,7 @@ outputdir: "overridden_dir"
 exec:
   bash:
     hello-bash: hello.sh
-  gobin:
+  gobin -run:
     gobin: github.com/myitcv/gobin@v0.0.8
     gohack: github.com/rogpeppe/gohack
   python -c:
