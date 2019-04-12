@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/sprig"
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2/file"
 	"github.com/spf13/afero"
@@ -59,11 +60,8 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 	return s.copyOneFile(boxedFile, "")
 }
 
-func renderTemplate(tmpl string, data *map[string]interface{}) (string, error) {
-	if data == nil {
-		return tmpl, nil
-	}
-	t, err := template.New("Summon").Parse(tmpl)
+func renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
+	t, err := template.New("Summon").Funcs(sprig.FuncMap()).Parse(tmpl)
 	if err != nil {
 		return tmpl, err
 	}
