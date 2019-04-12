@@ -118,10 +118,16 @@ func TestSummonScenarios(t *testing.T) {
 			expectedContent:  "hello World!",
 		},
 		{
-			desc:             "no rendering",
+			desc:             "no data",
 			filename:         "template.file",
 			expectedFileName: "overridden_dir/template.file",
-			expectedContent:  "hello {{ .Name }}",
+			expectedContent:  "hello ",
+		},
+		{
+			desc:             "sprig rendering",
+			filename:         "sprigcontent.gotmpl",
+			expectedFileName: "overridden_dir/sprigcontent.gotmpl",
+			expectedContent:  "HELLO\n25",
 		},
 		{
 			desc:             "alias",

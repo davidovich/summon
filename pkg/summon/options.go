@@ -21,7 +21,7 @@ type options struct {
 
 	args []string
 
-	data *map[string]interface{}
+	data map[string]interface{}
 }
 
 // Option allows specifying configuration settings
@@ -80,7 +80,7 @@ func ShowTree(tree bool) Option {
 func JSON(j string) Option {
 	return func(opts *options) error {
 		if j == "" {
-			opts.data = nil
+			opts.data = map[string]interface{}{}
 			return nil
 		}
 
@@ -90,7 +90,7 @@ func JSON(j string) Option {
 		if err != nil {
 			return err
 		}
-		opts.data = &data
+		opts.data = data
 		return nil
 	}
 }
