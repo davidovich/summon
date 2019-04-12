@@ -1,15 +1,12 @@
 package summon
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
-	"github.com/pkg/errors"
 )
 
 var execCommand = command.New
@@ -27,11 +24,6 @@ func (s *Summoner) Run(opts ...Option) error {
 	eu, err := s.findExecutor()
 	if err != nil {
 		return err
-	}
-
-	eu, err = s.resolve(eu, os.Environ())
-	if err != nil {
-		return errors.Wrapf(err, "resolving %s", eu.invoker)
 	}
 
 	args := eu.invOpts
@@ -66,38 +58,4 @@ func (s *Summoner) findExecutor() (execUnit, error) {
 	}
 
 	return eu, nil
-}
-
-// resolve prepares special invokers for execution
-// presently supported: gobin
-func (s *Summoner) resolve(execu execUnit, environ []string) (execUnit, error) {
-	if strings.HasPrefix(execu.invoker, "gobin") {
-		return s.prepareGoBinExecutable(execu, environ)
-	}
-	return execu, nil
-}
-
-func (s *Summoner) prepareGoBinExecutable(execu execUnit, environ []string) (execUnit, error) {
-	// install in OutputDir
-	dest := s.opts.destination
-	target := strings.Split(execu.target, "@")[0]
-	targetDir := filepath.Join(dest, filepath.Dir(target))
-	cmd := execCommand(execu.invoker, "-p", execu.target)
-	cmd.Env = append(environ, "GOBIN="+targetDir)
-	errBuf := &bytes.Buffer{}
-	cmd.Stderr = errBuf
-	outBuf := &bytes.Buffer{}
-	cmd.Stdout = outBuf
-	err := cmd.Run()
-
-	if err != nil {
-		err = errors.Wrapf(err, "executing: %s: %s", cmd.Args, errBuf)
-	}
-	cachePath := strings.TrimSpace(outBuf.String())
-
-	execu.invoker = filepath.Join(targetDir, filepath.Base(cachePath))
-	execu.invOpts = []string{}
-	execu.target = ""
-
-	return execu, err
 }

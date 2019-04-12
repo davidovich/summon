@@ -73,67 +73,6 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestResolveExecUnit(t *testing.T) {
-
-	testCases := []struct {
-		desc        string
-		execu       execUnit
-		expected    execUnit
-		wantsCalls  bool
-		output      string
-		expectedArg string
-		expectedEnv string
-	}{
-		{
-			desc: "gobin",
-			execu: execUnit{
-				invoker: "gobin",
-				target:  "github.com/myitcv/gobin@v0.0.8",
-			},
-			expected: execUnit{
-				invoker: ".summoned/github.com/myitcv/gobin",
-				target:  "",
-				invOpts: []string{},
-			},
-			wantsCalls:  true,
-			expectedArg: "gobin -p github.com/myitcv/gobin",
-			expectedEnv: "GOBIN=.summoned/github.com/myitcv",
-			output:      "/tmp/gobin/some/cached/gobin/github.com/myitcv/gobin/@v/v0.0.8/github.com/myitcv/gobin/gobin",
-		},
-		{
-			desc: "non-gobin",
-			execu: execUnit{
-				invoker: "python",
-				target:  "script.py",
-			},
-			expected: execUnit{
-				invoker: "python",
-				target:  "script.py",
-			}},
-	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			stderr := &bytes.Buffer{}
-			stdout := bytes.NewBufferString(tC.output)
-			execCommand = testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
-
-			s, _ := New(packr.New("t", "testdata"), Dest(".summoned"))
-			eu, err := s.resolve(tC.execu, []string{})
-
-			assert.Nil(t, err)
-			assert.Equal(t, tC.expected, eu)
-
-			if tC.wantsCalls {
-				c, err := testutil.GetCalls(stderr)
-				assert.Nil(t, err)
-				assert.Len(t, c.Calls, 1)
-				assert.Contains(t, c.Calls[0].Env, tC.expectedEnv)
-				assert.Contains(t, c.Calls[0].Args, tC.expectedArg)
-			}
-		})
-	}
-}
-
 func TestFailRunHelper(t *testing.T) {
 	if testutil.IsHelper() {
 		os.Exit(1)
