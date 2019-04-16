@@ -81,7 +81,7 @@ exec:
         hello: echo hello
         # ^ handle to script (must be unique)
 
-    gobin: # go gettable executables
+    gobin -run: # go gettable executables
         gobin: github.com/myitcv/gobin@v0.0.8
         gohack: github.com/rogppepe/gohack
 
