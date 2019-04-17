@@ -21,6 +21,7 @@ type mainCmd struct {
 	filename string
 	json     string
 	jsonFile string
+	raw      bool
 	out      io.Writer
 }
 
@@ -75,6 +76,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 	rootCmd.Flags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.Flags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
+	rootCmd.Flags().BoolVar(&main.raw, "raw", false, "output without any template rendering")
 	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory, or '-' for stdout")
 
 	rootCmd.AddCommand(newListCmd(driver))
@@ -89,6 +91,7 @@ func (m *mainCmd) run() error {
 		summon.Dest(m.dest),
 		summon.Filename(m.filename),
 		summon.JSON(m.json),
+		summon.Raw(m.raw),
 	)
 
 	resultFilepath, err := m.driver.Summon()

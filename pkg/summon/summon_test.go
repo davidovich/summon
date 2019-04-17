@@ -100,6 +100,7 @@ func TestSummonScenarios(t *testing.T) {
 		desc             string
 		filename         string
 		json             string
+		raw              bool
 		dest             string
 		expectedFileName string
 		expectedContent  string
@@ -124,6 +125,13 @@ func TestSummonScenarios(t *testing.T) {
 			filename:         "template.file",
 			expectedFileName: "overridden_dir/template.file",
 			expectedContent:  "hello ",
+		},
+		{
+			desc:             "no data raw",
+			raw:              true,
+			filename:         "template.file",
+			expectedFileName: "overridden_dir/template.file",
+			expectedContent:  "hello {{ .Name }}",
 		},
 		{
 			desc:             "sprig rendering",
@@ -156,7 +164,7 @@ func TestSummonScenarios(t *testing.T) {
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest)}
+			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest), Raw(tC.raw)}
 			output := &bytes.Buffer{}
 			if tC.dest == "-" {
 				args = append(args, out(output))
