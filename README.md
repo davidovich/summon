@@ -53,14 +53,14 @@ Create a data repository with this structure
     └── summon.go
 ```
 
-There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider. This is now automated using `github.com/davidovich/summon/scaffold init [module name]`.
+There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider. Since v0.1.0, This is automated using `github.com/davidovich/summon/scaffold init [module name]`.
 
 You just need to populate the `assets` directory with your own data.
 
 The `summon/` directory is the entry point to the summon library, and creates the main executable. This directory will also host
-[packr2](https://github.com/gobuffalo/packr/tree/master/v2) which encodes data into go files.
+[packr2](https://github.com/gobuffalo/packr/tree/master/v2) generated data files which encode asset data into go files.
 
-The `assets/summon.config.yaml` contains an (optional) configuration file to customize summon. You can define:
+The `assets/summon.config.yaml` is an (optional) configuration file to customize summon. You can define:
 
     * aliases
     * default output-dir
@@ -89,7 +89,7 @@ exec:
         hello-python: print("hello from python!")
 ```
 
-You can then invoke the executable like so:
+You can invoke executables like so:
 
 ```
 summon run gohack ...
@@ -143,7 +143,9 @@ By default, summon will put summoned scripts at the `.summoned/` directory at ro
 
 ### Templating
 
-Files in the asset directory can contain go templates. This allows customization using json data.
+Files in the asset directory can contain go templates. This allows applying customization using json data.
+
+> New in v0.3.0, summon now uses the [Sprig templating library](https://github.com/Masterminds/sprig), which provides many useful templating functions.
 
 For example, consider this file in an asset provider:
 
@@ -165,7 +167,10 @@ You will get a summoned `template.file` file with this result:
 Hello David!
 ```
 
-Templates can also be used in the filenames given in the data hierarchy. This can be usefull to scaffold simple projects.
+> New in v0.2.0, you can summon a whole asset hierarchy by using a directory reference when summoning.
+
+
+Templates can also be used in the filenames given in the data hierarchy. This can be useful to scaffold simple projects.
 
 ```
 /assets
@@ -173,11 +178,9 @@ Templates can also be used in the filenames given in the data hierarchy. This ca
       {{.FileName}}
 ```
 
-Then you can summon this file by introducing a FileName in json parameter.
+Then you can summon this hierarchy by introducing a `FileName` in the json parameter.
 
-New in v0.2.0, summoning a whole asset hierarchy:
-
-`summon assets/template/ --json '{ "FileName": "myRenderedFileName" }' -o dest-dir`
+`summon template/ --json '{ "FileName": "myRenderedFileName" }' -o dest-dir`
 
 will yield:
 
@@ -195,5 +198,3 @@ will yield:
 ```
 summon --all --out .dir
 ```
-
-### developing custom plugins to augment the functionality offered by summon-lib core.
