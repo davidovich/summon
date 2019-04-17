@@ -94,9 +94,11 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 	}
 	filename := stat.Name()
 
-	filename, err = renderTemplate(filename, s.opts.data)
-	if err != nil {
-		return "", err
+	if !s.opts.raw {
+		filename, err = renderTemplate(filename, s.opts.data)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	filename, err = filepath.Rel(rootDir, filename)
@@ -125,7 +127,12 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 
 	boxedContent, err := ioutil.ReadAll(boxedFile)
 
-	rendered, _ := renderTemplate(string(boxedContent), s.opts.data)
+	var rendered string
+	if s.opts.raw {
+		rendered = string(boxedContent)
+	} else {
+		rendered, _ = renderTemplate(string(boxedContent), s.opts.data)
+	}
 
 	_, err = io.Copy(out, bytes.NewBufferString(rendered))
 	if err != nil {

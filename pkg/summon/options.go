@@ -25,6 +25,8 @@ type options struct {
 	data map[string]interface{}
 	// out
 	out io.Writer
+	// raw disables template rendering
+	raw bool
 }
 
 // Option allows specifying configuration settings
@@ -59,6 +61,13 @@ func All(all bool) Option {
 func Filename(filename string) Option {
 	return func(opts *options) error {
 		opts.filename = filename
+		return nil
+	}
+}
+
+func Raw(raw bool) Option {
+	return func(opts *options) error {
+		opts.raw = raw
 		return nil
 	}
 }
