@@ -86,7 +86,7 @@ exec:
         gohack: github.com/rogppepe/gohack
 
     python -c:
-        hello: print("hello from python!")
+        hello-python: print("hello from python!")
 ```
 
 You can then invoke the executable like so:
