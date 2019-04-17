@@ -1,6 +1,8 @@
 package summon
 
 import (
+	"os"
+
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
 )
@@ -29,10 +31,6 @@ func New(box *packr.Box, opts ...Option) (*Summoner, error) {
 
 // Configure is used to extract options to the object.
 func (b *Summoner) Configure(opts ...Option) error {
-	if b.opts.destination == "" {
-		b.opts.destination = config.DefaultOutputDir
-	}
-
 	if !b.configRead {
 		// try to find a config file in the box
 		config, err := b.box.Find(config.ConfigFile)
@@ -51,6 +49,14 @@ func (b *Summoner) Configure(opts ...Option) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if b.opts.destination == "" {
+		b.opts.destination = config.DefaultOutputDir
+	}
+
+	if b.opts.out == nil {
+		b.opts.out = os.Stdout
 	}
 
 	return nil

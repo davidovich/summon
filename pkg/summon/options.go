@@ -2,6 +2,7 @@ package summon
 
 import (
 	"encoding/json"
+	"io"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -10,7 +11,7 @@ import (
 type options struct {
 	// copy all the tree
 	all bool
-	// where the summoned file will land
+	// where the summoned file will land or stdout if "-"
 	destination string
 	// single file to instanciate
 	filename string
@@ -18,10 +19,12 @@ type options struct {
 	tree bool
 	// reference to an exec config entry
 	ref string
-
+	// args to exec entry
 	args []string
-
+	// template rendering data
 	data map[string]interface{}
+	// out
+	out io.Writer
 }
 
 // Option allows specifying configuration settings
@@ -63,7 +66,17 @@ func Filename(filename string) Option {
 // Dest specifies where the file(s) will be rooted
 func Dest(dest string) Option {
 	return func(opts *options) error {
+		if dest == "" {
+			return nil
+		}
 		opts.destination = dest
+		return nil
+	}
+}
+
+func out(w io.Writer) Option {
+	return func(opts *options) error {
+		opts.out = w
 		return nil
 	}
 }

@@ -1,6 +1,7 @@
 package summon
 
 import (
+	"bytes"
 	"path/filepath"
 	"testing"
 
@@ -99,6 +100,7 @@ func TestSummonScenarios(t *testing.T) {
 		desc             string
 		filename         string
 		json             string
+		dest             string
 		expectedFileName string
 		expectedContent  string
 		wantError        bool
@@ -141,13 +143,25 @@ func TestSummonScenarios(t *testing.T) {
 			filename:  "template.file",
 			wantError: true,
 		},
+		{
+			desc:             "to stdout",
+			dest:             "-",
+			filename:         "a",
+			expectedFileName: "",
+			expectedContent:  "this is a.txt",
+		},
 	}
 
 	box := packr.New("TestTemplateRendering", "testdata")
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			s, err := New(box, Filename(tC.filename), JSON(tC.json))
+			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest)}
+			output := &bytes.Buffer{}
+			if tC.dest == "-" {
+				args = append(args, out(output))
+			}
+			s, err := New(box, args...)
 			if tC.wantError {
 				assert.Error(err)
 			} else {
@@ -156,8 +170,13 @@ func TestSummonScenarios(t *testing.T) {
 			path, err := s.Summon()
 
 			assert.Equal(tC.expectedFileName, path)
-			bytes, _ := afero.ReadFile(appFs, path)
-			assert.Equal(tC.expectedContent, string(bytes))
+			var b []byte
+			if tC.dest != "-" {
+				b, _ = afero.ReadFile(appFs, path)
+			} else {
+				b = output.Bytes()
+			}
+			assert.Equal(tC.expectedContent, string(b))
 		})
 	}
 }

@@ -34,8 +34,13 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 		return "", err
 	}
 
+	destination := s.opts.destination
+	if destination == "-" {
+		destination = ""
+	}
+
 	if s.opts.all {
-		return s.opts.destination, s.box.Walk(func(path string, info file.File) error {
+		return destination, s.box.Walk(func(path string, info file.File) error {
 			_, err := s.copyOneFile(info, "")
 			return err
 		})
@@ -46,7 +51,7 @@ func (s *Summoner) Summon(opts ...Option) (string, error) {
 
 	// User wants to extract a subdirectory
 	if s.box.HasDir(filename) {
-		return s.opts.destination,
+		return destination,
 			s.box.WalkPrefix(filename, func(path string, info file.File) error {
 				_, err := s.copyOneFile(info, filename)
 				return err
@@ -99,17 +104,24 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 		return "", err
 	}
 
-	summonedFile := filepath.Join(destination, filename)
-	err = appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
-	if err != nil {
-		return "", err
-	}
+	var out io.Writer
+	summonedFile := ""
+	if destination == "-" {
+		out = s.opts.out
+	} else {
+		summonedFile = filepath.Join(destination, filename)
+		err = appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
+		if err != nil {
+			return "", err
+		}
 
-	out, err := appFs.Create(summonedFile)
-	if err != nil {
-		return "", err
+		outf, err := appFs.Create(summonedFile)
+		if err != nil {
+			return "", err
+		}
+		defer outf.Close()
+		out = outf
 	}
-	defer out.Close()
 
 	boxedContent, err := ioutil.ReadAll(boxedFile)
 
@@ -120,7 +132,7 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 		return "", err
 	}
 
-	return summonedFile, out.Close()
+	return summonedFile, nil
 }
 
 func init() {
