@@ -7,14 +7,14 @@ Summon is used to manage a central location of data or
 go executable references, allowing distribution to any go-enabled environment.
 
 It solves the maintenance problem of multiple copies of same
-code snippets distributed in many repos, leveraging go modules and version
-management.
+code snippets distributed in many repos (like general makefile recipies), leveraging go modules and version
+management. It also allows configuring a standard set of tools that a dev team can readily
+invoke by name.
 
 You can make an analogy with a data singleton which always has the desired
 state (packed scripts or pinned versions of binaries).
 
-> NOTE: This is still a WIP and experimental. This readme is a design document and
-not every feature is implemented yet.
+> NOTE: This is still a WIP and experimental.
 
 Why not use git directly?
 
@@ -32,8 +32,23 @@ go run github.com/davidovich/summon-example-assets/summon ls
 go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
 ```
 
-Summon builds upon [packr](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
-which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
+Or more succinctly:
+
+```
+gobin [your-summon-data-repo]/summon
+```
+
+Assuming there is a my-team-service.sh hosted in the data repo:
+
+```
+bash $(summon my-team-service.sh)
+```
+
+How it Works
+------------
+
+Summon builds upon [packr2](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
+which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin). The invoked files are then placed locally and the path is returned so it can be consumed by other shell operations.
 
 Configuration
 -------------
@@ -43,12 +58,12 @@ Configuration
 Use summon's scaffold feature to create a data repository, which will become your singleton data executable.
 
 ```
-gobin run github.com/davidovich/summon/scaffold init [module name]
+gobin -run github.com/davidovich/summon/scaffold init [module name]
 ```
 
 > Be sure to change the [module name] part (usually where you will host the data repo on a code hosting site).
 
-You will then have this structure:
+You will then have something resembling this structure:
 
 ```
 .
@@ -103,7 +118,7 @@ You can invoke executables like so:
 summon run gohack ...
 ```
 
-This will install gohack and forward the arguments that you provide.
+This will install gohack using `gobin -run` and forward the arguments that you provide.
 
 Build
 -----
@@ -115,7 +130,7 @@ In an empty asset data repository:
 1) add assets that need to be shared amongst consumers
 2) Use the provided Makefile to invoke the packr2 process: `make`
 3) Commit the resulting -packr files so clients can go get the data repo
-4) Tag the repo with semantic version (with the `v`) prefix
+4) Tag the repo with semantic version (with the `v`) prefix. (the tag name must include the `summon/` prefix) 
 
 
 Install
@@ -205,4 +220,16 @@ will yield:
 
 ```
 summon --all --out .dir
+```
+
+### Output a file to stdout
+
+```
+summon my-file -o-
+```
+
+### Output a template file non rendered
+
+```
+summon my-template -o- --raw
 ```
