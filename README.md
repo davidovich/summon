@@ -40,7 +40,15 @@ Configuration
 
 ### Data repository
 
-Create a data repository with this structure
+Use summon's scaffold feature to create a data repository, which will become your singleton data executable.
+
+```
+gobin run github.com/davidovich/summon/scaffold init [module name]
+```
+
+> Be sure to change the [module name] part (usually where you will host the data repo on a code hosting site).
+
+You will then have this structure:
 
 ```
 .
