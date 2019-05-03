@@ -23,7 +23,7 @@ func TestScaffolder(t *testing.T) {
 		{
 			desc:    "happy path",
 			args:    []string{"init", "example.com/my/assets"},
-			file:    "summon/go.mod",
+			file:    "go.mod",
 			content: "module example.com/my/assets/summon",
 		},
 		{

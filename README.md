@@ -121,7 +121,7 @@ In an empty asset data repository directory:
 1) add assets that need to be shared amongst consumers
 2) Use the provided Makefile to invoke the packr2 process: `make`
 3) Commit the resulting -packr files so clients can go get the data repo
-4) Tag the repo with semantic version (with the `v`) prefix. (the tag name must include the `summon/` prefix).
+4) Tag the repo with semantic version (with the `v`) prefix.
 5) Push to remote.
 6) Install.
 

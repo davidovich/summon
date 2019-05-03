@@ -25,13 +25,13 @@ func TestCreateScaffold(t *testing.T) {
 		{
 			desc:    "happy path",
 			args:    []string{".", "example.com/my/assets", "summon"},
-			file:    "summon/go.mod",
+			file:    "go.mod",
 			content: "module example.com/my/assets/summon",
 		},
 		{
 			desc:    "output dir",
 			args:    []string{"subdir", "example.com/my/assets", "summon"},
-			file:    "subdir/summon/go.mod",
+			file:    "subdir/go.mod",
 			content: "module example.com/my/assets/summon",
 		},
 		{
@@ -42,7 +42,7 @@ func TestCreateScaffold(t *testing.T) {
 		},
 		{
 			desc:  "force non empty",
-			args:  []string{".", "example.com/my/assets", "summon"},
+			args:  []string{"summon", "example.com/my/assets", "summon"},
 			force: true,
 			setup: func(fs afero.Fs) {
 				fs.Mkdir("summon", 0644)
@@ -56,7 +56,7 @@ func TestCreateScaffold(t *testing.T) {
 		{
 			desc:    "named exe",
 			args:    []string{".", "example.com/my/assets", "my-assets"},
-			file:    "my-assets/go.mod",
+			file:    "go.mod",
 			content: "module example.com/my/assets/my-assets",
 		},
 		{
