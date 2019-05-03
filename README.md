@@ -4,43 +4,57 @@ Summon
 ======
 
 Summon is used to manage a central location of data or
-go executable references, allowing distribution to any go-enabled environment.
+executable references, allowing distribution to any go-enabled environment. You can use it in your team to share common snippets of code or domain knowlege.
 
 It solves the maintenance problem of multiple copies of same
-code snippets distributed in many repos, leveraging go modules and version
-management.
+code snippets distributed in many repos (like general makefile recipies), leveraging go modules and version
+management. It also allows configuring a standard set of tools that a dev team can readily
+invoke by name.
 
 You can make an analogy with a data singleton which always has the desired
 state (packed scripts or pinned versions of binaries).
 
-> NOTE: This is still a WIP and experimental. This readme is a design document and
-not every feature is implemented yet.
+> NOTE: This project is still a WIP and experimental.
 
-Why not use git directly?
-
-While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
-In summon you leverage go execution to bootstrap in one phase. So your data can do:
+To install, you first need to create something to install by populating a [data repository](#Configuration). Then, this data repo is installed by using [gobin](https://github.com/myitcv/gobin) (or go install):
 
 ```
-go run github.com/davidovich/summon-example-assets/summon --help
-# or list the data deliverables
-go run github.com/davidovich/summon-example-assets/summon ls
-# or
-# let summon configure the path so it can invoke a go executable
-# (here go-gettable-executable is a reference to a go gettable repo), and will
-# result in an executable tailored for your destination os and architecture (because built on the fly).
-go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
+gobin [your-summon-data-repo]/summon
 ```
 
-Summon builds upon [packr](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
-which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin):
+Assuming there is a my-team-utility.sh script hosted in the data repo, (see how to [configure](#Configuration) below) you can do things like:
+
+```
+bash $(summon my-team-utility.sh)
+```
+
+How it Works
+------------
+
+Summon is a library which is consumed by an asset repository (which, by default, has also the `summon` name). This asset repository, managed by your team, provides the summon executable command (it's main() function is in summon/summon.go).
+The library provides the command-line interface, so no coding is necessary in the assert repo.
+
+Summon also provides a boostrapping feature in the scaffold command.
+
+Summon builds upon [packr2](https://github.com/gobuffalo/packr/tree/master/v2) to convert an arbitrary tree of files in go compilable source
+which you then bootstrap at destination using standard go get or [gobin](https://github.com/myitcv/gobin). The invoked files are then placed locally and the summoned file path is returned so it can be consumed by other shell operations.
 
 Configuration
 -------------
 
 ### Data repository
 
-Create a data repository with this structure
+Use summon's scaffold feature to create a data repository, which will become your singleton data executable.
+
+> Scaffolding is new in v0.1.0
+
+```
+gobin -run github.com/davidovich/summon/scaffold init [module name]
+```
+
+> Be sure to change the [module name] part (usually you will use a module path compatible with where you will host the data repo on a code hosting site).
+
+You will then have something resembling this structure:
 
 ```
 .
@@ -53,11 +67,11 @@ Create a data repository with this structure
     └── summon.go
 ```
 
-There is an example setup at https://github.com/davidovich/summon-example-assets. Use this structure to bootstrap your own data provider. Since v0.1.0, This is automated using `github.com/davidovich/summon/scaffold init [module name]`.
+There is an example setup at https://github.com/davidovich/summon-example-assets.
 
 You just need to populate the `assets` directory with your own data.
 
-The `summon/` directory is the entry point to the summon library, and creates the main executable. This directory will also host
+The `summon/` directory is the entry point to the summon library, and creates the main command executable. This directory will also host
 [packr2](https://github.com/gobuffalo/packr/tree/master/v2) generated data files which encode asset data into go files.
 
 The `assets/summon.config.yaml` is an (optional) configuration file to customize summon. You can define:
@@ -95,33 +109,35 @@ You can invoke executables like so:
 summon run gohack ...
 ```
 
-This will install gohack and forward the arguments that you provide.
+This will install gohack using `gobin -run` and forward the arguments that you provide.
 
 Build
 -----
 
-In an empty asset data repository:
+In an empty asset data repository directory:
 
 0) invoke `go run github.com/davidovich/summon/scaffold init [repo host (module name)]`
     This will create code template similar as above
 1) add assets that need to be shared amongst consumers
 2) Use the provided Makefile to invoke the packr2 process: `make`
 3) Commit the resulting -packr files so clients can go get the data repo
-4) Tag the repo with semantic version (with the `v`) prefix
+4) Tag the repo with semantic version (with the `v`) prefix. (the tag name must include the `summon/` prefix).
+5) Push to remote.
+6) Install.
 
 
 Install
 -------
 
 Install (using gobin) the asset repo which will become the summon executable.
-If the consuming repo needs to version the data alonside the consumer (each consumer repo could have a specific version of data),
+If the consumer site needs to version the data alonside the consumer (each site could have a specific version of data),
 you have two alternatives:
 
-* use gobin to install summon in the consuming repo:
+* use gobin to install summon in the consuming site:
 
 ```
 GO111MODULE=off go get -u github.com/myitcv/gobin
-# install the data repository as summon executable
+# install the data repository as summon executable at the site
 GOBIN=./ gobin [your-go-repo-import]/summon[@wanted-version-or-branch]
 ```
 
@@ -147,7 +163,7 @@ Files in the asset directory can contain go templates. This allows applying cust
 
 > New in v0.3.0, summon now uses the [Sprig templating library](https://github.com/Masterminds/sprig), which provides many useful templating functions.
 
-For example, consider this file in an asset provider:
+For example, consider this file in a summon asset provider:
 
 ```
 /assets
@@ -197,4 +213,35 @@ will yield:
 
 ```
 summon --all --out .dir
+```
+
+### Output a file to stdout
+
+```
+summon my-file -o-
+```
+
+### Output a template file non rendered
+
+```
+summon my-template -o- --raw
+```
+
+Alternatives
+------------
+
+Why not use git directly?
+
+While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
+In summon you leverage go execution to bootstrap in one phase. So your data can do:
+
+```
+go run github.com/davidovich/summon-example-assets/summon --help
+# or list the data deliverables
+go run github.com/davidovich/summon-example-assets/summon ls
+# or
+# let summon configure the path so it can invoke a go executable
+# (here go-gettable-executable is a reference to a go gettable repo), and will
+# result in an executable tailored for your destination os and architecture (because built on the fly).
+go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
 ```
