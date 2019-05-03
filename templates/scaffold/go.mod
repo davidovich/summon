@@ -1,1 +1,1 @@
-module {{ .ModName }}/{{.SummonerName}}
+module {{ .ModName }}

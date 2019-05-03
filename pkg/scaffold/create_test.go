@@ -26,13 +26,13 @@ func TestCreateScaffold(t *testing.T) {
 			desc:    "happy path",
 			args:    []string{".", "example.com/my/assets", "summon"},
 			file:    "go.mod",
-			content: "module example.com/my/assets/summon",
+			content: "module example.com/my/assets",
 		},
 		{
 			desc:    "output dir",
 			args:    []string{"subdir", "example.com/my/assets", "summon"},
 			file:    "subdir/go.mod",
-			content: "module example.com/my/assets/summon",
+			content: "module example.com/my/assets",
 		},
 		{
 			desc:    "non empty dir error",
@@ -51,13 +51,13 @@ func TestCreateScaffold(t *testing.T) {
 				f.Close()
 			},
 			file:    "summon/go.mod",
-			content: "module example.com/my/assets/summon",
+			content: "module example.com/my/assets",
 		},
 		{
 			desc:    "named exe",
 			args:    []string{".", "example.com/my/assets", "my-assets"},
 			file:    "go.mod",
-			content: "module example.com/my/assets/my-assets",
+			content: "module example.com/my/assets",
 		},
 		{
 			desc:     "README rendered contents",
