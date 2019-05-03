@@ -59,11 +59,11 @@ You will then have something resembling this structure:
 ```
 .
 ├── Makefile
+├── README.md
 ├── assets
-│   ├── text.txt
 │   └── summon.config.yaml
+├── go.mod
 └── summon
-    ├── go.mod
     └── summon.go
 ```
 
