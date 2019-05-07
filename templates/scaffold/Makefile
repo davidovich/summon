@@ -11,7 +11,7 @@ all: $(SUMMONER_NAME)/packrd/packed-packr.go bin/$(SUMMONER_NAME)
 
 bin/$(SUMMONER_NAME): $(SUMMON_DEPS)
 	@mkdir -p bin
-	cd $(SUMMONER_NAME) && go build -o ../$@ summon.go
+	go build -o $@ $(SUMMONER_NAME)/summon.go
 
 $(SUMMONER_NAME)/packrd/packed-packr.go: $(ASSETS)
 ifndef HAS_PACKR2
@@ -22,3 +22,4 @@ endif
 .PHONY: clean
 clean:
 	cd $(SUMMONER_NAME) && packr2 clean
+	rm -rf bin

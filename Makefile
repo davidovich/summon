@@ -15,7 +15,10 @@ PACKR_FILE := pkg/scaffold/scaffold-packr.go
 
 ASSETS := $(shell find templates/scaffold)
 
-all: $(PACK_FILE) test $(SCAFFOLD_BIN)
+all: $(PACKR_FILE) test $(SCAFFOLD_BIN)
+
+.PHONY: bin
+bin: $(PACKR_FILE) $(SCAFFOLD_BIN)
 
 .PHONY: $(SCAFFOLD_BIN)
 $(SCAFFOLD_BIN): $(PACKR_FILE)
