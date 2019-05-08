@@ -1,6 +1,12 @@
 SHELL=/bin/bash
 
-HAS_PACKR2	:= $(shell command -v packr2)
+HAS_PACKR2				:= $(shell command -v packr2)
+HAS_GOBIN				:= $(shell command -v gobin)
+HAS_GOCOVERUTIL			:= $(shell command -v gocoverutil)
+
+ifndef HAS_GOBIN
+$(shell GO111MODULE=off go get -u github.com/myitcv/gobin 2>/dev/null)
+endif
 
 export GO111MODULE := on
 
@@ -9,7 +15,10 @@ PACKR_FILE := pkg/scaffold/scaffold-packr.go
 
 ASSETS := $(shell find templates/scaffold)
 
-all: test $(PACK_FILE) $(SCAFFOLD_BIN)
+all: $(PACKR_FILE) test $(SCAFFOLD_BIN)
+
+.PHONY: bin
+bin: $(PACKR_FILE) $(SCAFFOLD_BIN)
 
 .PHONY: $(SCAFFOLD_BIN)
 $(SCAFFOLD_BIN): $(PACKR_FILE)
@@ -22,9 +31,34 @@ ifndef HAS_PACKR2
 endif
 	packr2
 
+GO_TESTS := pkg internal cmd
+COVERAGE := $(foreach t,$(GO_TESTS),build/coverage/report/$(t))
+MERGED_COVERAGE := build/coverage/report/cover.merged.out
+HTML_COVERAGE := build/coverage/html/index.html
+
 .PHONY: test
-test:
-	go test -cover -v ./...
+test: output-coverage
+
+.PHONY: output-coverage
+output-coverage: $(MERGED_COVERAGE) $(HTML_COVERAGE)
+	go tool cover -func=$<
+
+$(MERGED_COVERAGE): $(COVERAGE)
+ifndef HAS_GOCOVERUTIL
+	gobin github.com/AlekSi/gocoverutil@v0.2.0
+endif
+	$(call msg,Generating merged coverage report)
+	gocoverutil -coverprofile=$@ merge $^
+
+$(HTML_COVERAGE): $(MERGED_COVERAGE)
+	@mkdir -p $(@D)
+	go tool cover -html=$< -o $@
+
+.PHONY: $(COVERAGE)
+$(COVERAGE):
+	@mkdir -p $(@D)
+	$(call msg,--> Testing $(@F)...)
+	go test ./$(@F)/... --cover -coverprofile $@ -v
 
 .PHONY: clean
 clean:
