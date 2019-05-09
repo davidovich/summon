@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/davidovich/summon/pkg/scaffold"
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +22,8 @@ func execute(rootCmd *cobra.Command) int {
 	}
 	return 0
 }
+
+var execCmd = command.New
 
 func newMainCmd() *cobra.Command {
 	var dest string
@@ -39,6 +43,14 @@ func newMainCmd() *cobra.Command {
 			err := scaffold.Create(dest, args[0], summonName, force)
 			if err == nil {
 				fmt.Println("Successfully scaffolded a summon asset repo")
+				git, err := exec.LookPath("git")
+				if err != nil {
+					fmt.Println("Warn: could not find git on PATH to initialize repository")
+					return nil
+				}
+				gitcmd := execCmd(git, "-C", dest, "init")
+				gitcmd.Stdout = os.Stdout
+				_ = gitcmd.Run()
 			}
 			return err
 		},
