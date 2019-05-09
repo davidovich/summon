@@ -25,8 +25,8 @@ Get more help with `{{ .SummonerName }} -h`.
 Updating assets
 ---------------
 
-1) Make modifications (additions, removals) in the assets/ dir
+1) Make modifications (additions, removals) in the `assets/` dir
 2) Invoke `make`
 3) Commit changes
 4) Tag with a semantic version (prefix with `v`)
-5) git push --tags
+5) git push --tags origin HEAD
