@@ -3,16 +3,14 @@ package summon
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
-	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSummoner_List(t *testing.T) {
-	defer testutil.ReplaceFs()()
-
+func TestSummonerList(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(dir)
 
@@ -24,4 +22,24 @@ func TestSummoner_List(t *testing.T) {
 	got, _ := s.List()
 
 	assert.Equal(t, got, []string{"a", "b"}, "Summoner.List() = %v, want %v", got, []string{"a", "b"})
+}
+
+func TestSummonerListTree(t *testing.T) {
+	box := packr.New("TestSummonerListTree", "nonexisting/../abc")
+	box.AddString("a/b/c.txt", "")
+	box.AddString("d", "")
+
+	s, _ := New(box)
+
+	treeList, _ := s.List(ShowTree(true))
+
+	tree := strings.Join(treeList, "\n")
+
+	expected := `abc
+├── a
+│   └── b
+│       └── c.txt
+└── d`
+
+	assert.Equal(t, expected, tree)
 }
