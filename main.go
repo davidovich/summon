@@ -1,3 +1,13 @@
+/*
+Package summon is a library allowing to pack assets and give it a convienient command line.
+
+The binary created from this library is meant to be shared in a team to allow distribution
+of common assets or code templates.
+
+Basics
+
+This library needs a command entrypoint in a data repository. See https://github.com/davidovich/summon-example-assets.
+*/
 package summon
 
 import (
@@ -10,7 +20,9 @@ import (
 	"github.com/gobuffalo/packr/v2"
 )
 
-// Main entrypoint, typically called from a data repository
+// Main entrypoint, typically called from a data repository. Calling Main() relinquishes
+// control to Summon so it can manage the command line arguments and instanciation of assets in
+// the packr.Box data repository.
 func Main(args []string, box *packr.Box) int {
 	s, err := summon.New(box)
 	if err != nil {

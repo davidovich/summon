@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 // options fir all summon commands
@@ -60,7 +60,7 @@ func All(all bool) Option {
 	}
 }
 
-// Filename sets the reuqested filename in the boxed data
+// Filename sets the requested filename in the boxed data
 func Filename(filename string) Option {
 	return func(opts *options) error {
 		opts.filename = filename
