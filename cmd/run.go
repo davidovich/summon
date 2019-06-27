@@ -19,7 +19,7 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 	}
 	rcmd := &cobra.Command{
 		Use:   "run",
-		Short: "launch executable from summonables",
+		Short: "Launch executable from summonables",
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
 		},
