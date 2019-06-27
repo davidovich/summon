@@ -96,6 +96,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 
 	rootCmd.AddCommand(newListCmd(driver))
 	rootCmd.AddCommand(newRunCmd(driver))
+	rootCmd.AddCommand(newCompletionCmd(driver))
 
 	return rootCmd
 }

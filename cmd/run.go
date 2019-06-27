@@ -23,18 +23,27 @@ func newRunCmd(driver summon.Interface) *cobra.Command {
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cmd.SilenceUsage = true
+		Run: func(cmd *cobra.Command, args []string) {},
+	}
 
-			runCmd.ref = args[0]
-			// pass all Args down to the referenced executable
-			// this is due to a limitation in spf13/cobra which eats
-			// all unknown args or flags making it hard to wrap other commands
-			// we are lucky, we know the structure, just pass all args.
-			// see https://github.com/spf13/pflag/pull/160
-			runCmd.args = os.Args[3:] // 3 is [summon, run, handle]
-			return runCmd.run()
-		},
+	subRunE := func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		runCmd.ref = cmd.Name()
+		// pass all Args down to the referenced executable
+		// this is due to a limitation in spf13/cobra which eats
+		// all unknown args or flags making it hard to wrap other commands.
+		// We are lucky, we know the structure, just pass all args.
+		// see https://github.com/spf13/pflag/pull/160
+		runCmd.args = os.Args[3:] // 3 is [summon, run, handle]
+		return runCmd.run()
+	}
+	for _, i := range driver.ListInvocables() {
+		runSubCmd := &cobra.Command{
+			Use:  i,
+			RunE: subRunE,
+		}
+		rcmd.AddCommand(runSubCmd)
 	}
 
 	return rcmd
