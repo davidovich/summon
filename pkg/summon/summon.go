@@ -24,7 +24,7 @@ func GetFs() afero.Fs {
 }
 
 // Summon is the main comnand invocation
-func (s *Summoner) Summon(opts ...Option) (string, error) {
+func (s *Driver) Summon(opts ...Option) (string, error) {
 	if s == nil {
 		return "", fmt.Errorf("Sumonner cannot be nil")
 	}
@@ -77,7 +77,7 @@ func renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
 	return buf.String(), err
 }
 
-func (s *Summoner) resolveAlias(alias string) string {
+func (s *Driver) resolveAlias(alias string) string {
 	if resolved, ok := s.config.Aliases[alias]; ok {
 		return resolved
 	}
@@ -85,7 +85,7 @@ func (s *Summoner) resolveAlias(alias string) string {
 	return alias
 }
 
-func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
+func (s *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
 	destination := s.opts.destination
 	// Write the file and print it's path
 	stat, err := boxedFile.Stat()

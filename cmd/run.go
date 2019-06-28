@@ -9,12 +9,12 @@ import (
 )
 
 type runCmdOpts struct {
-	driver summon.Interface
+	driver summon.ConfigurableRunner
 	ref    string
 	args   []string
 }
 
-func newRunCmd(driver summon.Interface) *cobra.Command {
+func newRunCmd(driver summon.ConfigurableRunner) *cobra.Command {
 	runCmd := &runCmdOpts{
 		driver: driver,
 	}

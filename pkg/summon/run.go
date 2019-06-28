@@ -18,7 +18,7 @@ type execUnit struct {
 }
 
 // Run will run go or executable scripts in the context of the data
-func (s *Summoner) Run(opts ...Option) error {
+func (s *Driver) Run(opts ...Option) error {
 	s.Configure(opts...)
 
 	eu, err := s.findExecutor()
@@ -40,8 +40,8 @@ func (s *Summoner) Run(opts ...Option) error {
 	return cmd.Run()
 }
 
-// ListInvocables lists the invocables in the config dir
-func (s *Summoner) ListInvocables() []string {
+// ListInvocables lists the invocables in the config file
+func (s *Driver) ListInvocables() []string {
 	invocables := []string{}
 
 	for _, handles := range s.config.Executables {
@@ -53,7 +53,7 @@ func (s *Summoner) ListInvocables() []string {
 	return invocables
 }
 
-func (s *Summoner) findExecutor() (execUnit, error) {
+func (s *Driver) findExecutor() (execUnit, error) {
 	eu := execUnit{}
 
 	for ex, handles := range s.config.Executables {

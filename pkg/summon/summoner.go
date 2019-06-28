@@ -7,8 +7,8 @@ import (
 	"github.com/gobuffalo/packr/v2"
 )
 
-// Summoner manages functionality of summon
-type Summoner struct {
+// Driver manages functionality of summon
+type Driver struct {
 	opts       options
 	config     config.Config
 	box        *packr.Box
@@ -16,8 +16,8 @@ type Summoner struct {
 }
 
 // New creates the summoner
-func New(box *packr.Box, opts ...Option) (*Summoner, error) {
-	s := &Summoner{
+func New(box *packr.Box, opts ...Option) (*Driver, error) {
+	s := &Driver{
 		box: box,
 	}
 
@@ -30,7 +30,7 @@ func New(box *packr.Box, opts ...Option) (*Summoner, error) {
 }
 
 // Configure is used to extract options to the object.
-func (b *Summoner) Configure(opts ...Option) error {
+func (b *Driver) Configure(opts ...Option) error {
 	if !b.configRead {
 		// try to find a config file in the box
 		config, err := b.box.Find(config.ConfigFile)

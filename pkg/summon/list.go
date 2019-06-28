@@ -8,7 +8,7 @@ import (
 )
 
 // List list the content of the data tree.
-func (s *Summoner) List(opts ...Option) ([]string, error) {
+func (s *Driver) List(opts ...Option) ([]string, error) {
 	s.Configure(opts...)
 
 	list := s.box.List()

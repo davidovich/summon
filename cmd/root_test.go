@@ -3,6 +3,9 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -16,24 +19,48 @@ import (
 func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "")
+	box := packr.New("test box", "testdata")
 	box.AddString("a.txt", "a content")
 	box.AddString("b.txt", "b content")
 
+	mockBuildInfo := func() func() {
+		oldBi := buildInfo
+		buildInfo = func() (*debug.BuildInfo, bool) {
+			bi := &debug.BuildInfo{
+				Main: debug.Module{
+					Path:    "example.com/assets",
+					Version: "v0.1.0",
+				},
+				Deps: []*debug.Module{
+					{
+						Path:    "github.com/davidovich/summon",
+						Version: "(devel)",
+					},
+				},
+			}
+			return bi, true
+		}
+		return func() {
+			buildInfo = oldBi
+		}
+	}
+
 	makeRootCmd := func(args ...string) *cobra.Command {
 		s, _ := summon.New(box)
-		rootCmd := createRootCmd(&fakeSummon{
-			Summoner: s,
-		})
+		rootCmd := CreateRootCmd(&fakeSummon{
+			Driver: s,
+		}, []string{"summon"})
 		rootCmd.SetArgs(args)
-
 		return rootCmd
 	}
 
 	tests := []struct {
-		name    string
-		rootCmd *cobra.Command
-		wantErr bool
+		name     string
+		rootCmd  *cobra.Command
+		expected string
+		in       string
+		wantErr  bool
+		defered  func() func()
 	}{
 		{
 			name:    "no-args-no-all",
@@ -43,25 +70,73 @@ func Test_createRootCmd(t *testing.T) {
 		{
 			name:    "all",
 			rootCmd: makeRootCmd("-a"),
-			wantErr: false,
 		},
 		{
 			name:    "file",
 			rootCmd: makeRootCmd("b.txt"),
+		},
+		{
+			name:     "completion_run",
+			rootCmd:  makeRootCmd("completion"),
+			expected: "summon_run_hello",
+		},
+		{
+			name:    "-v",
+			rootCmd: makeRootCmd("-v"),
+			expected: `"mod": "example.com/assets",
+    "version": "v0.1.0"`, // note 4 spaces indent
+			defered: mockBuildInfo,
+		},
+		{
+			name:    "-v no-build-info",
+			rootCmd: makeRootCmd("-v"),
+			wantErr: true,
+		},
+		{
+			name:    "exclusive --json and --json-file",
+			rootCmd: makeRootCmd("--json", "{}", "--json-file", "-", "summon.config.yaml"),
+			wantErr: true,
+		},
+		{
+			name:    "--json-file",
+			rootCmd: makeRootCmd("--json-file", "testdata/json-for-template.json", "summon.config.yaml"),
+			wantErr: false,
+		},
+		{
+			name:    "--json-file non-existing",
+			rootCmd: makeRootCmd("--json-file", "does-not-exist", "summon.config.yaml"),
+			wantErr: true,
+		},
+		{
+			name:    "--json-file stdin",
+			rootCmd: makeRootCmd("--json-file", "-", "summon.config.yaml"),
+			in:      "{}",
 			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
+			if tt.defered != nil {
+				defer tt.defered()()
+			}
+			b := &bytes.Buffer{}
+			tt.rootCmd.SetOut(b)
+			if tt.in != "" {
+				tt.rootCmd.SetIn(strings.NewReader(tt.in))
+			}
 			if err := tt.rootCmd.Execute(); (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.expected != "" {
+				assert.Contains(t, b.String(), tt.expected)
 			}
 		})
 	}
 }
 
 type fakeSummon struct {
-	*summon.Summoner
+	*summon.Driver
 	wantErr bool
 }
 
@@ -70,7 +145,7 @@ func (t *fakeSummon) Summon(opts ...summon.Option) (string, error) {
 		return "", fmt.Errorf("error in Summon")
 	}
 
-	return t.Summoner.Summon()
+	return t.Driver.Summon()
 }
 
 func Test_mainCmd_run(t *testing.T) {
@@ -97,8 +172,8 @@ func Test_mainCmd_run(t *testing.T) {
 				dest:     ".s",
 				filename: "a.txt",
 				driver: &fakeSummon{
-					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
-					wantErr:  false,
+					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
+					wantErr: false,
 				},
 			},
 			out: ".s/a.txt\n",
@@ -109,8 +184,8 @@ func Test_mainCmd_run(t *testing.T) {
 				copyAll: true,
 				dest:    ".s",
 				driver: &fakeSummon{
-					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
-					wantErr:  false,
+					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
+					wantErr: false,
 				},
 			},
 			out: ".s\n", // note dest dir
@@ -119,8 +194,8 @@ func Test_mainCmd_run(t *testing.T) {
 			name: "error",
 			fields: fields{
 				driver: &fakeSummon{
-					Summoner: func() *summon.Summoner { s, _ := summon.New(box); return s }(),
-					wantErr:  true,
+					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
+					wantErr: true,
 				},
 			},
 			out: "",
@@ -140,26 +215,6 @@ func Test_mainCmd_run(t *testing.T) {
 				t.Errorf("mainCmd.run() error = %v, wantErr %v", err, tt.fields.driver.wantErr)
 			}
 			assert.Equal(t, tt.out, b.String())
-		})
-	}
-}
-
-func TestExecute(t *testing.T) {
-	type args struct {
-		box *packr.Box
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Execute(tt.args.box); (err != nil) != tt.wantErr {
-				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
-			}
 		})
 	}
 }
