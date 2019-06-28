@@ -6,14 +6,11 @@ import (
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
-	"github.com/davidovich/summon/pkg/command"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRun(t *testing.T) {
-	defer func() { execCommand = command.New }()
-
 	box := packr.New("test run box", "testdata")
 
 	tests := []struct {
@@ -52,11 +49,12 @@ func TestRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			s, _ := New(box, Ref(tt.ref))
+
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
-			execCommand = testutil.FakeExecCommand(tt.helper, stdout, stderr)
+			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)))
 
-			s, _ := New(box, Ref(tt.ref))
 			if err := s.Run(); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}

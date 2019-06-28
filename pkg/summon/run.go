@@ -5,11 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 )
-
-var execCommand = command.New
 
 type execUnit struct {
 	invoker string
@@ -32,7 +29,7 @@ func (s *Driver) Run(opts ...Option) error {
 	}
 	args = append(args, s.opts.args...)
 
-	cmd := execCommand(eu.invoker, args...)
+	cmd := s.execCommand(eu.invoker, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -5,6 +5,7 @@ aliases:
 outputdir: "overridden_dir"
 exec:
   bash:
+    echo: echo hello
     hello-bash: hello.sh
   gobin -run:
     gobin: github.com/myitcv/gobin@v0.0.8

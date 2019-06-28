@@ -3,22 +3,25 @@ package summon
 import (
 	"os"
 
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
 )
 
 // Driver manages functionality of summon
 type Driver struct {
-	opts       options
-	config     config.Config
-	box        *packr.Box
-	configRead bool
+	opts        options
+	config      config.Config
+	box         *packr.Box
+	execCommand command.ExecCommandFn
+	configRead  bool
 }
 
 // New creates the summoner
 func New(box *packr.Box, opts ...Option) (*Driver, error) {
 	s := &Driver{
-		box: box,
+		box:         box,
+		execCommand: command.New,
 	}
 
 	err := s.Configure(opts...)
@@ -57,6 +60,10 @@ func (b *Driver) Configure(opts ...Option) error {
 
 	if b.opts.out == nil {
 		b.opts.out = os.Stdout
+	}
+
+	if b.opts.execCommand != nil {
+		b.execCommand = b.opts.execCommand
 	}
 
 	return nil
