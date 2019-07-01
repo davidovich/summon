@@ -1,4 +1,5 @@
 [![CircleCI](https://circleci.com/gh/davidovich/summon.svg?style=svg)](https://circleci.com/gh/davidovich/summon)
+![Custom badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fdavidovich.github.io%2Fshields%2Fsummon%2Fsummon.json)
 
 Summon
 ======
@@ -116,9 +117,9 @@ Build
 
 In an empty asset data repository directory:
 
-0) invoke `go run github.com/davidovich/summon/scaffold init [repo host (module name)]`
+0) Invoke `go run github.com/davidovich/summon/scaffold init [repo host (module name)]`
     This will create code template similar as above
-1) add assets that need to be shared amongst consumers
+1) Add assets that need to be shared amongst consumers
 2) Use the provided Makefile to invoke the packr2 process: `make`
 3) Commit the resulting -packr files so clients can go get the data repo
 4) Tag the repo with semantic version (with the `v`) prefix.
@@ -209,7 +210,7 @@ will yield:
 
 `summon run [executable]` allows to run executables declared in the config file
 
-### dumping the data at a location
+### Dumping the data at a location
 
 ```
 summon --all --out .dir
@@ -225,6 +226,20 @@ summon my-file -o-
 
 ```
 summon my-template -o- --raw
+```
+
+### List summon contents
+
+```
+summon ls
+
+summon ls --tree # pretty print hierarchy
+```
+
+### View data version information
+
+```
+summon -v
 ```
 
 Alternatives
