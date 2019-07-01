@@ -12,6 +12,7 @@ export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
 PACKR_FILE := pkg/scaffold/scaffold-packr.go
+COVERAGE_PERCENT_FILE := build/coverage-percent.txt
 
 ASSETS := $(shell find templates/scaffold)
 
@@ -41,7 +42,7 @@ test: output-coverage
 
 .PHONY: output-coverage
 output-coverage: $(MERGED_COVERAGE) $(HTML_COVERAGE)
-	go tool cover -func=$<
+	go tool cover -func=$< | sed -e 's/total:[[:space:]]*(statements)[[:space:]]*\([0-9.]*\)%/\1/gw $(COVERAGE_PERCENT_FILE)'
 
 $(MERGED_COVERAGE): $(COVERAGE)
 ifndef HAS_GOCOVERUTIL
@@ -63,4 +64,4 @@ $(COVERAGE):
 .PHONY: clean
 clean:
 	packr2 clean
-	rm -r bin
+	rm -r bin build
