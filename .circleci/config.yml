@@ -10,6 +10,12 @@ jobs:
     environment:
       GO111MODULE=on
     steps:
-      - checkout
 
+      - checkout
       - run: make
+
+      - add_ssh_keys:
+          fingerprints:
+            - f4:3f:d8:d7:4f:53:e9:2f:03:55:e9:28:8d:7e:dc:bc
+
+      - run: make update-coverage-badge

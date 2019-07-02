@@ -12,7 +12,11 @@ export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
 PACKR_FILE := pkg/scaffold/scaffold-packr.go
-COVERAGE_PERCENT_FILE := build/coverage-percent.txt
+COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
+
+DOC_REPO_NAME := davidovich.github.io
+DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
+SUMMON_BADGE_JSON_FILE := $(DOC_REPO_NAME)/shields/summon/summon.json
 
 ASSETS := $(shell find templates/scaffold)
 
@@ -60,6 +64,15 @@ $(COVERAGE):
 	@mkdir -p $(@D)
 	$(call msg,--> Testing $(@F)...)
 	go test ./$(@F)/... --cover -coverprofile $@ -v
+
+.PHONY: update-coverage-badge
+update-coverage-badge:
+	rm -rf /tmp/$(DOC_REPO_NAME)
+	git -C /tmp clone $(DOC_REPO)
+	cd /tmp/$(DOC_REPO_NAME) && \
+	go run github.com/davidovich/summon-example-assets/summon shields.io/coverage.json.gotmpl --json "{\"Coverage\": \"$$(cat $(COVERAGE_PERCENT_FILE))\"}" -o- > /tmp/$(SUMMON_BADGE_JSON_FILE)
+	git -C /tmp/$(DOC_REPO_NAME) diff-index --quiet HEAD || git -C /tmp/$(DOC_REPO_NAME) -c user.email=automation@davidovich.com -c user.name=automation commit -am "automated coverage commit of $$(cat $(COVERAGE_PERCENT_FILE)) %" || true
+	git -C /tmp/$(DOC_REPO_NAME) push
 
 .PHONY: clean
 clean:
