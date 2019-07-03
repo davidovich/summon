@@ -65,6 +65,7 @@ func Filename(filename string) Option {
 	}
 }
 
+// Raw disables any template rendering in assets
 func Raw(raw bool) Option {
 	return func(opts *options) error {
 		opts.raw = raw
