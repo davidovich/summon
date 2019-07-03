@@ -88,3 +88,12 @@ func TestSummonRunHelper(t *testing.T) {
 		testutil.WriteCall(call)
 	}
 }
+
+func TestListInvocables(t *testing.T) {
+	box := packr.New("test run box", "testdata")
+
+	s, _ := New(box)
+
+	inv := s.ListInvocables()
+	assert.ElementsMatch(t, []string{"hello-bash", "gobin", "gohack", "hello"}, inv)
+}

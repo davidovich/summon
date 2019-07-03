@@ -40,6 +40,19 @@ func (s *Summoner) Run(opts ...Option) error {
 	return cmd.Run()
 }
 
+// ListInvocables lists the invocables in the config dir
+func (s *Summoner) ListInvocables() []string {
+	invocables := []string{}
+
+	for _, handles := range s.config.Executables {
+		for i := range handles {
+			invocables = append(invocables, i)
+		}
+	}
+
+	return invocables
+}
+
 func (s *Summoner) findExecutor() (execUnit, error) {
 	eu := execUnit{}
 

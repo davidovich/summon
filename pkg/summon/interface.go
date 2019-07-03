@@ -6,4 +6,5 @@ type Interface interface {
 	Summon(opts ...Option) (string, error)
 	List(opts ...Option) ([]string, error)
 	Run(opts ...Option) error
+	ListInvocables() []string
 }
