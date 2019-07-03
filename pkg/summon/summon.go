@@ -131,7 +131,10 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 	if s.opts.raw {
 		rendered = string(boxedContent)
 	} else {
-		rendered, _ = renderTemplate(string(boxedContent), s.opts.data)
+		rendered, err = renderTemplate(string(boxedContent), s.opts.data)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	_, err = io.Copy(out, bytes.NewBufferString(rendered))
