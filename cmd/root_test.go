@@ -47,9 +47,7 @@ func Test_createRootCmd(t *testing.T) {
 
 	makeRootCmd := func(args ...string) *cobra.Command {
 		s, _ := summon.New(box)
-		rootCmd := CreateRootCmd(&fakeSummon{
-			Driver: s,
-		}, []string{"summon"})
+		rootCmd := CreateRootCmd(s, []string{"summon"})
 		rootCmd.SetArgs(args)
 		return rootCmd
 	}
@@ -159,22 +157,20 @@ func Test_mainCmd_run(t *testing.T) {
 		copyAll  bool
 		dest     string
 		filename string
-		driver   *fakeSummon
+		driver   *summon.Driver
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		out    string
+		name    string
+		fields  fields
+		out     string
+		wantErr bool
 	}{
 		{
 			name: "base",
 			fields: fields{
 				dest:     ".s",
 				filename: "a.txt",
-				driver: &fakeSummon{
-					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
-					wantErr: false,
-				},
+				driver:   func() *summon.Driver { s, _ := summon.New(box); return s }(),
 			},
 			out: ".s/a.txt\n",
 		},
@@ -183,22 +179,17 @@ func Test_mainCmd_run(t *testing.T) {
 			fields: fields{
 				copyAll: true,
 				dest:    ".s",
-				driver: &fakeSummon{
-					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
-					wantErr: false,
-				},
+				driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
 			},
 			out: ".s\n", // note dest dir
 		},
 		{
 			name: "error",
 			fields: fields{
-				driver: &fakeSummon{
-					Driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
-					wantErr: true,
-				},
+				driver: nil,
 			},
-			out: "",
+			wantErr: true,
+			out:     "",
 		},
 	}
 	for _, tt := range tests {
@@ -211,8 +202,8 @@ func Test_mainCmd_run(t *testing.T) {
 			}
 			b := &bytes.Buffer{}
 			m.out = b
-			if err := m.run(); (err != nil) != tt.fields.driver.wantErr {
-				t.Errorf("mainCmd.run() error = %v, wantErr %v", err, tt.fields.driver.wantErr)
+			if err := m.run(); (err != nil) != tt.wantErr {
+				t.Errorf("mainCmd.run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.Equal(t, tt.out, b.String())
 		})

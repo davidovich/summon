@@ -15,10 +15,10 @@ type execUnit struct {
 }
 
 // Run will run go or executable scripts in the context of the data
-func (s *Driver) Run(opts ...Option) error {
-	s.Configure(opts...)
+func (d *Driver) Run(opts ...Option) error {
+	d.Configure(opts...)
 
-	eu, err := s.findExecutor()
+	eu, err := d.findExecutor()
 	if err != nil {
 		return err
 	}
@@ -27,9 +27,9 @@ func (s *Driver) Run(opts ...Option) error {
 	if eu.target != "" {
 		args = append(args, eu.target)
 	}
-	args = append(args, s.opts.args...)
+	args = append(args, d.opts.args...)
 
-	cmd := s.execCommand(eu.invoker, args...)
+	cmd := d.execCommand(eu.invoker, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -38,10 +38,10 @@ func (s *Driver) Run(opts ...Option) error {
 }
 
 // ListInvocables lists the invocables in the config file
-func (s *Driver) ListInvocables() []string {
+func (d *Driver) ListInvocables() []string {
 	invocables := []string{}
 
-	for _, handles := range s.config.Executables {
+	for _, handles := range d.config.Executables {
 		for i := range handles {
 			invocables = append(invocables, i)
 		}
@@ -50,11 +50,11 @@ func (s *Driver) ListInvocables() []string {
 	return invocables
 }
 
-func (s *Driver) findExecutor() (execUnit, error) {
+func (d *Driver) findExecutor() (execUnit, error) {
 	eu := execUnit{}
 
-	for ex, handles := range s.config.Executables {
-		if c, ok := handles[s.opts.ref]; ok {
+	for ex, handles := range d.config.Executables {
+		if c, ok := handles[d.opts.ref]; ok {
 			exec := strings.Split(ex, " ")
 			eu.invoker = exec[0]
 			eu.invOpts = exec[1:]
@@ -64,7 +64,7 @@ func (s *Driver) findExecutor() (execUnit, error) {
 	}
 
 	if eu.invoker == "" {
-		return eu, fmt.Errorf("could not find exec handle reference %s in config %s", s.opts.ref, config.ConfigFile)
+		return eu, fmt.Errorf("could not find exec handle reference %s in config %s", d.opts.ref, config.ConfigFile)
 	}
 
 	return eu, nil

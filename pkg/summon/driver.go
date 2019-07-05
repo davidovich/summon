@@ -2,11 +2,15 @@ package summon
 
 import (
 	"os"
+	"fmt"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
 )
+
+// Summoner is the old name for Driver, use Driver instead
+type Summoner = Driver
 
 // Driver manages functionality of summon
 type Driver struct {
@@ -19,51 +23,54 @@ type Driver struct {
 
 // New creates the summoner
 func New(box *packr.Box, opts ...Option) (*Driver, error) {
-	s := &Driver{
+	d := &Driver{
 		box:         box,
 		execCommand: command.New,
 	}
 
-	err := s.Configure(opts...)
+	err := d.Configure(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return s, nil
+	return d, nil
 }
 
 // Configure is used to extract options to the object.
-func (b *Driver) Configure(opts ...Option) error {
-	if !b.configRead {
+func (d *Driver) Configure(opts ...Option) error {
+	if d == nil {
+		return fmt.Errorf("driver cannot be nil")
+	}
+	if !d.configRead {
 		// try to find a config file in the box
-		config, err := b.box.Find(config.ConfigFile)
+		config, err := d.box.Find(config.ConfigFile)
 		if err == nil {
-			err = b.config.Unmarshal(config)
+			err = d.config.Unmarshal(config)
 			if err != nil {
 				return err
 			}
-			b.opts.DefaultsFrom(b.config)
-			b.configRead = true
+			d.opts.DefaultsFrom(d.config)
+			d.configRead = true
 		}
 	}
 
 	for _, opt := range opts {
-		err := opt(&b.opts)
+		err := opt(&d.opts)
 		if err != nil {
 			return err
 		}
 	}
 
-	if b.opts.destination == "" {
-		b.opts.destination = config.DefaultOutputDir
+	if d.opts.destination == "" {
+		d.opts.destination = config.DefaultOutputDir
 	}
 
-	if b.opts.out == nil {
-		b.opts.out = os.Stdout
+	if d.opts.out == nil {
+		d.opts.out = os.Stdout
 	}
 
-	if b.opts.execCommand != nil {
-		b.execCommand = b.opts.execCommand
+	if d.opts.execCommand != nil {
+		d.execCommand = d.opts.execCommand
 	}
 
 	return nil

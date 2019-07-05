@@ -18,7 +18,7 @@ import (
 type mainCmd struct {
 	copyAll  bool
 	dest     string
-	driver   summon.ListerRunnerSummoner
+	driver   *summon.Driver
 	filename string
 	json     string
 	jsonFile string
@@ -27,7 +27,7 @@ type mainCmd struct {
 }
 
 // CreateRootCmd creates the root command
-func CreateRootCmd(driver summon.ListerRunnerSummoner, args []string) *cobra.Command {
+func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 	cmdName := filepath.Base(args[0])
 	var showVersion bool
 

@@ -17,8 +17,8 @@ type Configurer interface {
 	Configure(opts ...Option) error
 }
 
-// Summoner is used to instanciate a real file to the filesystem
-type Summoner interface {
+// Summon is used to instanciate a real file to the filesystem
+type Summon interface {
 	Summon(opts ...Option) (string, error)
 }
 
@@ -31,12 +31,4 @@ type ConfigurableLister interface {
 // Lister allows listing files in the assets
 type Lister interface {
 	List(opts ...Option) ([]string, error)
-}
-
-// ListerRunnerSummoner is the do all interface
-type ListerRunnerSummoner interface {
-	Configurer
-	Lister
-	Runner
-	Summoner
 }
