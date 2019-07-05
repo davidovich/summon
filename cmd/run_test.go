@@ -13,22 +13,52 @@ import (
 
 func TestRunCmd(t *testing.T) {
 	box := packr.New("test box", "testdata")
-	s, _ := summon.New(box)
 
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
+	testCases := []struct {
+		desc	string
+		out string
+		args []string
+		wantError bool
+	}{
+		{
+			desc: "sub-command",
+			args: []string{"echo"},
+			out: "bash echo hello",
+		},
+		{
+			desc: "no-sub-command",
+			wantError: true,
+		},
+		{
+			desc: "invalid-sub-command",
+			args: []string{"ec"},
+			wantError: true,
+		},
+	}
 
-	s.Configure(summon.ExecCmd(execCommand))
-	cmd := newRunCmd(s)
-	cmd.SetArgs([]string{"echo"})
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			s, _ := summon.New(box)
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
 
-	cmd.Execute()
+			s.Configure(summon.ExecCmd(execCommand))
 
-	c, err := testutil.GetCalls(stderr)
-	assert.Nil(t, err)
+			cmd := newRunCmd(s)
+			cmd.SetArgs(tC.args)
 
-	assert.Contains(t, c.Calls[0].Args, "bash echo hello")
+			err := cmd.Execute()
+			if tC.wantError {
+				assert.Error(t, err)
+				return
+			}
+
+			c, err := testutil.GetCalls(stderr)
+			assert.Nil(t, err)
+			assert.Contains(t, c.Calls[0].Args, tC.out)
+		})
+	}
 }
 
 func TestSummonRunHelper(t *testing.T) {

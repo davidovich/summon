@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -131,19 +130,6 @@ func Test_createRootCmd(t *testing.T) {
 			}
 		})
 	}
-}
-
-type fakeSummon struct {
-	*summon.Driver
-	wantErr bool
-}
-
-func (t *fakeSummon) Summon(opts ...summon.Option) (string, error) {
-	if t.wantErr {
-		return "", fmt.Errorf("error in Summon")
-	}
-
-	return t.Driver.Summon()
 }
 
 func Test_mainCmd_run(t *testing.T) {
