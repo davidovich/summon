@@ -8,13 +8,13 @@ import (
 )
 
 // List list the content of the data tree.
-func (s *Summoner) List(opts ...Option) ([]string, error) {
-	s.Configure(opts...)
+func (d *Driver) List(opts ...Option) ([]string, error) {
+	d.Configure(opts...)
 
-	list := s.box.List()
+	list := d.box.List()
 
-	if s.opts.tree {
-		_, assetDir := filepath.Split(s.box.Path)
+	if d.opts.tree {
+		_, assetDir := filepath.Split(d.box.Path)
 		rootTree := &fileTree{
 			Tree:     gotree.New(assetDir),
 			children: map[string]*fileTree{},

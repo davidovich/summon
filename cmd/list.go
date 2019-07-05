@@ -11,12 +11,12 @@ import (
 )
 
 type listCmdOpts struct {
-	driver summon.Interface
+	driver summon.ConfigurableLister
 	tree   bool
 	out    io.Writer
 }
 
-func newListCmd(driver summon.Interface) *cobra.Command {
+func newListCmd(driver summon.ConfigurableLister) *cobra.Command {
 	listCmd := &listCmdOpts{
 		driver: driver,
 	}

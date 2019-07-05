@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime/debug"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/davidovich/summon/pkg/config"
@@ -19,7 +18,7 @@ import (
 type mainCmd struct {
 	copyAll  bool
 	dest     string
-	driver   summon.Interface
+	driver   *summon.Driver
 	filename string
 	json     string
 	jsonFile string
@@ -27,9 +26,9 @@ type mainCmd struct {
 	out      io.Writer
 }
 
-// CreateRoot creates the root command
-func createRootCmd(driver summon.Interface) *cobra.Command {
-	cmdName := filepath.Base(os.Args[0])
+// CreateRootCmd creates the root command
+func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
+	cmdName := filepath.Base(args[0])
 	var showVersion bool
 
 	main := &mainCmd{
@@ -56,8 +55,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 			if showVersion {
 				v, ok := makeVersion()
 				if !ok {
-					fmt.Fprintln(cmd.OutOrStderr(), "Missing build info")
-					return nil
+					return fmt.Errorf("Missing build info")
 				}
 				enc := json.NewEncoder(main.out)
 				enc.SetIndent("", "  ")
@@ -72,7 +70,7 @@ func createRootCmd(driver summon.Interface) *cobra.Command {
 				var j []byte
 				var err error
 				if main.jsonFile == "-" {
-					j, err = ioutil.ReadAll(os.Stdin)
+					j, err = ioutil.ReadAll(cmd.InOrStdin())
 				} else {
 					j, err = ioutil.ReadFile(main.jsonFile)
 				}
@@ -118,16 +116,6 @@ func (m *mainCmd) run() error {
 	return nil
 }
 
-// Execute is the main command entry point
-func Execute(box *packr.Box) error {
-	s, err := summon.New(box)
-	if err != nil {
-		return err
-	}
-	rootCmd := createRootCmd(s)
-	return rootCmd.Execute()
-}
-
 type versionDesc struct {
 	Exe     string `json:"exe,omitempty"`
 	Mod     string `json:"mod"`
@@ -138,8 +126,10 @@ type versionInfo struct {
 	Lib    versionDesc `json:"lib"`
 }
 
+var buildInfo = debug.ReadBuildInfo
+
 func makeVersion() (v versionInfo, ok bool) {
-	bi, ok := debug.ReadBuildInfo()
+	bi, ok := buildInfo()
 	if !ok {
 		return v, false
 	}

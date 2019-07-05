@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/davidovich/summon/pkg/config"
+	"github.com/davidovich/summon/pkg/command"
 )
 
 // options fir all summon commands
@@ -27,6 +28,8 @@ type options struct {
 	out io.Writer
 	// raw disables template rendering
 	raw bool
+	// execCommand overrides the command used to run external processes
+	execCommand command.ExecCommandFn
 }
 
 // Option allows specifying configuration settings
@@ -114,6 +117,14 @@ func JSON(j string) Option {
 			return err
 		}
 		opts.data = data
+		return nil
+	}
+}
+
+// ExecCmd allows changing the execution function for exeternal processes
+func ExecCmd(e command.ExecCommandFn) Option {
+	return func(opts *options) error {
+		opts.execCommand = e
 		return nil
 	}
 }

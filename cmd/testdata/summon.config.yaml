@@ -1,0 +1,14 @@
+version: 1
+aliases:
+  renderableFileName: "{{.FileName}}"
+  a: "subdir/a/a.txt"
+outputdir: "overridden_dir"
+exec:
+  bash:
+    echo: echo hello
+    hello-bash: hello.sh
+  gobin -run:
+    gobin: github.com/myitcv/gobin@v0.0.8
+    gohack: github.com/rogpeppe/gohack
+  python -c:
+    hello: print("hello from python!")

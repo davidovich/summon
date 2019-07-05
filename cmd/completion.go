@@ -8,12 +8,12 @@ import (
 )
 
 type completionCmdOpts struct {
-	driver summon.Interface
+	driver summon.Lister
 	cmd    *cobra.Command
 	out    io.Writer
 }
 
-func newCompletionCmd(driver summon.Interface) *cobra.Command {
+func newCompletionCmd(driver summon.Lister) *cobra.Command {
 	cOpts := completionCmdOpts{
 		driver: driver,
 	}

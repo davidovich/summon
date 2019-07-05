@@ -24,45 +24,45 @@ func GetFs() afero.Fs {
 }
 
 // Summon is the main comnand invocation
-func (s *Summoner) Summon(opts ...Option) (string, error) {
-	if s == nil {
-		return "", fmt.Errorf("Sumonner cannot be nil")
+func (d *Driver) Summon(opts ...Option) (string, error) {
+	if d == nil {
+		return "", fmt.Errorf("Driver cannot be nil")
 	}
 
-	err := s.Configure(opts...)
+	err := d.Configure(opts...)
 	if err != nil {
 		return "", err
 	}
 
-	destination := s.opts.destination
+	destination := d.opts.destination
 	if destination == "-" {
 		destination = ""
 	}
 
-	if s.opts.all {
-		return destination, s.box.Walk(func(path string, info file.File) error {
-			_, err := s.copyOneFile(info, "")
+	if d.opts.all {
+		return destination, d.box.Walk(func(path string, info file.File) error {
+			_, err := d.copyOneFile(info, "")
 			return err
 		})
 	}
 
-	filename := filepath.Clean(s.opts.filename)
-	filename = s.resolveAlias(filename)
+	filename := filepath.Clean(d.opts.filename)
+	filename = d.resolveAlias(filename)
 
 	// User wants to extract a subdirectory
-	if s.box.HasDir(filename) {
+	if d.box.HasDir(filename) {
 		return destination,
-			s.box.WalkPrefix(filename, func(path string, info file.File) error {
-				_, err := s.copyOneFile(info, filename)
+			d.box.WalkPrefix(filename, func(path string, info file.File) error {
+				_, err := d.copyOneFile(info, filename)
 				return err
 			})
 	}
 
-	boxedFile, err := s.box.Open(filename)
+	boxedFile, err := d.box.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	return s.copyOneFile(boxedFile, "")
+	return d.copyOneFile(boxedFile, "")
 }
 
 func renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
@@ -77,25 +77,25 @@ func renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
 	return buf.String(), err
 }
 
-func (s *Summoner) resolveAlias(alias string) string {
-	if resolved, ok := s.config.Aliases[alias]; ok {
+func (d *Driver) resolveAlias(alias string) string {
+	if resolved, ok := d.config.Aliases[alias]; ok {
 		return resolved
 	}
 
 	return alias
 }
 
-func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
-	destination := s.opts.destination
-	// Write the file and print it's path
+func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
+	destination := d.opts.destination
+	// Write the file and print it'd path
 	stat, err := boxedFile.Stat()
 	if err != nil {
 		return "", err
 	}
 	filename := stat.Name()
 
-	if !s.opts.raw {
-		filename, err = renderTemplate(filename, s.opts.data)
+	if !d.opts.raw {
+		filename, err = renderTemplate(filename, d.opts.data)
 		if err != nil {
 			return "", err
 		}
@@ -109,7 +109,7 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 	var out io.Writer
 	summonedFile := ""
 	if destination == "-" {
-		out = s.opts.out
+		out = d.opts.out
 	} else {
 		summonedFile = filepath.Join(destination, filename)
 		err = appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
@@ -128,10 +128,10 @@ func (s *Summoner) copyOneFile(boxedFile http.File, rootDir string) (string, err
 	boxedContent, err := ioutil.ReadAll(boxedFile)
 
 	var rendered string
-	if s.opts.raw {
+	if d.opts.raw {
 		rendered = string(boxedContent)
 	} else {
-		rendered, err = renderTemplate(string(boxedContent), s.opts.data)
+		rendered, err = renderTemplate(string(boxedContent), d.opts.data)
 		if err != nil {
 			return "", err
 		}

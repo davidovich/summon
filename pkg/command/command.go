@@ -4,6 +4,8 @@ import (
 	"os/exec"
 )
 
+type ExecCommandFn func(string, ...string) *Cmd
+
 // Cmd is an exec.Cmd with a configurable Run function
 type Cmd struct {
 	*exec.Cmd

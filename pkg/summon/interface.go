@@ -1,10 +1,34 @@
 package summon
 
-// Interface for summon
-type Interface interface {
-	Configure(opts ...Option) error
-	Summon(opts ...Option) (string, error)
-	List(opts ...Option) ([]string, error)
+// ConfigurableRunner is a runner that can be configured
+type ConfigurableRunner interface {
+	Configurer
+	Runner
+}
+
+// Runner allows executing configured aliases from summon.config.yaml
+type Runner interface {
 	Run(opts ...Option) error
 	ListInvocables() []string
+}
+
+// Configurer allows configuring a driver from variadic options
+type Configurer interface {
+	Configure(opts ...Option) error
+}
+
+// Summon is used to instanciate a real file to the filesystem
+type Summon interface {
+	Summon(opts ...Option) (string, error)
+}
+
+// ConfigurableLister allows configuration and listing
+type ConfigurableLister interface {
+	Configurer
+	Lister
+}
+
+// Lister allows listing files in the assets
+type Lister interface {
+	List(opts ...Option) ([]string, error)
 }
