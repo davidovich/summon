@@ -247,7 +247,7 @@ summon -v
 > New in v0.8.0
 
 ```
-source <(summmon completion)
+source <(summon completion)
 ```
 
 Alternatives
