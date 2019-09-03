@@ -147,7 +147,7 @@ GOBIN=./ gobin [your-go-repo-import]/summon[@wanted-version-or-branch]
 Use-cases
 ---------
 
-### Makefile library
+### Makefile Library
 
 In makefiles it can be useful to centralize certain libraries, notice how
 summon returns the path ot where the resource was instantiated:
@@ -206,29 +206,29 @@ will yield:
    myRenderedFileName
 ```
 
-### Running a go binary
+### Running A Binary
 
 `summon run [executable]` allows to run executables declared in the config file
 
-### Dumping the data at a location
+### Dumping the Data at a Location
 
 ```
 summon --all --out .dir
 ```
 
-### Output a file to stdout
+### Output a File to stdout
 
 ```
 summon my-file -o-
 ```
 
-### Output a template file non rendered
+### Output a Template File Without Rendering
 
 ```
 summon my-template -o- --raw
 ```
 
-### List summon contents
+### List Summon Contents
 
 ```
 summon ls
@@ -236,10 +236,18 @@ summon ls
 summon ls --tree # pretty print hierarchy
 ```
 
-### View data version information
+### View Data Version Information
 
 ```
 summon -v
+```
+
+### Configure Bash Completion
+
+> New in v0.8.0
+
+```
+source <(summmon completion)
 ```
 
 Alternatives
