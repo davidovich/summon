@@ -17,7 +17,7 @@ const scaffoldParams = `{
 
 // Create will create a folder structure at destination with templates resolved
 func Create(destDir, modName, summonerName string, force bool) error {
-	box := packr.New("Summon scaffold template", "../../templates/scaffold")
+	box := packr.New("Summon scaffold template", "../templates/scaffold")
 
 	s, _ := summon.New(box)
 

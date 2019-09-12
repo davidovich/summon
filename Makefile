@@ -11,14 +11,14 @@ endif
 export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
-PACKR_FILE := pkg/scaffold/scaffold-packr.go
+PACKR_FILE := internal/scaffold/scaffold-packr.go
 COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
 
 DOC_REPO_NAME := davidovich.github.io
 DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
 SUMMON_BADGE_JSON_FILE := $(DOC_REPO_NAME)/shields/summon/summon.json
 
-ASSETS := $(shell find templates/scaffold)
+ASSETS := $(shell find internal/templates/scaffold)
 
 all: $(PACKR_FILE) test $(SCAFFOLD_BIN)
 
@@ -34,7 +34,7 @@ $(PACKR_FILE): $(ASSETS)
 ifndef HAS_PACKR2
 	gobin github.com/gobuffalo/packr/v2/packr2
 endif
-	packr2
+	cd internal/scaffold && packr2
 
 GO_TESTS := pkg internal cmd
 COVERAGE := $(foreach t,$(GO_TESTS),build/coverage/report/$(t))
@@ -86,4 +86,4 @@ endif
 .PHONY: clean
 clean:
 	packr2 clean
-	rm -r bin build
+	rm -rf bin build
