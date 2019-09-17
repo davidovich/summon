@@ -1,18 +1,18 @@
 package summon
 
 import (
-	"os"
 	"fmt"
+	"os"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
 )
 
-// Summoner is the old name for Driver, use Driver instead
+// Summoner is the old name for Driver, use Driver instead.
 type Summoner = Driver
 
-// Driver manages functionality of summon
+// Driver manages functionality of summon.
 type Driver struct {
 	opts        options
 	config      config.Config
@@ -21,7 +21,7 @@ type Driver struct {
 	configRead  bool
 }
 
-// New creates the summoner
+// New creates the Driver.
 func New(box *packr.Box, opts ...Option) (*Driver, error) {
 	d := &Driver{
 		box:         box,
