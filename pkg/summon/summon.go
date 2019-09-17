@@ -1,3 +1,7 @@
+// Package summon does the heavy lifting of instanciating files on the user's
+// machine.
+//
+// You can control instantiation by using Options described below.
 package summon
 
 import (
