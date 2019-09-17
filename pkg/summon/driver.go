@@ -4,7 +4,7 @@ import (
 	"os"
 	"fmt"
 
-	"github.com/davidovich/summon/internal/command"
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/gobuffalo/packr/v2"
 )

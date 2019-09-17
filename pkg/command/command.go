@@ -1,5 +1,3 @@
-// Package command is used to define a Cmd proxy. This is used
-// for testing purposes.
 package command
 
 import (
