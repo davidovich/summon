@@ -14,7 +14,7 @@ type execUnit struct {
 	target  string
 }
 
-// Run will run go or executable scripts in the context of the data
+// Run will run go or executable scripts in the context of the data.
 func (d *Driver) Run(opts ...Option) error {
 	d.Configure(opts...)
 
@@ -37,7 +37,7 @@ func (d *Driver) Run(opts ...Option) error {
 	return cmd.Run()
 }
 
-// ListInvocables lists the invocables in the config file
+// ListInvocables lists the invocables in the config file.
 func (d *Driver) ListInvocables() []string {
 	invocables := []string{}
 

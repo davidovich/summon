@@ -1,3 +1,28 @@
+// Package cmd defines the main command line interface entry-points.
+//
+// See summon -h:
+//  summon main command
+//
+//  Usage:
+//    summon [file to summon] [flags]
+//    summon [command]
+//
+//  Available Commands:
+//    completion  Output bash completion script
+//    help        Help about any command
+//    ls          List all summonables
+//    run         Launch executable from summonables
+//
+//  Flags:
+//    -a, --all                restitute all data
+//    -h, --help               help for summon
+//        --json string        json to use to render template
+//        --json-file string   json file to use to render template, with '-' for stdin
+//    -o, --out string         destination directory, or '-' for stdout (default ".summoned")
+//        --raw                output without any template rendering
+//    -v, --version            output data version info and exit
+//
+//  Use "summon [command] --help" for more information about a command.
 package cmd
 
 import (

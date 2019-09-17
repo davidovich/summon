@@ -5,4 +5,4 @@
 // and any other packr generated files.
 package scaffold
 
-import _ "github.com/davidovich/summon/packrd"
+import _ "github.com/davidovich/summon/internal/scaffold/packrd"

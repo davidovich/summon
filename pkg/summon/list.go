@@ -7,7 +7,7 @@ import (
 	gotree "github.com/DiSiqueira/GoTree"
 )
 
-// List list the content of the data tree.
+// List lists the content of the data tree.
 func (d *Driver) List(opts ...Option) ([]string, error) {
 	d.Configure(opts...)
 
@@ -20,7 +20,7 @@ func (d *Driver) List(opts ...Option) ([]string, error) {
 			children: map[string]*fileTree{},
 		}
 		for _, path := range list {
-			rootTree.AddPath(path)
+			rootTree.addPath(path)
 		}
 		return []string{strings.TrimSpace(rootTree.Print())}, nil
 	}
@@ -33,7 +33,7 @@ type fileTree struct {
 	children map[string]*fileTree
 }
 
-func (tree *fileTree) AddPath(path string) {
+func (tree *fileTree) addPath(path string) {
 	// first get path components
 	comp := strings.Split(path, "/")
 

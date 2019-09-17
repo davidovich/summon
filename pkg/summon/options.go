@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 // options fir all summon commands
@@ -33,10 +33,10 @@ type options struct {
 }
 
 // Option allows specifying configuration settings
-// from the user
+// from the user.
 type Option func(*options) error
 
-// Args captures the arguments to be passed to run
+// Args captures the arguments to be passed to run.
 func Args(args ...string) Option {
 	return func(opts *options) error {
 		opts.args = args
@@ -44,7 +44,7 @@ func Args(args ...string) Option {
 	}
 }
 
-// Ref references an exec config entry
+// Ref references an exec config entry.
 func Ref(ref string) Option {
 	return func(opts *options) error {
 		opts.ref = ref
@@ -52,7 +52,7 @@ func Ref(ref string) Option {
 	}
 }
 
-// All specifies to download all config files
+// All specifies to download all config files.
 func All(all bool) Option {
 	return func(opts *options) error {
 		opts.all = all
@@ -60,7 +60,7 @@ func All(all bool) Option {
 	}
 }
 
-// Filename sets the reuqested filename in the boxed data
+// Filename sets the requested filename in the boxed data.
 func Filename(filename string) Option {
 	return func(opts *options) error {
 		opts.filename = filename
@@ -68,7 +68,7 @@ func Filename(filename string) Option {
 	}
 }
 
-// Raw disables any template rendering in assets
+// Raw disables any template rendering in assets.
 func Raw(raw bool) Option {
 	return func(opts *options) error {
 		opts.raw = raw
@@ -76,7 +76,8 @@ func Raw(raw bool) Option {
 	}
 }
 
-// Dest specifies where the file(s) will be rooted
+// Dest specifies where the file(s) will be rooted.
+// '-' is a special value representing stdout.
 func Dest(dest string) Option {
 	return func(opts *options) error {
 		if dest == "" {
@@ -94,7 +95,7 @@ func out(w io.Writer) Option {
 	}
 }
 
-// ShowTree will print a pretty graph of the data tree
+// ShowTree will print a pretty graph of the data tree.
 func ShowTree(tree bool) Option {
 	return func(opts *options) error {
 		opts.tree = tree
@@ -102,7 +103,7 @@ func ShowTree(tree bool) Option {
 	}
 }
 
-// JSON configures the dictionary to use to render a templated asset
+// JSON configures the dictionary to use to render a templated asset.
 func JSON(j string) Option {
 	return func(opts *options) error {
 		if j == "" {
@@ -121,7 +122,7 @@ func JSON(j string) Option {
 	}
 }
 
-// ExecCmd allows changing the execution function for exeternal processes
+// ExecCmd allows changing the execution function for external processes.
 func ExecCmd(e command.ExecCommandFn) Option {
 	return func(opts *options) error {
 		opts.execCommand = e
@@ -129,7 +130,7 @@ func ExecCmd(e command.ExecCommandFn) Option {
 	}
 }
 
-// DefaultsFrom sets options from user config
+// DefaultsFrom sets options from user config.
 func (o *options) DefaultsFrom(conf config.Config) {
 	if conf.OutputDir != "" {
 		o.destination = conf.OutputDir
