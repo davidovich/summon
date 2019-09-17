@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/internal/command"
 	"github.com/spf13/afero"
 )
 

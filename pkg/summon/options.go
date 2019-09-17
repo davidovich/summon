@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/internal/command"
 	"github.com/davidovich/summon/pkg/config"
 )
 
