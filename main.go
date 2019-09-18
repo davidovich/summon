@@ -1,5 +1,5 @@
 /*
-Summon is a library that allows giving a convienient command line to packed assets.
+Package summon is a library that allows giving a convenient command line to packed assets.
 
 The binary created from this library is meant to be shared in a team to allow distribution
 of common assets or code templates.

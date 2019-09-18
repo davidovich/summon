@@ -1,3 +1,33 @@
+/*
+Command scaffold is used to bootstrap a data provider in an empty directory.
+
+Basics
+
+Invoke the scaffolder by using go run in an empty directory:
+
+  $ go run github.com/davidovich/summon/scaffold init [go module name]
+
+Where [go module name] is replaced by the path to the go module of the data
+repo. For example, github.com/davidovich/summon-example-assets was used to
+create the data repo module at https://github.com/davidovich/summon-example-assets.
+
+Help
+
+The scaffold command has a help:
+
+  $ go run github.com/davidovich/summon/scaffold -h
+  initialize an asset directory managed by summon
+
+  Usage:
+    scaffold [command]
+
+  Available Commands:
+    help        Help about any command
+    init        scaffold [root go module name]
+
+  Flags:
+    -h, --help   help for scaffold
+*/
 package main
 
 import (
