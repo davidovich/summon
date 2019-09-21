@@ -36,7 +36,7 @@ func New(box *packr.Box, opts ...Option) (*Driver, error) {
 	return d, nil
 }
 
-// Configure is used to extract options to the object.
+// Configure is used to extract options and customize the summon.Driver.
 func (d *Driver) Configure(opts ...Option) error {
 	if d == nil {
 		return fmt.Errorf("driver cannot be nil")

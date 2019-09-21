@@ -14,7 +14,8 @@ type execUnit struct {
 	target  string
 }
 
-// Run will run go or executable scripts in the context of the data.
+// Run will run executable scripts described in the summon.config.yaml file
+// of the data repository module.
 func (d *Driver) Run(opts ...Option) error {
 	d.Configure(opts...)
 
@@ -37,7 +38,8 @@ func (d *Driver) Run(opts ...Option) error {
 	return cmd.Run()
 }
 
-// ListInvocables lists the invocables in the config file.
+// ListInvocables lists the invocables in the config file under the exec:
+// key.
 func (d *Driver) ListInvocables() []string {
 	invocables := []string{}
 

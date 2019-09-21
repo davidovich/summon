@@ -1,4 +1,5 @@
-// Package summon does the heavy lifting of instanciating files on the user's
+// Package summon does the heavy lifting of instanciating files or
+// executing configured scripts on the user's
 // machine.
 //
 // You can control instantiation by using Options described below.
