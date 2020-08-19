@@ -36,9 +36,9 @@ func (d *Driver) Run(opts ...Option) error {
 		if a == "" {
 			continue
 		}
-		rarg, err := renderTemplate(a, d.opts.data)
+		rarg, err := d.renderTemplate(a, d.opts.data)
 		if err != nil {
-			rarg = a
+			return err
 		}
 		rargs = append(rargs, rarg)
 	}
