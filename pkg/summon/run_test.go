@@ -101,5 +101,5 @@ func TestListInvocables(t *testing.T) {
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "gobin", "gohack", "hello"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "docker", "gobin", "gohack", "hello"}, inv)
 }
