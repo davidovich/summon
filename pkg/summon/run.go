@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"gopkg.in/alessio/shellescape.v1"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -42,6 +43,7 @@ func (d *Driver) Run(opts ...Option) error {
 		if err != nil {
 			return err
 		}
+
 		allrargs, err := shlex.Split(rarg)
 		if err != nil {
 			return err
@@ -81,7 +83,10 @@ func (d *Driver) findExecutor() (execUnit, error) {
 			if len(exec) == 2 {
 				eu.invOpts = strings.TrimSpace(exec[1])
 			}
-			eu.target = c
+			if c != "" {
+				eu.target = shellescape.Quote(c)
+			}
+
 			break
 		}
 	}

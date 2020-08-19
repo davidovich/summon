@@ -10,6 +10,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/sys v0.0.0-20200819091447-39769834ee22 // indirect
+	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
 	gopkg.in/yaml.v2 v2.2.2
 )
 
