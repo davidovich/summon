@@ -6,6 +6,8 @@ outputdir: "overridden_dir"
 exec:
   bash:
     hello-bash: hello.sh
+  docker {{ lower "INFO" }}: # template example
+    docker:
   gobin -run:
     gobin: github.com/myitcv/gobin@v0.0.8
     gohack: github.com/rogpeppe/gohack
