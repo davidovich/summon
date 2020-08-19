@@ -18,7 +18,7 @@ type runCmdOpts struct {
 	dryrun bool
 }
 
-func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
+func newRunCmd(root *cobra.Command, driver summon.ConfigurableRunner, main) *cobra.Command {
 	runCmd := &runCmdOpts{
 		mainCmd: main,
 		driver:  driver,
@@ -70,6 +70,9 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 		rcmd.AddCommand(runSubCmd)
 	}
 
+	if root != nil {
+		root.AddCommand(rcmd)
+	}
 	return rcmd
 }
 

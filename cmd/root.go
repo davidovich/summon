@@ -121,7 +121,7 @@ func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "output data version info and exit")
 
 	rootCmd.AddCommand(newListCmd(driver))
-	rootCmd.AddCommand(newRunCmd(driver, main))
+	newRunCmd(rootCmd, driver, main)
 	rootCmd.AddCommand(newCompletionCmd(driver))
 
 	return rootCmd
