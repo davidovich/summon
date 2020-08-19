@@ -46,10 +46,18 @@ func TestRun(t *testing.T) {
 			helper:  "TestSummonRunHelper",
 			wantErr: true,
 		},
+		{
+			name:    "renderable invoker",
+			helper:  "TestSummonRunHelper",
+			ref:     "docker",
+			expect:  "docker info",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, _ := New(box, Ref(tt.ref))
+			s, err := New(box, Ref(tt.ref))
+			assert.Nil(t, err)
 
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
@@ -93,5 +101,5 @@ func TestListInvocables(t *testing.T) {
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "gobin", "gohack", "hello"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "docker", "gobin", "gohack", "hello"}, inv)
 }

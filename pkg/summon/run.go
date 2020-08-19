@@ -10,7 +10,7 @@ import (
 
 type execUnit struct {
 	invoker string
-	invOpts []string
+	invOpts string
 	target  string
 }
 
@@ -24,13 +24,26 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	args := eu.invOpts
+	args := []string{eu.invOpts}
 	if eu.target != "" {
 		args = append(args, eu.target)
 	}
 	args = append(args, d.opts.args...)
 
-	cmd := d.execCommand(eu.invoker, args...)
+	// render arg templates
+	rargs := make([]string, 0, len(args))
+	for _, a := range args {
+		if a == "" {
+			continue
+		}
+		rarg, err := renderTemplate(a, d.opts.data)
+		if err != nil {
+			rarg = a
+		}
+		rargs = append(rargs, rarg)
+	}
+
+	cmd := d.execCommand(eu.invoker, rargs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -57,9 +70,11 @@ func (d *Driver) findExecutor() (execUnit, error) {
 
 	for ex, handles := range d.config.Executables {
 		if c, ok := handles[d.opts.ref]; ok {
-			exec := strings.Split(ex, " ")
-			eu.invoker = exec[0]
-			eu.invOpts = exec[1:]
+			exec := strings.SplitAfterN(ex, " ", 2)
+			eu.invoker = strings.TrimSpace(exec[0])
+			if len(exec) == 2 {
+				eu.invOpts = strings.TrimSpace(exec[1])
+			}
 			eu.target = c
 			break
 		}
