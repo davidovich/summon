@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/shlex"
+
 	"github.com/davidovich/summon/pkg/config"
 )
 
@@ -40,7 +42,11 @@ func (d *Driver) Run(opts ...Option) error {
 		if err != nil {
 			return err
 		}
-		rargs = append(rargs, rarg)
+		allrargs, err := shlex.Split(rarg)
+		if err != nil {
+			return err
+		}
+		rargs = append(rargs, allrargs...)
 	}
 
 	cmd := d.execCommand(eu.invoker, rargs...)

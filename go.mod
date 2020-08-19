@@ -4,6 +4,7 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20190529205929-3e23dcd4532b
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/gobuffalo/packr/v2 v2.5.1
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/lithammer/dedent v1.1.0
 	github.com/spf13/afero v1.2.1
 	github.com/spf13/cobra v0.0.5
