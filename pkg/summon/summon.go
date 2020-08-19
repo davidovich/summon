@@ -15,7 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2/file"
 	"github.com/spf13/afero"
