@@ -2,7 +2,9 @@ package summon
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -32,6 +34,13 @@ func TestRun(t *testing.T) {
 			helper:  "TestSummonRunHelper",
 			ref:     "hello-bash",
 			expect:  "bash hello.sh",
+			wantErr: false,
+		},
+		{
+			name:    "self-reference-invoker", // bash
+			helper:  "TestSummonRunHelper",
+			ref:     "bash-self-ref",
+			expect:  fmt.Sprintf("bash %s", filepath.Join(os.TempDir(), "hello.sh")),
 			wantErr: false,
 		},
 		{
@@ -101,5 +110,5 @@ func TestListInvocables(t *testing.T) {
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "docker", "gobin", "gohack", "hello"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello"}, inv)
 }

@@ -135,7 +135,7 @@ func Test_createRootCmd(t *testing.T) {
 func Test_mainCmd_run(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "")
+	box := packr.New("test box", t.TempDir())
 	box.AddString("a.txt", "a content")
 	box.AddString("b.txt", "b content")
 

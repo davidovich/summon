@@ -6,6 +6,7 @@ outputdir: "overridden_dir"
 exec:
   bash:
     hello-bash: hello.sh
+    bash-self-ref: '{{ summon "hello.sh" }}'
   docker {{ lower "INFO" }}: # template example
     docker:
   gobin -run:

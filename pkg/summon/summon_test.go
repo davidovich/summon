@@ -16,7 +16,7 @@ import (
 func TestErrorOnMissingFiles(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "")
+	box := packr.New("test box", t.TempDir())
 	s, _ := New(box, Filename("missing"))
 	path, err := s.Summon()
 
@@ -27,7 +27,7 @@ func TestErrorOnMissingFiles(t *testing.T) {
 func TestMultifileInstanciation(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box multifile", "")
+	box := packr.New("test box multifile", t.TempDir())
 
 	box.AddString("text.txt", "this is a text")
 	box.AddString("another.txt", "another text")
@@ -50,7 +50,7 @@ func TestOneFileInstanciation(t *testing.T) {
 
 	a := assert.New(t)
 
-	box := packr.New("t1", "")
+	box := packr.New("t1", t.TempDir())
 	box.AddString("text.txt", "this is a text")
 
 	// create a summoner to summon text.txt at

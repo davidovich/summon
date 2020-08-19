@@ -70,8 +70,12 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 	return d.copyOneFile(boxedFile, "")
 }
 
-func renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
-	t, err := template.New("Summon").Funcs(sprig.FuncMap()).Parse(tmpl)
+func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
+	t, err := template.New("Summon").
+		Funcs(sprig.FuncMap()).
+		Funcs(summonFuncMap(d)).
+		Parse(tmpl)
+
 	if err != nil {
 		return tmpl, err
 	}
@@ -90,6 +94,14 @@ func (d *Driver) resolveAlias(alias string) string {
 	return alias
 }
 
+func summonFuncMap(d *Driver) template.FuncMap {
+	return template.FuncMap{
+		"summon": func(path string) (string, error) {
+			return d.Summon(Filename(path), Dest(os.TempDir()))
+		},
+	}
+}
+
 func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
 	destination := d.opts.destination
 	// Write the file and print it'd path
@@ -100,7 +112,7 @@ func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error
 	filename := stat.Name()
 
 	if !d.opts.raw {
-		filename, err = renderTemplate(filename, d.opts.data)
+		filename, err = d.renderTemplate(filename, d.opts.data)
 		if err != nil {
 			return "", err
 		}
@@ -136,7 +148,7 @@ func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error
 	if d.opts.raw {
 		rendered = string(boxedContent)
 	} else {
-		rendered, err = renderTemplate(string(boxedContent), d.opts.data)
+		rendered, err = d.renderTemplate(string(boxedContent), d.opts.data)
 		if err != nil {
 			return "", err
 		}
