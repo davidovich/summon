@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -39,7 +40,7 @@ func TestRun(t *testing.T) {
 			name:    "self-reference-invoker", // bash
 			helper:  "TestSummonRunHelper",
 			ref:     "bash-self-ref",
-			expect:  fmt.Sprintf("bash %shello.sh", os.TempDir()),
+			expect:  fmt.Sprintf("bash %s", filepath.Join(os.TempDir(), "hello.sh")),
 			wantErr: false,
 		},
 		{
