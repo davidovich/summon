@@ -20,12 +20,18 @@ type Alias map[string]string
 // Executable describes a handle name and invocable target.
 type Executable map[string][]interface{}
 
+// Options holds options
+type Options struct {
+	FoldRunIntoMain bool `yaml:"fold-run-into-main,omitempty"`
+}
+
 // Config is the summon config
 type Config struct {
 	Version         int
 	Aliases         Alias                 `yaml:"aliases"`
 	OutputDir       string                `yaml:"outputdir"`
 	TemplateContext string                `yaml:"templates"`
+	Options         Options               `yaml:"options,omitempty`
 	Executables     map[string]Executable `yaml:"exec"`
 }
 
