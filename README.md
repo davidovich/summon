@@ -73,6 +73,8 @@ You just need to populate the `assets` directory with your own data.
 The `summon/` directory is the entry point to the summon library, and creates the main command executable. This directory will also host
 [packr2](https://github.com/gobuffalo/packr/tree/master/v2) generated data files which encode asset data into go files.
 
+### Summon config File
+
 The `assets/summon.config.yaml` is an (optional) configuration file to customize summon. You can define:
 
 * aliases
@@ -93,7 +95,10 @@ exec:
     # ^ invoker
         # (script can be inlined with | yaml operator)
         hello: echo hello
-        # ^ handle to script (must be unique)
+                 # ^ optional params that will be passed to invoker
+                 # these can contain templates (in v0.10.0)
+        # ^ handle to script (must be unique). This is what you use
+        # to invoke the script: `summon run hello`.
 
     gobin -run: # go gettable executables
         gobin: github.com/myitcv/gobin@v0.0.8
@@ -110,6 +115,9 @@ summon run gohack ...
 ```
 
 This will install gohack using `gobin -run` and forward the arguments that you provide.
+
+> New in v0.10.0, summon now allows templating in the invocable section. See
+> [Templating](#/templating).
 
 ## Build
 
@@ -156,7 +164,8 @@ By default, summon will put summoned scripts at the `.summoned/` directory at ro
 
 ### Templating
 
-Files in the asset directory can contain go templates. This allows applying customization using json data.
+Files in the asset directory can contain go templates. This allows applying
+customization using json data.
 
 > New in v0.3.0, summon now uses the [Sprig templating library](https://github.com/Masterminds/sprig), which provides many useful templating functions.
 
@@ -183,7 +192,6 @@ Hello David!
 
 > New in v0.2.0, you can summon a whole asset hierarchy by using a directory reference when summoning.
 
-
 Templates can also be used in the filenames given in the data hierarchy. This can be useful to scaffold simple projects.
 
 ```bash
@@ -205,7 +213,49 @@ will yield:
 
 ### Running A Binary
 
-`summon run [executable]` allows to run executables declared in the config file
+`summon run [executable]` allows to run executables declared in the
+[config file](#/summon-config-file).
+
+> New in v0.10.0, you can use go templates in the `exec:` section.
+
+> New in v0.10.0, you can summon embedded data in the `exec:` section.
+
+#### Templated invokables
+
+Suppose you want to make a wrapper around a docker utility. The specific
+docker invocation can be quite cryptic. Help your team by adding an invokable
+in the config file:
+
+```yaml
+...
+exec:
+  docker run -v {{ env "PWD" }}:/mounted-app alpine ls:
+      list: /mounted-app
+```
+
+Calling `summon run list` would render the [{{ env "PWD" }}](https://masterminds.github.io/sprig/os.html) part to the current directory, resulting in this call:
+
+`docker run -v [working-dir]:/mounted-app alpine ls /mounted-app`
+
+#### Templated references
+
+Say you would like to bundle a script in the data repo and also use it as an
+invocable (new in v.0.10.0). You would use the `summon` template function bundled in summon:
+
+```yaml
+exec:
+  bash -c:
+    hello: '{{ summon "hello.sh" }}'
+```
+
+Assuming you have a `hello.sh` file in the assets repo, this would result in sommoning the file in a temp dir and calling the invoker:
+
+```
+bash -c /tmp/hello.sh
+```
+
+> Note that `hello.sh` could also contain templates that will be
+rendered at instanciation time.
 
 ### Dumping the Data at a Location
 
