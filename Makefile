@@ -78,7 +78,7 @@ else
 	rm -rf /tmp/$(DOC_REPO_NAME)
 	git -C /tmp clone $(DOC_REPO)
 	cd /tmp/$(DOC_REPO_NAME) && \
-	go run github.com/davidovich/summon-example-assets/summon shields.io/coverage.json.gotmpl --json "{\"Coverage\": \"$$(cat $(COVERAGE_PERCENT_FILE))\"}" -o- > /tmp/$(SUMMON_BADGE_JSON_FILE)
+	gobin -run github.com/davidovich/summon-example-assets/summon shields.io/coverage.json.gotmpl --json "{\"Coverage\": \"$$(cat $(COVERAGE_PERCENT_FILE))\"}" -o- > /tmp/$(SUMMON_BADGE_JSON_FILE)
 	git -C /tmp/$(DOC_REPO_NAME) diff-index --quiet HEAD || git -C /tmp/$(DOC_REPO_NAME) -c user.email=automation@davidovich.com -c user.name=automation commit -am "automated coverage commit of $$(cat $(COVERAGE_PERCENT_FILE)) %" || true
 	git -C /tmp/$(DOC_REPO_NAME) push
 endif
