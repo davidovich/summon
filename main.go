@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/davidovich/summon/cmd"
 	"github.com/davidovich/summon/pkg/summon"
@@ -39,6 +41,14 @@ func Main(args []string, box *packr.Box) int {
 		fmt.Fprintf(os.Stderr, "unable to create initial box: %v", err)
 		return 1
 	}
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range c {
+			os.Exit(0)
+		}
+	}()
 
 	rootCmd := cmd.CreateRootCmd(s, os.Args)
 	err = rootCmd.Execute()
