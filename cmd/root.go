@@ -48,6 +48,7 @@ type mainCmd struct {
 	json     string
 	jsonFile string
 	raw      bool
+	debug    bool
 	out      io.Writer
 	osArgs   *[]string
 }
@@ -113,6 +114,7 @@ func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 
 	rootCmd.PersistentFlags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.PersistentFlags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
+	rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
 	rootCmd.Flags().BoolVar(&main.raw, "raw", false, "output without any template rendering")
 	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory, or '-' for stdout")

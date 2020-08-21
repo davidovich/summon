@@ -28,6 +28,10 @@ type options struct {
 	out io.Writer
 	// raw disables template rendering
 	raw bool
+	// debug enables printing debug info
+	debug bool
+	// dryrun disables any command execution
+	dryrun bool
 	// execCommand overrides the command used to run external processes
 	execCommand command.ExecCommandFn
 }
@@ -56,6 +60,22 @@ func Ref(ref string) Option {
 func All(all bool) Option {
 	return func(opts *options) error {
 		opts.all = all
+		return nil
+	}
+}
+
+// Debug prints debugging info on stderr
+func Debug(enable bool) Option {
+	return func(opts *options) error {
+		opts.debug = enable
+		return nil
+	}
+}
+
+// DryRun does not run the command
+func DryRun(enable bool) Option {
+	return func(opts *options) error {
+		opts.dryrun = enable
 		return nil
 	}
 }

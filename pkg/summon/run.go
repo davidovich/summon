@@ -52,11 +52,23 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	cmd := d.execCommand(eu.invoker, rargs...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if d.opts.debug || d.opts.dryrun {
+		msg := "Executing"
+		if d.opts.dryrun {
+			msg = "Would execute"
+		}
+		fmt.Fprintf(os.Stderr, "%s `%s`...\n", msg, cmd.Args)
+	}
+
+	if !d.opts.dryrun {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		return cmd.Run()
+	}
+	return nil
 }
 
 // ListInvocables lists the invocables in the config file under the exec:
