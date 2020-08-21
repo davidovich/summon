@@ -15,6 +15,7 @@ type runCmdOpts struct {
 	driver summon.ConfigurableRunner
 	ref    string
 	args   []string
+	dryrun bool
 }
 
 func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
@@ -42,6 +43,8 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		Run:                func(cmd *cobra.Command, args []string) {},
 	}
+
+	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
 	subRunE := func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -103,6 +106,8 @@ func (r *runCmdOpts) run() error {
 		summon.Ref(r.ref),
 		summon.Args(r.args...),
 		summon.JSON(r.json),
+		summon.Debug(r.debug),
+		summon.DryRun(r.dryrun),
 	)
 
 	if err != nil {

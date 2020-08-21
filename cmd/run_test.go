@@ -21,6 +21,7 @@ func TestRunCmd(t *testing.T) {
 		args      []string
 		main      *mainCmd
 		wantError bool
+		noCalls   bool
 	}{
 		{
 			desc: "sub-command",
@@ -47,9 +48,15 @@ func TestRunCmd(t *testing.T) {
 			out:       "bash echo hello david --unknown-arg last params",
 			wantError: false,
 		},
+		{
+			desc:      "dry-run",
+			args:      []string{"echo", "-n"},
+			wantError: false,
+			noCalls:   true,
+		},
 	}
 
-	for _, tC := range testCases {
+	for _, tC := range testCases[4:] {
 		t.Run(tC.desc, func(t *testing.T) {
 			s, _ := summon.New(box)
 			stdout := &bytes.Buffer{}
@@ -74,7 +81,11 @@ func TestRunCmd(t *testing.T) {
 
 			c, err := testutil.GetCalls(stderr)
 			assert.Nil(t, err)
-			assert.Contains(t, c.Calls[0].Args, tC.out)
+			if tC.noCalls {
+				assert.Len(t, c.Calls, 0)
+			} else {
+				assert.Contains(t, c.Calls[0].Args, tC.out)
+			}
 		})
 	}
 }
