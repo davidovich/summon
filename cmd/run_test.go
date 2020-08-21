@@ -8,6 +8,7 @@ import (
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/summon"
 	"github.com/gobuffalo/packr/v2"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,24 +16,36 @@ func TestRunCmd(t *testing.T) {
 	box := packr.New("test box", "testdata")
 
 	testCases := []struct {
-		desc	string
-		out string
-		args []string
+		desc      string
+		out       string
+		args      []string
+		main      *mainCmd
 		wantError bool
 	}{
 		{
 			desc: "sub-command",
 			args: []string{"echo"},
-			out: "bash echo hello",
+			out:  "bash echo hello",
 		},
 		{
-			desc: "no-sub-command",
+			desc:      "no-sub-command",
 			wantError: true,
 		},
 		{
-			desc: "invalid-sub-command",
-			args: []string{"ec"},
+			desc:      "invalid-sub-command",
+			args:      []string{"ec"},
 			wantError: true,
+		},
+		{
+			desc: "sub-param-passed",
+			args: []string{"echo", "--unknown-arg", "last", "params"},
+			main: &mainCmd{
+				json: "{\"Name\": \"david\"}",
+			},
+			// this relies on the v0.10.0 version of templated exec
+			// see the echo command in testdata/summon.config.yaml
+			out:       "bash echo hello david --unknown-arg last params",
+			wantError: false,
 		},
 	}
 
@@ -45,7 +58,12 @@ func TestRunCmd(t *testing.T) {
 
 			s.Configure(summon.ExecCmd(execCommand))
 
-			cmd := newRunCmd(s)
+			if tC.main == nil {
+				tC.main = &mainCmd{}
+			}
+			injectOsArgs := append([]string{"summon", "run"}, tC.args...)
+			tC.main.osArgs = &injectOsArgs
+			cmd := newRunCmd(s, tC.main)
 			cmd.SetArgs(tC.args)
 
 			err := cmd.Execute()
@@ -69,4 +87,17 @@ func TestSummonRunHelper(t *testing.T) {
 
 		testutil.WriteCall(call)
 	}
+}
+
+func TestExtractUnknownArgs(t *testing.T) {
+	fset := pflag.NewFlagSet("test", pflag.ContinueOnError)
+
+	json := ""
+	fset.StringVarP(&json, "json", "j", "{}", "")
+
+	unknown := extractUnknownArgs(fset, []string{"--json", "{}", "--unknown"})
+	assert.Equal(t, []string{"--unknown"}, unknown)
+
+	unknownShort := extractUnknownArgs(fset, []string{"-j", "--unknown"})
+	assert.Equal(t, []string{"--unknown"}, unknownShort)
 }
