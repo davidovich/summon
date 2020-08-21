@@ -3,20 +3,29 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/davidovich/summon/pkg/summon"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type runCmdOpts struct {
+	*mainCmd
 	driver summon.ConfigurableRunner
 	ref    string
 	args   []string
 }
 
-func newRunCmd(driver summon.ConfigurableRunner) *cobra.Command {
+func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 	runCmd := &runCmdOpts{
-		driver: driver,
+		mainCmd: main,
+		driver:  driver,
+	}
+
+	osArgs := os.Args
+	if main.osArgs != nil {
+		osArgs = *main.osArgs
 	}
 
 	invocables := driver.ListInvocables()
@@ -38,12 +47,14 @@ func newRunCmd(driver summon.ConfigurableRunner) *cobra.Command {
 		cmd.SilenceUsage = true
 
 		runCmd.ref = cmd.Name()
-		// pass all Args down to the referenced executable
+		// calculate the extra args to pass to the referenced executable
 		// this is due to a limitation in spf13/cobra which eats
 		// all unknown args or flags making it hard to wrap other commands.
-		// We are lucky, we know the structure, just pass all args.
+		// We are lucky, we know the prefix order of params,
+		// extract args after the run command [summon run handle]
 		// see https://github.com/spf13/pflag/pull/160
-		runCmd.args = os.Args[3:] // 3 is [summon, run, handle]
+		// and https://github.com/spf13/cobra/issues/739
+		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[3:])
 		return runCmd.run()
 	}
 	for _, i := range invocables {
@@ -58,11 +69,45 @@ func newRunCmd(driver summon.ConfigurableRunner) *cobra.Command {
 	return rcmd
 }
 
+func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {
+	unknownArgs := []string{}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		var f *pflag.Flag
+		if a[0] == '-' {
+			if a[1] == '-' {
+				f = flags.Lookup(strings.SplitN(a[2:], "=", 2)[0])
+			} else {
+				for _, s := range a[1:] {
+					f = flags.ShorthandLookup(string(s))
+					if f == nil {
+						break
+					}
+				}
+			}
+		}
+		if f != nil {
+			if f.NoOptDefVal == "" && i+1 < len(args) && f.Value.String() == args[i+1] {
+				i++
+			}
+			continue
+		}
+		unknownArgs = append(unknownArgs, a)
+	}
+	return unknownArgs
+}
+
 func (r *runCmdOpts) run() error {
-	r.driver.Configure(
+	err := r.driver.Configure(
 		summon.Ref(r.ref),
 		summon.Args(r.args...),
+		summon.JSON(r.json),
 	)
+
+	if err != nil {
+		return err
+	}
 
 	return r.driver.Run()
 }
