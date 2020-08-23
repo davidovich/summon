@@ -81,6 +81,8 @@ The `assets/summon.config.yaml` is an (optional) configuration file to customize
 * default output-dir
 * executables
 
+> Breaking in v0.11.0: Handles now take an array of params
+
 ```yaml
 version: 1
 outputdir: .summoned
@@ -94,18 +96,18 @@ exec:
     bash -c:
     # ^ invoker
         # (script can be inlined with | yaml operator)
-        hello: echo hello
+        hello: [echo, hello]
                  # ^ optional params that will be passed to invoker
                  # these can contain templates (in v0.10.0)
         # ^ handle to script (must be unique). This is what you use
         # to invoke the script: `summon run hello`.
 
     gobin -run: # go gettable executables
-        gobin: github.com/myitcv/gobin@v0.0.8
-        gohack: github.com/rogppepe/gohack
+        gobin: [github.com/myitcv/gobin@v0.0.8]
+        gohack: [github.com/rogppepe/gohack]
 
     python -c:
-        hello-python: print("hello from python!")
+        hello-python: [print("hello from python!")]
 ```
 
 You can invoke executables like so:
@@ -230,7 +232,7 @@ in the config file:
 ...
 exec:
   docker run -v {{ env "PWD" }}:/mounted-app alpine ls:
-      list: /mounted-app
+      list: [/mounted-app]
 ```
 
 Calling `summon run list` would render the [{{ env "PWD" }}](https://masterminds.github.io/sprig/os.html) part to the current directory, resulting in this call:
@@ -245,7 +247,7 @@ invocable (new in v.0.10.0). You would use the `summon` template function bundle
 ```yaml
 exec:
   bash -c:
-    hello: '{{ summon "hello.sh" }}'
+    hello: ['{{ summon "hello.sh" }}']
 ```
 
 Assuming you have a `hello.sh` file in the assets repo, this would result in sommoning the file in a temp dir and calling the invoker:
