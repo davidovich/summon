@@ -14,30 +14,34 @@ func TestConfigWriter(t *testing.T) {
 	c := Config{
 		Version: 1,
 		Executables: map[string]Executable{
-			"go": Executable{
-				"gobin":  "github.com/myitcv/gobin",
-				"gohack": "github.com/rogppepe/gohack",
+			"go": {
+				"gobin":  []string{"github.com/myitcv/gobin"},
+				"gohack": []string{"github.com/rogppepe/gohack"},
 			},
-			"bash":      Executable{"hello-bash": "hello.sh"},
-			"python -c": Executable{"hello": "print(\"hello from python!\")"},
+			"bash":      {"hello-bash": []string{"hello.sh"}},
+			"python -c": {"hello": []string{"print(\"hello from python!\")"}},
 		},
 	}
 
 	config, _ := yaml.Marshal(&c)
 
-	assert.Equal(t, dedent.Dedent(`
-    version: 1
-    aliases: {}
-    outputdir: ""
-    exec:
-      bash:
-        hello-bash: hello.sh
-      go:
-        gobin: github.com/myitcv/gobin
-        gohack: github.com/rogppepe/gohack
-      python -c:
-        hello: print("hello from python!")
-    `), "\n"+string(config))
+	assert.Equal(t, `
+version: 1
+aliases: {}
+outputdir: ""
+exec:
+  bash:
+    hello-bash:
+    - hello.sh
+  go:
+    gobin:
+    - github.com/myitcv/gobin
+    gohack:
+    - github.com/rogppepe/gohack
+  python -c:
+    hello:
+    - print("hello from python!")
+`, "\n"+string(config))
 }
 
 func TestConfigReader(t *testing.T) {
@@ -45,12 +49,12 @@ func TestConfigReader(t *testing.T) {
     version: 1
     exec:
       python -c:
-        hello: print("hello")
+        hello: [print("hello")]
 	`)
 
 	c := Config{}
 	err := c.Unmarshal([]byte(config))
 
 	require.Nil(t, err)
-	assert.Equal(t, "print(\"hello\")", c.Executables["python -c"]["hello"])
+	assert.Equal(t, "print(\"hello\")", c.Executables["python -c"]["hello"][0])
 }

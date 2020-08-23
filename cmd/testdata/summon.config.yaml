@@ -5,10 +5,12 @@ aliases:
 outputdir: "overridden_dir"
 exec:
   bash:
-    echo: echo hello {{ .Name -}}
-    hello-bash: hello.sh
+    echo:
+      - echo
+      - hello {{ .Name -}}
+    hello-bash: [hello.sh]
   gobin -run:
-    gobin: github.com/myitcv/gobin@v0.0.8
-    gohack: github.com/rogpeppe/gohack
+    gobin: [github.com/myitcv/gobin@v0.0.8]
+    gohack: [github.com/rogpeppe/gohack]
   python -c:
-    hello: print("hello from python!")
+    hello: [print("hello from python!")]

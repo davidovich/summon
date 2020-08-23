@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
-	"gopkg.in/alessio/shellescape.v1"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -14,42 +13,42 @@ import (
 type execUnit struct {
 	invoker string
 	invOpts string
-	target  string
+	targets []string
 }
 
 // Run will run executable scripts described in the summon.config.yaml file
 // of the data repository module.
 func (d *Driver) Run(opts ...Option) error {
-	d.Configure(opts...)
+	err := d.Configure(opts...)
+	if err != nil {
+		return err
+	}
 
 	eu, err := d.findExecutor()
 	if err != nil {
 		return err
 	}
 
-	args := []string{eu.invOpts}
-	if eu.target != "" {
-		args = append(args, eu.target)
+	eu.invOpts, err = d.renderTemplate(eu.invOpts, d.opts.data)
+	if err != nil {
+		return err
 	}
-	args = append(args, d.opts.args...)
 
-	// render arg templates
-	rargs := make([]string, 0, len(args))
-	for _, a := range args {
-		if a == "" {
-			continue
-		}
-		rarg, err := d.renderTemplate(a, d.opts.data)
+	targets := make([]string, 0, len(eu.targets))
+	for _, t := range eu.targets {
+		rt, err := d.renderTemplate(t, d.opts.data)
 		if err != nil {
 			return err
 		}
-
-		allrargs, err := shlex.Split(rarg)
-		if err != nil {
-			return err
-		}
-		rargs = append(rargs, allrargs...)
+		targets = append(targets, rt)
 	}
+
+	rargs, err := shlex.Split(eu.invOpts)
+	if err != nil {
+		return err
+	}
+
+	rargs = append(rargs, append(targets, d.opts.args...)...)
 
 	cmd := d.execCommand(eu.invoker, rargs...)
 
@@ -58,7 +57,7 @@ func (d *Driver) Run(opts ...Option) error {
 		if d.opts.dryrun {
 			msg = "Would execute"
 		}
-		fmt.Fprintf(os.Stderr, "%s `%s`...\n", msg, cmd.Args)
+		fmt.Fprintf(os.Stderr, "%s `%s`...\n", msg, cmd)
 	}
 
 	if !d.opts.dryrun {
@@ -68,6 +67,7 @@ func (d *Driver) Run(opts ...Option) error {
 
 		return cmd.Run()
 	}
+
 	return nil
 }
 
@@ -95,9 +95,8 @@ func (d *Driver) findExecutor() (execUnit, error) {
 			if len(exec) == 2 {
 				eu.invOpts = strings.TrimSpace(exec[1])
 			}
-			if c != "" {
-				eu.target = shellescape.Quote(c)
-			}
+
+			eu.targets = c
 
 			break
 		}
