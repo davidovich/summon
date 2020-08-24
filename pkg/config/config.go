@@ -17,8 +17,8 @@ var OutputDir = DefaultOutputDir
 // Alias gives a shortcut to a name in data.
 type Alias map[string]string
 
-// Executable describes a Name and invocable target.
-type Executable map[string]string
+// Executable describes a handle name and invocable target.
+type Executable map[string][]string
 
 // Config is the summon config
 type Config struct {
