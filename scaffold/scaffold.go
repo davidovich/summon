@@ -3,9 +3,10 @@ Command scaffold is used to bootstrap a data provider in an empty directory.
 
 Basics
 
-Invoke the scaffolder by using go run in an empty directory:
+Invoke the scaffolder by using gobin -run in an empty directory. gobin can be
+installed from https://github.com/myitcv/gobin:
 
-  $ go run github.com/davidovich/summon/scaffold init [go module name]
+  $ gobin -run github.com/davidovich/summon/scaffold init [go module name]
 
 Where [go module name] is replaced by the path to the go module of the data
 repo. For example, github.com/davidovich/summon-example-assets was used to
@@ -15,7 +16,7 @@ Help
 
 The scaffold command has a help:
 
-  $ go run github.com/davidovich/summon/scaffold -h
+  $ gobin -run github.com/davidovich/summon/scaffold -h
   initialize an asset directory managed by summon
 
   Usage:
