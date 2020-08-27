@@ -15,6 +15,9 @@ import (
 // Summoner is the old name for Driver, use Driver instead.
 type Summoner = Driver
 
+// Name holds the name of the driver executable. By default it is "summon"
+var Name = "summon"
+
 // Driver manages functionality of summon.
 type Driver struct {
 	opts        options
@@ -54,7 +57,7 @@ func (d *Driver) Configure(opts ...Option) error {
 				return err
 			}
 			d.opts.DefaultsFrom(d.config)
-			d.templateCtx, err = template.New("Summon").
+			d.templateCtx, err = template.New(Name).
 				Option("missingkey=zero").
 				Funcs(sprig.TxtFuncMap()).
 				Funcs(summonFuncMap(d)).
