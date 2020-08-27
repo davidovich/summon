@@ -7,20 +7,23 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/davidovich/summon/internal/testutil"
 )
 
 func TestRun(t *testing.T) {
 	box := packr.New("test run box", "testdata")
 
 	tests := []struct {
-		name    string
-		helper  string
-		ref     string
-		expect  string
-		wantErr bool
+		name     string
+		helper   string
+		ref      string
+		expect   string
+		contains string
+		args     []string
+		wantErr  bool
 	}{
 		{
 			name:    "composite-invoker", // python -c
@@ -62,6 +65,28 @@ func TestRun(t *testing.T) {
 			expect:  "docker info",
 			wantErr: false,
 		},
+		{
+			name:    "args access",
+			helper:  "TestSummonRunHelper",
+			ref:     "args",
+			args:    []string{"a", "b"},
+			expect:  "bash args: [a b]",
+			wantErr: false,
+		},
+		{
+			name:     "osArgs access",
+			helper:   "TestSummonRunHelper",
+			ref:      "osArgs",
+			contains: "test",
+			wantErr:  false,
+		},
+		{
+			name:     "global template render",
+			helper:   "TestSummonRunHelper",
+			ref:      "templateref",
+			contains: "bash 1.2.3",
+			wantErr:  false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -72,7 +97,7 @@ func TestRun(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)))
 
-			if err := s.Run(); (err != nil) != tt.wantErr {
+			if err := s.Run(Args(tt.args...)); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -81,8 +106,10 @@ func TestRun(t *testing.T) {
 
 			if tt.wantErr {
 				assert.Len(t, c.Calls, 0)
-			} else {
+			} else if tt.expect != "" {
 				assert.Equal(t, tt.expect, c.Calls[0].Args)
+			} else if tt.contains != "" {
+				assert.Contains(t, c.Calls[0].Args, tt.contains)
 			}
 		})
 	}
@@ -110,5 +137,5 @@ func TestListInvocables(t *testing.T) {
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello", "args", "osArgs", "templateref"}, inv)
 }

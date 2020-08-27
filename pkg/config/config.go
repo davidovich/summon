@@ -18,14 +18,15 @@ var OutputDir = DefaultOutputDir
 type Alias map[string]string
 
 // Executable describes a handle name and invocable target.
-type Executable map[string][]string
+type Executable map[string][]interface{}
 
 // Config is the summon config
 type Config struct {
-	Version     int
-	Aliases     Alias                 `yaml:"aliases"`
-	OutputDir   string                `yaml:"outputdir"`
-	Executables map[string]Executable `yaml:"exec"`
+	Version         int
+	Aliases         Alias                 `yaml:"aliases"`
+	OutputDir       string                `yaml:"outputdir"`
+	TemplateContext string                `yaml:"templates"`
+	Executables     map[string]Executable `yaml:"exec"`
 }
 
 // Unmarshal hidrates the config from config bytes.

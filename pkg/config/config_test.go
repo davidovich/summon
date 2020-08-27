@@ -15,11 +15,11 @@ func TestConfigWriter(t *testing.T) {
 		Version: 1,
 		Executables: map[string]Executable{
 			"go": {
-				"gobin":  []string{"github.com/myitcv/gobin"},
-				"gohack": []string{"github.com/rogppepe/gohack"},
+				"gobin":  []interface{}{"github.com/myitcv/gobin"},
+				"gohack": []interface{}{"github.com/rogppepe/gohack"},
 			},
-			"bash":      {"hello-bash": []string{"hello.sh"}},
-			"python -c": {"hello": []string{"print(\"hello from python!\")"}},
+			"bash":      {"hello-bash": []interface{}{"hello.sh"}},
+			"python -c": {"hello": []interface{}{"print(\"hello from python!\")"}},
 		},
 	}
 
@@ -29,6 +29,7 @@ func TestConfigWriter(t *testing.T) {
 version: 1
 aliases: {}
 outputdir: ""
+templates: ""
 exec:
   bash:
     hello-bash:
