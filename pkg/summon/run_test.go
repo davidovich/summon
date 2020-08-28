@@ -69,8 +69,16 @@ func TestRun(t *testing.T) {
 			name:    "args access",
 			helper:  "TestSummonRunHelper",
 			ref:     "args",
-			args:    []string{"a", "b"},
-			expect:  "bash args: [a b]",
+			args:    []string{"a c", "b"},
+			expect:  "bash args: a c b",
+			wantErr: false,
+		},
+		{
+			name:    "one arg access remainder passed",
+			helper:  "TestSummonRunHelper",
+			ref:     "one-arg",
+			args:    []string{"\"acce ssed\"", "remainder1", "remainder2"},
+			expect:  "bash args: \"acce ssed\" remainder1 remainder2",
 			wantErr: false,
 		},
 		{
@@ -137,5 +145,5 @@ func TestListInvocables(t *testing.T) {
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello", "args", "osArgs", "templateref"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello", "args", "one-arg", "osArgs", "templateref"}, inv)
 }

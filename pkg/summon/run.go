@@ -35,6 +35,7 @@ func (d *Driver) Run(opts ...Option) error {
 	if data == nil {
 		data = map[string]interface{}{}
 	}
+
 	data["osArgs"] = os.Args
 	data["args"] = d.opts.args
 
@@ -44,19 +45,35 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	targets := make([]string, 0, len(eu.targets))
-	suppressArgsAppend := false
+	nonConsumedArgs := []string{}
 	for _, t := range FlattenStrings(eu.targets) {
+		rt, err := d.renderTemplate(t, data)
+
 		// check if we reference args so we don't append them twice
 		// if the user uses args, he/she will find it surprising that they
 		// are also appended unconditionally
-		if strings.Contains(strings.ReplaceAll(t, " ", ""), ".args") {
-			suppressArgsAppend = true
+		if strings.Contains(t, ".args") {
+			for _, a := range d.opts.args {
+				if !strings.Contains(rt, a) {
+					nonConsumedArgs = append(nonConsumedArgs, a)
+				}
+			}
 		}
-		rt, err := d.renderTemplate(t, data)
+
 		if err != nil {
 			return err
 		}
-		targets = append(targets, rt)
+
+		// Convert array to real array
+		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
+			var s []string
+			for _, se := range strings.Split(strings.Trim(rt, "[]"), " ") {
+				s = append(s, se)
+			}
+			targets = append(targets, s...)
+		} else {
+			targets = append(targets, rt)
+		}
 	}
 
 	rargs, err := shlex.Split(invOpts)
@@ -65,9 +82,7 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	rargs = append(rargs, targets...)
-	if !suppressArgsAppend {
-		rargs = append(rargs, d.opts.args...)
-	}
+	rargs = append(rargs, nonConsumedArgs...)
 
 	cmd := d.execCommand(eu.invoker, rargs...)
 
