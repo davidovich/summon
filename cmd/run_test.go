@@ -109,6 +109,12 @@ func TestExtractUnknownArgs(t *testing.T) {
 	unknown := extractUnknownArgs(fset, []string{"--json", "{}", "--unknown"})
 	assert.Equal(t, []string{"--unknown"}, unknown)
 
+	unknown = extractUnknownArgs(fset, []string{"--"})
+	assert.Equal(t, []string{"--"}, unknown)
+
 	unknownShort := extractUnknownArgs(fset, []string{"-j", "--unknown"})
 	assert.Equal(t, []string{"--unknown"}, unknownShort)
+
+	unknownShort = extractUnknownArgs(fset, []string{"-"})
+	assert.Equal(t, []string{"-"}, unknownShort)
 }
