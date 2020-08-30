@@ -309,30 +309,37 @@ Here, when you run with the `echo` handle, the arrays will be flattened to produ
 
 > New in v0.12.0
 
-Summon provisions `.args` and `.osArgs` as slices of arguments. You can use
+Summon provisions the `args`, `arg` functions and `.osArgs` slice of arguments. You can use
 these in a template of the params array.
 
-* `.args` will contain unknown args passed from the command-line (see `ls` handle
+* `args` will contain unknown args passed from the command-line (see `ls` handle
   defined in the [config section](#/summon-config-file))
 
     ```bash
     summon run ls -al
-                 [ ^ .args array starts here ]
+                 [ ^ args array starts here ]
     ```
 
-    Here, `.args` would contain `[-al]`.
+    Here, `{{ args }}` would return `[-al]`.
 
-    When used, summon will disable appending user args, as this would
-    surprisingly double the args.
+* `arg` allows accessing one arg, with an error message if arg is not found
 
     ```yaml
     ...
     exec:
        bash -c:
-          ls: [ls, '{{ index .args 0}}']
+          ls: [ls, '{{ arg 0 "error msg" }}']
     ```
 
+When used, summon will remove the consumed args, as this would
+surprisingly double the args. In other words, when accessing `{{ args }}`,
+summon will not append the resulting args, and using `{{ arg 0 "error" }}`,
+summon would only append the unconsumed args (after index 0).
+
 * `.osArgs` contains the whole command-line slice
+
+If the result of using args is a string representation of an array, like
+`[a b c d]` this array will be flattened to the final args array.
 
 ### Dump the Data at a Location
 

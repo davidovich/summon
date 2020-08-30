@@ -114,6 +114,31 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},
+		"arg": func(index int, missingError string) (string, error) {
+			if d.opts.args == nil {
+				return "", fmt.Errorf(missingError)
+			}
+			if index > len(d.opts.args) {
+				return "", fmt.Errorf("%s: index %v out of range, args: %s", missingError, index, d.opts.args)
+			}
+
+			retrieved := d.opts.args[index]
+			if d.opts.argsConsumed == nil {
+				d.opts.argsConsumed = map[int]struct{}{}
+			}
+			d.opts.argsConsumed[index] = struct{}{}
+			return retrieved, nil
+		},
+		"args": func() []string {
+			if d.opts.argsConsumed == nil {
+				d.opts.argsConsumed = make(map[int]struct{}, len(d.opts.args))
+			}
+			for i := range d.opts.args {
+				d.opts.argsConsumed[i] = struct{}{}
+			}
+
+			return d.opts.args
+		},
 	}
 }
 

@@ -37,7 +37,6 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	data["osArgs"] = os.Args
-	data["args"] = d.opts.args
 
 	invOpts, err := d.renderTemplate(eu.invOpts, data)
 	if err != nil {
@@ -45,35 +44,23 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	targets := make([]string, 0, len(eu.targets))
-	nonConsumedArgs := []string{}
+	var renderedTargets []string
 	for _, t := range FlattenStrings(eu.targets) {
 		rt, err := d.renderTemplate(t, data)
-
-		// check if we reference args so we don't append them twice
-		// if the user uses args, he/she will find it surprising that they
-		// are also appended unconditionally
-		if strings.Contains(t, ".args") {
-			for _, a := range d.opts.args {
-				if !strings.Contains(rt, a) {
-					nonConsumedArgs = append(nonConsumedArgs, a)
-				}
-			}
-		}
-
 		if err != nil {
 			return err
 		}
 
-		// Convert array to real array
+		renderedTargets = []string{rt}
+		// Convert array to real array and merge
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			var s []string
-			for _, se := range strings.Split(strings.Trim(rt, "[]"), " ") {
-				s = append(s, se)
+			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
+			if err != nil {
+				return err
 			}
-			targets = append(targets, s...)
-		} else {
-			targets = append(targets, rt)
 		}
+
+		targets = append(targets, renderedTargets...)
 	}
 
 	rargs, err := shlex.Split(invOpts)
@@ -82,7 +69,9 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	rargs = append(rargs, targets...)
-	rargs = append(rargs, nonConsumedArgs...)
+
+	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
+	rargs = append(rargs, unusedArgs...)
 
 	cmd := d.execCommand(eu.invoker, rargs...)
 
@@ -103,6 +92,20 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	return nil
+}
+
+func computeUnused(args []string, consumed map[int]struct{}) []string {
+	unusedArgs := []string{}
+	if len(consumed) == len(args) {
+		return unusedArgs
+	}
+	for i, a := range args {
+		if _, ok := consumed[i]; ok {
+			continue
+		}
+		unusedArgs = append(unusedArgs, a)
+	}
+	return unusedArgs
 }
 
 // ListInvocables lists the invocables in the config file under the exec:
