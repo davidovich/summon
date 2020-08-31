@@ -89,6 +89,14 @@ outputdir: .summoned
 aliases:
     simple-handle: a/file/in/asset-dir
 
+templates: |
+  {{/* new starting at v0.12.0, global templates available to command params */}}
+  {{- define "maybeChangeUser" -}}
+    {{- if (env "SUMMON_CHANGE_USER") -}}
+      -u {{ env "SUMMON_CHANGE_USER" }}
+    {{- end -}}
+  {{- end -}}
+
 # exec section declares invokables with their handle
 # a same handle name cannot be in two invokers at the same time
 # they are grouped by invoker.
@@ -98,7 +106,7 @@ exec:
         # (script can be inlined with | yaml operator)
         hello: [echo, hello]
                  # ^ optional params that will be passed to invoker
-                 # these can contain templates (in v0.10.0)
+                 # these can contain templates (starting at v0.10.0)
         # ^ handle to script (must be unique). This is what you use
         # to invoke the script: `summon run hello`.
 
@@ -108,6 +116,15 @@ exec:
 
     python -c:
         hello-python: [print("hello from python!")]
+
+    # Expose docker containers commands without having
+    # to remember mounting volumes, etc.
+    # `?` YAML construct allows multi-line keys for easier reading
+    ? docker run -ti --rm -w /{{ env "PWD" | base }}
+      -v {{ env "PWD" }}:/{{ env "PWD" | base }}
+      {{ template "maybeChangeUser" }}
+      alpine
+    : ls: [ls]
 ```
 
 You can invoke executables like so:
@@ -138,8 +155,15 @@ In an empty asset data repository directory:
 ## Install
 
 Install (using gobin) the asset repo which will become the summon executable.
-If the consumer site needs to version the data alonside the consumer (each site could have a specific version of data),
-you have two alternatives:
+You have these alternatives:
+
+* change to a directory that does not contain a go.mod. This installs globally:
+
+```bash
+cd /tmp
+GO111MODULE=on go get [your-go-repo-import]/summon[@wanted-version-or-branch]
+cd -
+```
 
 * use gobin to install summon in the consuming site:
 
@@ -148,8 +172,6 @@ GO111MODULE=off go get -u github.com/myitcv/gobin
 # install the data repository as summon executable at the site
 GOBIN=./ gobin [your-go-repo-import]/summon[@wanted-version-or-branch]
 ```
-
-* declare a [tools.go](https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module) file (will update when I get to testing this).
 
 ## Use-cases
 
@@ -218,11 +240,11 @@ will yield:
 `summon run [executable]` allows to run executables declared in the
 [config file](#/summon-config-file).
 
-> New in v0.10.0, you can use go templates in the `exec:` section.
+> New in v0.10.0:
+> * you can use go templates in the `exec:` section.
+> * you can summon embedded data in the `exec:` section.
 
-> New in v0.10.0, you can summon embedded data in the `exec:` section.
-
-#### Templated invokables
+#### Templated Invokables
 
 Suppose you want to make a wrapper around a docker utility. The specific
 docker invocation can be quite cryptic. Help your team by adding an invokable
@@ -239,7 +261,7 @@ Calling `summon run list` would render the [{{ env "PWD" }}](https://masterminds
 
 `docker run -v [working-dir]:/mounted-app alpine ls /mounted-app`
 
-#### Templated references
+#### Templated References
 
 Say you would like to bundle a script in the data repo and also use it as an
 invocable (new in v.0.10.0). You would use the `summon` template function bundled in summon:
@@ -259,7 +281,67 @@ bash -c /tmp/hello.sh
 > Note that `hello.sh` could also contain templates that will be
 rendered at instanciation time.
 
-### Dumping the Data at a Location
+#### Keeping DRY
+
+> New in v0.12.0
+
+Sometimes you will use Summon as a proxy on a docker container. Some
+parameters will always need to be passed (volume mounts for example). You
+can use YAML anchors to define the static (but required) params in
+`summon.config.yaml`:
+
+
+```yaml
+.base: &baseargs
+    - echo
+    - b
+    - c
+
+exec:
+    bash -c:
+      echo: [*baseargs, d]
+```
+
+Here, when you run with the `echo` handle, the arrays will be flattened to produce
+`[echo, b, c, d]` for the construction of the command.
+
+#### Using Args
+
+> New in v0.12.0
+
+Summon provisions the `args`, `arg` functions and `.osArgs` slice of arguments. You can use
+these in a template of the params array.
+
+* `args` will contain unknown args passed from the command-line (see `ls` handle
+  defined in the [config section](#/summon-config-file))
+
+    ```bash
+    summon run ls -al
+                 [ ^ args array starts here ]
+    ```
+
+    Here, `{{ args }}` would return `[-al]`.
+
+* `arg` allows accessing one arg, with an error message if arg is not found
+
+    ```yaml
+    ...
+    exec:
+       bash -c:
+          ls: [ls, '{{ arg 0 "error msg" }}']
+    ```
+
+When used, summon will remove the consumed args, as this would
+surprisingly double the args. In other words, when accessing `{{ args }}`,
+summon will not append the resulting args, and using `{{ arg 0 "error" }}`,
+summon would only append the unconsumed args (after index 0).
+
+* `.osArgs` contains the whole command-line slice
+
+If the result of using args is a string representation of an array, like
+`[a b c d]` this array will be flattened to the final args array.
+
+### Dump the Data at a Location
 
 ```bash
 summon --all --out .dir
@@ -285,6 +367,15 @@ summon ls
 summon ls --tree # pretty print hierarchy
 ```
 
+### Evaluate what will be run (--dry-run)
+
+> New in v0.10.0
+
+```bash
+summon run -n ls -al
+Would execute `/usr/local/bin/docker run -ti --rm -w /application -v [current-dir]:/application alpine ls -al`...
+```
+
 ### View Data Version Information
 
 ```bash
@@ -299,21 +390,36 @@ summon -v
 source <(summon completion)
 ```
 
-## Alternatives
+## TODO
 
-Why not use git directly?
+* [ ] Add a `required` template function to enforce `.args` presence, and error
+  with a message.
+* [ ] Add help documentation for proxied commands
+* [ ] Explore ways to hook completions from proxied commands.
 
-While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
+## FAQ
 
-In summon you leverage go execution to bootstrap in one phase. So your data can do:
+* Why is the `exec:` config file ordered by "invoker" ?
 
-```bash
-go run github.com/davidovich/summon-example-assets/summon --help
-# or list the data deliverables
-go run github.com/davidovich/summon-example-assets/summon ls
-# or
-# let summon configure the path so it can invoke a go executable
-# (here go-gettable-executable is a reference to a go gettable repo), and will
-# result in an executable tailored for your destination os and architecture (because built on the fly).
-go run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
-```
+  Summon is oriented at providing an easy CLI interface to complex sub programs.
+  In this regard, it tends to group invocations in the same execution "environment".
+
+  This helps in scenarios of supplying a dev container from which are surfaced
+  tools for your team.
+
+* Why not use git directly ?
+
+  While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
+
+  In summon you leverage go execution to bootstrap in one phase. So your data can do:
+
+  ```bash
+  gobin -run github.com/davidovich/summon-example-assets/summon --help
+  # or list the data deliverables
+  gobin -run github.com/davidovich/summon-example-assets/summon ls
+  # or
+  # let summon configure the path so it can invoke a go executable
+  # (here go-gettable-executable is a reference to a go gettable repo), and will
+  # result in an executable tailored for your destination os and architecture (because built on the fly).
+  gobin -run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
+  ```

@@ -8,7 +8,7 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
-// options fir all summon commands
+// options for all summon commands
 type options struct {
 	// copy all the tree
 	all bool
@@ -22,6 +22,8 @@ type options struct {
 	ref string
 	// args to exec entry
 	args []string
+	// keep track of arg indexes that were used
+	argsConsumed map[int]struct{}
 	// template rendering data
 	data map[string]interface{}
 	// out

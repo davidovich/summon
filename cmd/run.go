@@ -56,7 +56,8 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 		// We are lucky, we know the prefix order of params,
 		// extract args after the run command [summon run handle]
 		// see https://github.com/spf13/pflag/pull/160
-		// and https://github.com/spf13/cobra/issues/739
+		// https://github.com/spf13/cobra/issues/739
+		// and https://github.com/spf13/pflag/pull/199
 		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[3:])
 		return runCmd.run()
 	}
@@ -78,7 +79,7 @@ func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		var f *pflag.Flag
-		if a[0] == '-' {
+		if a[0] == '-' && len(a) > 1 {
 			if a[1] == '-' {
 				f = flags.Lookup(strings.SplitN(a[2:], "=", 2)[0])
 			} else {

@@ -3,6 +3,7 @@ package summon
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/google/shlex"
@@ -13,7 +14,7 @@ import (
 type execUnit struct {
 	invoker string
 	invOpts string
-	targets []string
+	targets []interface{}
 }
 
 // Run will run executable scripts described in the summon.config.yaml file
@@ -24,31 +25,53 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	eu, err := d.findExecutor()
+	eu, err := d.findExecutor(d.opts.ref)
 	if err != nil {
 		return err
 	}
 
-	eu.invOpts, err = d.renderTemplate(eu.invOpts, d.opts.data)
+	data := d.opts.data
+	// add arguments
+	if data == nil {
+		data = map[string]interface{}{}
+	}
+
+	data["osArgs"] = os.Args
+
+	invOpts, err := d.renderTemplate(eu.invOpts, data)
 	if err != nil {
 		return err
 	}
 
 	targets := make([]string, 0, len(eu.targets))
-	for _, t := range eu.targets {
-		rt, err := d.renderTemplate(t, d.opts.data)
+	var renderedTargets []string
+	for _, t := range FlattenStrings(eu.targets) {
+		rt, err := d.renderTemplate(t, data)
 		if err != nil {
 			return err
 		}
-		targets = append(targets, rt)
+
+		renderedTargets = []string{rt}
+		// Convert array to real array and merge
+		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
+			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
+			if err != nil {
+				return err
+			}
+		}
+
+		targets = append(targets, renderedTargets...)
 	}
 
-	rargs, err := shlex.Split(eu.invOpts)
+	rargs, err := shlex.Split(invOpts)
 	if err != nil {
 		return err
 	}
 
-	rargs = append(rargs, append(targets, d.opts.args...)...)
+	rargs = append(rargs, targets...)
+
+	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
+	rargs = append(rargs, unusedArgs...)
 
 	cmd := d.execCommand(eu.invoker, rargs...)
 
@@ -71,6 +94,20 @@ func (d *Driver) Run(opts ...Option) error {
 	return nil
 }
 
+func computeUnused(args []string, consumed map[int]struct{}) []string {
+	unusedArgs := []string{}
+	if len(consumed) == len(args) {
+		return unusedArgs
+	}
+	for i, a := range args {
+		if _, ok := consumed[i]; ok {
+			continue
+		}
+		unusedArgs = append(unusedArgs, a)
+	}
+	return unusedArgs
+}
+
 // ListInvocables lists the invocables in the config file under the exec:
 // key.
 func (d *Driver) ListInvocables() []string {
@@ -85,11 +122,11 @@ func (d *Driver) ListInvocables() []string {
 	return invocables
 }
 
-func (d *Driver) findExecutor() (execUnit, error) {
+func (d *Driver) findExecutor(ref string) (execUnit, error) {
 	eu := execUnit{}
 
 	for ex, handles := range d.config.Executables {
-		if c, ok := handles[d.opts.ref]; ok {
+		if c, ok := handles[ref]; ok {
 			exec := strings.SplitAfterN(ex, " ", 2)
 			eu.invoker = strings.TrimSpace(exec[0])
 			if len(exec) == 2 {
@@ -107,4 +144,31 @@ func (d *Driver) findExecutor() (execUnit, error) {
 	}
 
 	return eu, nil
+}
+
+func flatten(args []interface{}, v reflect.Value) []interface{} {
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
+		for i := 0; i < v.Len(); i++ {
+			args = flatten(args, v.Index(i))
+		}
+	} else {
+		args = append(args, v.Interface())
+	}
+
+	return args
+}
+
+// FlattenStrings takes an array of string values or string slices and returns
+// an flattened slice of strings.
+func FlattenStrings(args ...interface{}) []string {
+	flattened := flatten(nil, reflect.ValueOf(args))
+	s := make([]string, 0, len(flattened))
+	for _, f := range flattened {
+		s = append(s, f.(string))
+	}
+	return s
 }

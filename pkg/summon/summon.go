@@ -8,17 +8,19 @@ package summon
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/davidovich/summon/internal/testutil"
 	"github.com/gobuffalo/packr/v2/file"
 	"github.com/spf13/afero"
+
+	"github.com/davidovich/summon/internal/testutil"
 )
 
 var appFs = afero.NewOsFs()
@@ -71,11 +73,21 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 }
 
 func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
-	t, err := template.New("Summon").
-		Funcs(sprig.FuncMap()).
-		Funcs(summonFuncMap(d)).
-		Parse(tmpl)
+	t := d.templateCtx
+	var err error
+	if t != nil {
+		t, err = t.Clone()
+		if err != nil {
+			return tmpl, err
+		}
+	} else {
+		t = template.New("Summon").
+			Option("missingkey=zero").
+			Funcs(sprig.TxtFuncMap()).
+			Funcs(summonFuncMap(d))
+	}
 
+	t, err = t.Parse(tmpl)
 	if err != nil {
 		return tmpl, err
 	}
@@ -83,7 +95,10 @@ func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (strin
 	buf := &bytes.Buffer{}
 	err = t.Execute(buf, data)
 
-	return buf.String(), err
+	// The zero value for an interface is a nil interface{} which
+	// has a string representation of <no value>. Strip this out.
+	// https://github.com/golang/go/issues/24963
+	return strings.ReplaceAll(buf.String(), "<no value>", ""), err
 }
 
 func (d *Driver) resolveAlias(alias string) string {
@@ -98,6 +113,31 @@ func summonFuncMap(d *Driver) template.FuncMap {
 	return template.FuncMap{
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
+		},
+		"arg": func(index int, missingError string) (string, error) {
+			if d.opts.args == nil {
+				return "", fmt.Errorf(missingError)
+			}
+			if index > len(d.opts.args) {
+				return "", fmt.Errorf("%s: index %v out of range, args: %s", missingError, index, d.opts.args)
+			}
+
+			retrieved := d.opts.args[index]
+			if d.opts.argsConsumed == nil {
+				d.opts.argsConsumed = map[int]struct{}{}
+			}
+			d.opts.argsConsumed[index] = struct{}{}
+			return retrieved, nil
+		},
+		"args": func() []string {
+			if d.opts.argsConsumed == nil {
+				d.opts.argsConsumed = make(map[int]struct{}, len(d.opts.args))
+			}
+			for i := range d.opts.args {
+				d.opts.argsConsumed[i] = struct{}{}
+			}
+
+			return d.opts.args
 		},
 	}
 }

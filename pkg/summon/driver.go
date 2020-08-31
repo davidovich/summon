@@ -3,6 +3,9 @@ package summon
 import (
 	"fmt"
 	"os"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
@@ -17,6 +20,7 @@ type Driver struct {
 	opts        options
 	config      config.Config
 	box         *packr.Box
+	templateCtx *template.Template
 	execCommand command.ExecCommandFn
 	configRead  bool
 }
@@ -50,6 +54,14 @@ func (d *Driver) Configure(opts ...Option) error {
 				return err
 			}
 			d.opts.DefaultsFrom(d.config)
+			d.templateCtx, err = template.New("Summon").
+				Option("missingkey=zero").
+				Funcs(sprig.TxtFuncMap()).
+				Funcs(summonFuncMap(d)).
+				Parse(d.config.TemplateContext)
+			if err != nil {
+				return err
+			}
 			d.configRead = true
 		}
 	}
