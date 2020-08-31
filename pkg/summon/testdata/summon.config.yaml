@@ -11,6 +11,7 @@ exec:
     bash-self-ref: ['{{ summon "hello.sh" }}']
     args: ['args:', '{{ arg 0 "" }}']
     one-arg: ['args:', '{{arg 0 "" }}']
+    all-args: ['args:', '{{ args }}']
     osArgs: ['osArgs:', '{{ .osArgs }}']
     templateref: ['{{ template "version"}}']
   docker {{ lower "INFO" }}: # template example
