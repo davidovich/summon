@@ -81,6 +81,7 @@ func TestCreateScaffold(t *testing.T) {
 				assert.Error(err)
 				return
 			}
+			assert.NoError(err)
 
 			bytes, err := afero.ReadFile(fs, tC.file)
 

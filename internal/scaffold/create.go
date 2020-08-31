@@ -19,7 +19,10 @@ const scaffoldParams = `{
 func Create(destDir, modName, summonerName string, force bool) error {
 	box := packr.New("Summon scaffold template", "../templates/scaffold")
 
-	s, _ := summon.New(box)
+	s, err := summon.New(box)
+	if err != nil {
+		return err
+	}
 
 	empty, err := isEmptyDir(destDir)
 	if !force && !empty || err != nil {
