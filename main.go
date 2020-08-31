@@ -36,6 +36,7 @@ import (
 // located in the passed packr.Box data repository.
 // See https://github.com/gobuffalo/packr/tree/master/v2 for more information on packr Boxes.
 func Main(args []string, box *packr.Box) int {
+	summon.Name = args[0]
 	s, err := summon.New(box)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create initial box: %v", err)

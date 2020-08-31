@@ -81,7 +81,7 @@ func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (strin
 			return tmpl, err
 		}
 	} else {
-		t = template.New("Summon").
+		t = template.New(Name).
 			Option("missingkey=zero").
 			Funcs(sprig.TxtFuncMap()).
 			Funcs(summonFuncMap(d))
