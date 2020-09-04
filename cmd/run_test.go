@@ -13,7 +13,7 @@ import (
 )
 
 func TestRunCmd(t *testing.T) {
-	box := packr.New("test box", "testdata")
+	box := packr.New("test box", "testdata/plain")
 
 	testCases := []struct {
 		desc      string
@@ -56,7 +56,7 @@ func TestRunCmd(t *testing.T) {
 		},
 	}
 
-	for _, tC := range testCases[4:] {
+	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			s, _ := summon.New(box)
 			stdout := &bytes.Buffer{}

@@ -12,7 +12,7 @@ import (
 
 func TestListCmd(t *testing.T) {
 
-	box := packr.New("test box", "testdata")
+	box := packr.New("test box", "testdata/plain")
 	tests := []struct {
 		name string
 		args []string
@@ -26,7 +26,7 @@ func TestListCmd(t *testing.T) {
 		{
 			name: "--tree",
 			args: []string{"--tree"},
-			expected: `testdata
+			expected: `plain
 ├── json-for-template.json
 └── summon.config.yaml`,
 		},

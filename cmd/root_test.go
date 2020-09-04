@@ -15,10 +15,17 @@ import (
 	"github.com/gobuffalo/packr/v2"
 )
 
+func makeRootCmd(box *packr.Box, args ...string) (*summon.Driver, *cobra.Command) {
+	s, _ := summon.New(box)
+	rootCmd := CreateRootCmd(s, []string{"summon"})
+	rootCmd.SetArgs(args)
+	return s, rootCmd
+}
+
 func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "testdata")
+	box := packr.New("test box", "testdata/plain")
 	box.AddString("a.txt", "a content")
 	box.AddString("b.txt", "b content")
 
@@ -45,10 +52,8 @@ func Test_createRootCmd(t *testing.T) {
 	}
 
 	makeRootCmd := func(args ...string) *cobra.Command {
-		s, _ := summon.New(box)
-		rootCmd := CreateRootCmd(s, []string{"summon"})
-		rootCmd.SetArgs(args)
-		return rootCmd
+		_, c := makeRootCmd(box, args...)
+		return c
 	}
 
 	tests := []struct {
@@ -96,7 +101,7 @@ func Test_createRootCmd(t *testing.T) {
 		},
 		{
 			name:    "--json-file",
-			rootCmd: makeRootCmd("--json-file", "testdata/json-for-template.json", "summon.config.yaml"),
+			rootCmd: makeRootCmd("--json-file", "testdata/plain/json-for-template.json", "summon.config.yaml"),
 			wantErr: false,
 		},
 		{
@@ -128,6 +133,49 @@ func Test_createRootCmd(t *testing.T) {
 			if tt.expected != "" {
 				assert.Contains(t, b.String(), tt.expected)
 			}
+		})
+	}
+}
+
+func Test_RootCmdWithRunnables(t *testing.T) {
+	box := packr.New("test box runnables", "testdata/no-run")
+
+	tests := []struct {
+		name         string
+		args         []string
+		expectedCall string
+		wantErr      bool
+	}{
+		{
+			name:         "call echo",
+			args:         []string{"echo"},
+			expectedCall: "bash echo hello",
+			wantErr:      false,
+		},
+		{
+			name:         "call hello-bash",
+			args:         []string{"hello-bash"},
+			expectedCall: "bash hello.sh",
+			wantErr:      false,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
+			s, rootCmd := makeRootCmd(box, tt.args...)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
+
+			s.Configure(summon.ExecCmd(execCommand))
+
+			if err := rootCmd.Execute(); (err != nil) != tt.wantErr {
+				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			c, err := testutil.GetCalls(stderr)
+			assert.Nil(t, err)
+			assert.Contains(t, c.Calls[0].Args, tt.expectedCall)
 		})
 	}
 }

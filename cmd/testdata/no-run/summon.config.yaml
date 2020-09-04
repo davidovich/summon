@@ -1,0 +1,9 @@
+version: 1
+options:
+  fold-run-into-main: true
+exec:
+  bash:
+    echo:
+      - echo
+      - hello
+    hello-bash: [hello.sh]
