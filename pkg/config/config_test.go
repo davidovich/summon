@@ -30,7 +30,6 @@ version: 1
 aliases: {}
 outputdir: ""
 templates: ""
-options: {}
 exec:
   bash:
     hello-bash:

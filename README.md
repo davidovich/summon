@@ -2,6 +2,32 @@
 ![Custom badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fdavidovich.github.io%2Fshields%2Fsummon%2Fsummon.json)
 [![GoDoc](https://godoc.org/github.com/davidovich/summon?status.svg)](https://godoc.org/github.com/davidovich/summon)
 
+- [Summon](#summon)
+  - [How it Works](#how-it-works)
+  - [Configuration](#configuration)
+    - [Data repository](#data-repository)
+    - [Summon config File](#summon-config-file)
+  - [Build](#build)
+  - [Install](#install)
+  - [Use-cases](#use-cases)
+    - [Makefile Library](#makefile-library)
+    - [Templating](#templating)
+    - [Running A Binary](#running-a-binary)
+      - [Templated Invokables](#templated-invokables)
+      - [Templated References](#templated-references)
+      - [Keeping DRY](#keeping-dry)
+      - [Using Args](#using-args)
+      - [Removing the run subcommand](#removing-the-run-subcommand)
+    - [Dump the Data at a Location](#dump-the-data-at-a-location)
+    - [Output a File to stdout](#output-a-file-to-stdout)
+    - [Output a Template File Without Rendering](#output-a-template-file-without-rendering)
+    - [List Summon Contents](#list-summon-contents)
+    - [Evaluate what will be run (--dry-run)](#evaluate-what-will-be-run---dry-run)
+    - [View Data Version Information](#view-data-version-information)
+    - [Configure Bash Completion](#configure-bash-completion)
+  - [TODO](#todo)
+  - [FAQ](#faq)
+
 # Summon
 
 Summon is used to manage a central location of data or
@@ -236,7 +262,6 @@ will yield:
 ```
 
 ### Running A Binary
-
 `summon run [executable]` allows to run executables declared in the
 [config file](#/summon-config-file).
 
@@ -247,7 +272,7 @@ will yield:
 #### Templated Invokables
 
 Suppose you want to make a wrapper around a docker utility. The specific
-docker invocation can be quite cryptic. Help your team by adding an invokable
+docker invocation can be quite cryptic. Help your team by adding an invocable
 in the config file:
 
 ```yaml
@@ -341,6 +366,19 @@ summon would only append the unconsumed args (after index 0).
 If the result of using args is a string representation of an array, like
 `[a b c d]` this array will be flattened to the final args array.
 
+#### Removing the run subcommand
+
+> New in v0.12.0
+
+In some situations, the data provider is more a proxy to other commands, so
+it can make sense to optimize this use-case and remove the `run` subcommand.
+
+This is done by passing `summon.WithoutRunCmd()` option to the `summon.Main()`
+entry-point function. In that mode, all invocable handles become part of the
+main command.
+
+In this mode, the `ls` subcommand to list embedded assets becomes a `--ls` flag.
+
 ### Dump the Data at a Location
 
 ```bash
@@ -417,9 +455,4 @@ source <(summon completion)
   gobin -run github.com/davidovich/summon-example-assets/summon --help
   # or list the data deliverables
   gobin -run github.com/davidovich/summon-example-assets/summon ls
-  # or
-  # let summon configure the path so it can invoke a go executable
-  # (here go-gettable-executable is a reference to a go gettable repo), and will
-  # result in an executable tailored for your destination os and architecture (because built on the fly).
-  gobin -run github.com/davidovich/summon-example-assets/summon run go-gettable-executable
   ```

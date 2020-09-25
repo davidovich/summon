@@ -108,13 +108,6 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-// RunCmdDisabled states if the user wants all commands
-// folded in the main command, instead of under `run` sub
-// command
-func (d *Driver) RunCmdDisabled() bool {
-	return d.config.Options.FoldRunIntoMain
-}
-
 // ListInvocables lists the invocables in the config file under the exec:
 // key.
 func (d *Driver) ListInvocables() []string {

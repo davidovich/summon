@@ -10,7 +10,6 @@ type ConfigurableRunner interface {
 type Runner interface {
 	Run(opts ...Option) error
 	ListInvocables() []string
-	RunCmdDisabled() bool
 }
 
 // Configurer allows configuring a driver from variadic options.

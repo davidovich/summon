@@ -18,7 +18,7 @@ type runCmdOpts struct {
 	dryrun bool
 }
 
-func newRunCmd(root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
+func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 	runCmd := &runCmdOpts{
 		mainCmd: main,
 		driver:  driver,
@@ -29,13 +29,11 @@ func newRunCmd(root *cobra.Command, driver summon.ConfigurableRunner, main *main
 		osArgs = *main.osArgs
 	}
 
-	driver.Configure()
-
 	invocables := driver.ListInvocables()
 
 	rcmd := root
 
-	if !driver.RunCmdDisabled() {
+	if !runCmdDisabled {
 		rcmd = &cobra.Command{
 			Use:       "run",
 			Short:     "Launch executable from summonables",
@@ -54,7 +52,7 @@ func newRunCmd(root *cobra.Command, driver summon.ConfigurableRunner, main *main
 	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
 	firstUnknownArgPos := 3
-	if driver.RunCmdDisabled() {
+	if runCmdDisabled {
 		firstUnknownArgPos = 2
 	}
 	subRunE := func(cmd *cobra.Command, args []string) error {
@@ -81,7 +79,7 @@ func newRunCmd(root *cobra.Command, driver summon.ConfigurableRunner, main *main
 		rcmd.AddCommand(runSubCmd)
 	}
 
-	if !driver.RunCmdDisabled() && root != nil {
+	if !runCmdDisabled && root != nil {
 		root.AddCommand(rcmd)
 	}
 	return rcmd

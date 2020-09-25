@@ -8,6 +8,11 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
+// MainOptions are used to configure summon at build time
+type MainOptions struct {
+	WithoutRunSubcmd bool
+}
+
 // options for all summon commands
 type options struct {
 	// copy all the tree

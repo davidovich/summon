@@ -5,7 +5,7 @@ The binary created from this library is meant to be shared in a team to allow di
 of common assets or code templates.
 
 It solves the maintenance problem of multiple copies of same
-code snippets distributed in many repos (like general makefile recipies), leveraging go modules and version
+code snippets distributed in many repos (like general makefile recipes), leveraging go modules and version
 management. It also allows configuring a standard set of tools that a dev team can readily
 invoke by name.
 
@@ -15,7 +15,7 @@ This library needs a command entrypoint in a data repository. See https://github
 It can be bootstrapped in an empty directory by using:
 
   cd [empty data repo dir]
-  go run github.com/davidovich/summon/scaffold init [module name]
+  gobin -run github.com/davidovich/summon/scaffold init [module name]
 */
 package summon
 
@@ -32,10 +32,17 @@ import (
 )
 
 // Main entrypoint, typically called from a data repository. Calling Main() relinquishes
-// control to Summon so it can manage the command line arguments and instanciation of assets
-// located in the passed packr.Box data repository.
+// control to Summon so it can manage the command line arguments and instantiation of assets
+// located in the packr.Box data repository parameter.
+// Config opts functions are optional.
 // See https://github.com/gobuffalo/packr/tree/master/v2 for more information on packr Boxes.
-func Main(args []string, box *packr.Box) int {
+func Main(args []string, box *packr.Box, opts ...option) int {
+	options := &MainOptions{}
+
+	for _, o := range opts {
+		o(options)
+	}
+
 	summon.Name = args[0]
 	s, err := summon.New(box)
 	if err != nil {
@@ -51,7 +58,7 @@ func Main(args []string, box *packr.Box) int {
 		}
 	}()
 
-	rootCmd := cmd.CreateRootCmd(s, os.Args)
+	rootCmd := cmd.CreateRootCmd(s, os.Args, *options)
 	err = rootCmd.Execute()
 
 	if err != nil {
@@ -63,3 +70,16 @@ func Main(args []string, box *packr.Box) int {
 
 	return 0
 }
+
+type option func(o *MainOptions)
+
+// WithoutRunCmd configures summon to attach invocables directly to the
+// main program. The default is to have these attached to the `run` subcommand.
+func WithoutRunCmd() option {
+	return func(o *MainOptions) {
+		o.WithoutRunSubcmd = true
+	}
+}
+
+// MainOptions hold comptile-time configurations
+type MainOptions = summon.MainOptions
