@@ -12,7 +12,7 @@ import (
 
 func TestListCmd(t *testing.T) {
 
-	box := packr.New("test box", "testdata")
+	box := packr.New("test box", "testdata/plain")
 	tests := []struct {
 		name string
 		args []string
@@ -26,7 +26,7 @@ func TestListCmd(t *testing.T) {
 		{
 			name: "--tree",
 			args: []string{"--tree"},
-			expected: `testdata
+			expected: `plain
 ├── json-for-template.json
 └── summon.config.yaml`,
 		},
@@ -36,12 +36,12 @@ func TestListCmd(t *testing.T) {
 		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
 			s, _ := summon.New(box)
 
-			cmd := newListCmd(s)
-			cmd.SetArgs(tt.args)
+			cmd := newListCmd(false, nil, s)
+			cmd.cmd.SetArgs(tt.args)
 
 			b := &bytes.Buffer{}
-			cmd.SetOut(b)
-			cmd.Execute()
+			cmd.cmd.SetOut(b)
+			cmd.cmd.Execute()
 
 			assert.Contains(t, b.String(), tt.expected)
 		})

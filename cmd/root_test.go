@@ -15,10 +15,17 @@ import (
 	"github.com/gobuffalo/packr/v2"
 )
 
+func makeRootCmd(box *packr.Box, withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
+	s, _ := summon.New(box)
+	rootCmd := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
+	rootCmd.SetArgs(args)
+	return s, rootCmd
+}
+
 func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", "testdata")
+	box := packr.New("test box", "testdata/plain")
 	box.AddString("a.txt", "a content")
 	box.AddString("b.txt", "b content")
 
@@ -45,10 +52,8 @@ func Test_createRootCmd(t *testing.T) {
 	}
 
 	makeRootCmd := func(args ...string) *cobra.Command {
-		s, _ := summon.New(box)
-		rootCmd := CreateRootCmd(s, []string{"summon"})
-		rootCmd.SetArgs(args)
-		return rootCmd
+		_, c := makeRootCmd(box, false, args...)
+		return c
 	}
 
 	tests := []struct {
@@ -96,7 +101,7 @@ func Test_createRootCmd(t *testing.T) {
 		},
 		{
 			name:    "--json-file",
-			rootCmd: makeRootCmd("--json-file", "testdata/json-for-template.json", "summon.config.yaml"),
+			rootCmd: makeRootCmd("--json-file", "testdata/plain/json-for-template.json", "summon.config.yaml"),
 			wantErr: false,
 		},
 		{
@@ -132,10 +137,53 @@ func Test_createRootCmd(t *testing.T) {
 	}
 }
 
+func Test_RootCmdWithRunnables(t *testing.T) {
+	box := packr.New("test box runnables", "testdata/plain")
+
+	tests := []struct {
+		name         string
+		args         []string
+		expectedCall string
+		wantErr      bool
+	}{
+		{
+			name:         "call echo",
+			args:         []string{"echo"},
+			expectedCall: "bash echo hello",
+			wantErr:      false,
+		},
+		{
+			name:         "call hello-bash",
+			args:         []string{"hello-bash"},
+			expectedCall: "bash hello.sh",
+			wantErr:      false,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
+			s, rootCmd := makeRootCmd(box, true, tt.args...)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
+
+			s.Configure(summon.ExecCmd(execCommand))
+
+			if err := rootCmd.Execute(); (err != nil) != tt.wantErr {
+				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			c, err := testutil.GetCalls(stderr)
+			assert.Nil(t, err)
+			assert.Contains(t, c.Calls[0].Args, tt.expectedCall)
+		})
+	}
+}
+
 func Test_mainCmd_run(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box", t.TempDir())
+	box := packr.New("test box Test_mainCmd_run", t.TempDir())
 	box.AddString("a.txt", "a content")
 	box.AddString("b.txt", "b content")
 
@@ -146,10 +194,11 @@ func Test_mainCmd_run(t *testing.T) {
 		driver   *summon.Driver
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		out     string
-		wantErr bool
+		name       string
+		fields     fields
+		out        string
+		lsAsOption bool
+		wantErr    bool
 	}{
 		{
 			name: "base",
@@ -159,6 +208,14 @@ func Test_mainCmd_run(t *testing.T) {
 				driver:   func() *summon.Driver { s, _ := summon.New(box); return s }(),
 			},
 			out: ".s/a.txt\n",
+		},
+		{
+			name:       "ls-option",
+			lsAsOption: true,
+			fields: fields{
+				driver: func() *summon.Driver { s, _ := summon.New(box); return s }(),
+			},
+			out: "a.txt\nb.txt\n",
 		},
 		{
 			name: "copyAll",
@@ -181,13 +238,15 @@ func Test_mainCmd_run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &mainCmd{
-				driver:   tt.fields.driver,
-				copyAll:  tt.fields.copyAll,
-				dest:     tt.fields.dest,
-				filename: tt.fields.filename,
+				driver:      tt.fields.driver,
+				copyAll:     tt.fields.copyAll,
+				dest:        tt.fields.dest,
+				filename:    tt.fields.filename,
+				listOptions: &listCmdOpts{asOption: tt.lsAsOption, driver: tt.fields.driver},
 			}
 			b := &bytes.Buffer{}
 			m.out = b
+			m.listOptions.out = b
 			if err := m.run(); (err != nil) != tt.wantErr {
 				t.Errorf("mainCmd.run() error = %v, wantErr %v", err, tt.wantErr)
 			}

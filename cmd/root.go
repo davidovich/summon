@@ -41,20 +41,21 @@ import (
 )
 
 type mainCmd struct {
-	copyAll  bool
-	dest     string
-	driver   *summon.Driver
-	filename string
-	json     string
-	jsonFile string
-	raw      bool
-	debug    bool
-	out      io.Writer
-	osArgs   *[]string
+	copyAll     bool
+	dest        string
+	driver      *summon.Driver
+	filename    string
+	json        string
+	jsonFile    string
+	raw         bool
+	debug       bool
+	out         io.Writer
+	osArgs      *[]string
+	listOptions *listCmdOpts
 }
 
 // CreateRootCmd creates the root command
-func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
+func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOptions) *cobra.Command {
 	cmdName := filepath.Base(args[0])
 	var showVersion bool
 
@@ -66,7 +67,7 @@ func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 		Use:   cmdName + " [file to summon]",
 		Short: cmdName + " main command",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if main.copyAll || showVersion {
+			if main.copyAll || showVersion || main.listOptions.asOption {
 				return nil
 			}
 			if len(args) < 1 {
@@ -89,7 +90,7 @@ func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 				enc.Encode(v)
 				return nil
 			}
-			if !main.copyAll {
+			if !main.copyAll && !main.listOptions.asOption {
 				filename := args[0]
 				main.filename = filename
 			}
@@ -120,14 +121,27 @@ func CreateRootCmd(driver *summon.Driver, args []string) *cobra.Command {
 	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory, or '-' for stdout")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "output data version info and exit")
 
-	rootCmd.AddCommand(newListCmd(driver))
-	rootCmd.AddCommand(newRunCmd(driver, main))
+	// add ls cmd or --ls flag
+	main.listOptions = newListCmd(options.WithoutRunSubcmd, rootCmd, driver)
+
+	// add run cmd, or root subcommands
+	newRunCmd(options.WithoutRunSubcmd, rootCmd, driver, main)
+
+	// add completion
 	rootCmd.AddCommand(newCompletionCmd(driver))
 
 	return rootCmd
 }
 
 func (m *mainCmd) run() error {
+	if m.listOptions.asOption {
+		err := m.listOptions.run()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	m.driver.Configure(
 		summon.All(m.copyAll),
 		summon.Dest(m.dest),

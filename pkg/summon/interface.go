@@ -17,7 +17,7 @@ type Configurer interface {
 	Configure(opts ...Option) error
 }
 
-// Summon is used to instanciate a real file to the filesystem.
+// Summon is used to instantiate a real file to the filesystem.
 type Summon interface {
 	Summon(opts ...Option) (string, error)
 }

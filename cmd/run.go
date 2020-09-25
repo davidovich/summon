@@ -18,7 +18,7 @@ type runCmdOpts struct {
 	dryrun bool
 }
 
-func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
+func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 	runCmd := &runCmdOpts{
 		mainCmd: main,
 		driver:  driver,
@@ -30,22 +30,31 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 	}
 
 	invocables := driver.ListInvocables()
-	rcmd := &cobra.Command{
-		Use:       "run",
-		Short:     "Launch executable from summonables",
-		ValidArgs: invocables,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("requires at least 1 command to run, received 0")
-			}
-			return cobra.ExactValidArgs(1)(cmd, args)
-		},
-		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		Run:                func(cmd *cobra.Command, args []string) {},
+
+	rcmd := root
+
+	if !runCmdDisabled {
+		rcmd = &cobra.Command{
+			Use:       "run",
+			Short:     "Launch executable from summonables",
+			ValidArgs: invocables,
+			Args: func(cmd *cobra.Command, args []string) error {
+				if len(args) < 1 {
+					return fmt.Errorf("requires at least 1 command to run, received 0")
+				}
+				return cobra.ExactValidArgs(1)(cmd, args)
+			},
+			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+			Run:                func(cmd *cobra.Command, args []string) {},
+		}
 	}
 
 	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
+	firstUnknownArgPos := 3
+	if runCmdDisabled {
+		firstUnknownArgPos = 2
+	}
 	subRunE := func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -58,7 +67,7 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 		// see https://github.com/spf13/pflag/pull/160
 		// https://github.com/spf13/cobra/issues/739
 		// and https://github.com/spf13/pflag/pull/199
-		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[3:])
+		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
 		return runCmd.run()
 	}
 	for _, i := range invocables {
@@ -70,6 +79,9 @@ func newRunCmd(driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
 		rcmd.AddCommand(runSubCmd)
 	}
 
+	if !runCmdDisabled && root != nil {
+		root.AddCommand(rcmd)
+	}
 	return rcmd
 }
 

@@ -10,7 +10,7 @@ import (
 )
 
 func TestCompletionCommand(t *testing.T) {
-	box := packr.New("testCompletion", "testdata")
+	box := packr.New("testCompletion", "testdata/plain")
 
 	s, _ := summon.New(box)
 
