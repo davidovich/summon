@@ -36,7 +36,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/summon"
 )
 
@@ -118,7 +117,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 	rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
 	rootCmd.Flags().BoolVar(&main.raw, "raw", false, "output without any template rendering")
-	rootCmd.Flags().StringVarP(&main.dest, "out", "o", config.OutputDir, "destination directory, or '-' for stdout")
+	rootCmd.Flags().StringVarP(&main.dest, "out", "o", driver.Config.OutputDir, "destination directory, or '-' for stdout")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "output data version info and exit")
 
 	// add ls cmd or --ls flag

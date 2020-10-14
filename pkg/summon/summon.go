@@ -102,7 +102,7 @@ func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (strin
 }
 
 func (d *Driver) resolveAlias(alias string) string {
-	if resolved, ok := d.config.Aliases[alias]; ok {
+	if resolved, ok := d.Config.Aliases[alias]; ok {
 		return resolved
 	}
 
