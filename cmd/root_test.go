@@ -74,8 +74,9 @@ func Test_createRootCmd(t *testing.T) {
 			rootCmd: makeRootCmd("-a"),
 		},
 		{
-			name:    "file",
-			rootCmd: makeRootCmd("b.txt"),
+			name:     "file",
+			rootCmd:  makeRootCmd("b.txt"),
+			expected: "overridden_dir/b.txt",
 		},
 		{
 			name:     "completion_run",

@@ -54,12 +54,12 @@ func TestOneFileInstanciation(t *testing.T) {
 	box.AddString("text.txt", "this is a text")
 
 	// create a summoner to summon text.txt at
-	s, err := New(box, Filename("text.txt"), Dest(config.OutputDir))
+	s, err := New(box, Filename("text.txt"), Dest(config.DefaultOutputDir))
 	a.NoError(err)
 
 	path, err := s.Summon()
 	a.NoError(err)
-	a.Equal(filepath.Join(config.OutputDir, "text.txt"), path)
+	a.Equal(filepath.Join(config.DefaultOutputDir, "text.txt"), path)
 
 	bytes, err := afero.ReadFile(appFs, path)
 	a.NoError(err)

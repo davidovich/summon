@@ -113,7 +113,7 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 func (d *Driver) ListInvocables() []string {
 	invocables := []string{}
 
-	for _, handles := range d.config.Executables {
+	for _, handles := range d.Config.Executables {
 		for i := range handles {
 			invocables = append(invocables, i)
 		}
@@ -125,7 +125,7 @@ func (d *Driver) ListInvocables() []string {
 func (d *Driver) findExecutor(ref string) (execUnit, error) {
 	eu := execUnit{}
 
-	for ex, handles := range d.config.Executables {
+	for ex, handles := range d.Config.Executables {
 		if c, ok := handles[ref]; ok {
 			exec := strings.SplitAfterN(ex, " ", 2)
 			eu.invoker = strings.TrimSpace(exec[0])

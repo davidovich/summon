@@ -11,9 +11,6 @@ const (
 	ConfigFile = "summon.config.yaml"
 )
 
-// OutputDir is the resolved output dir.
-var OutputDir = DefaultOutputDir
-
 // Alias gives a shortcut to a name in data.
 type Alias map[string]string
 
