@@ -118,7 +118,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			if d.opts.args == nil {
 				return "", fmt.Errorf(missingError)
 			}
-			if index > len(d.opts.args) {
+			if index >= len(d.opts.args) {
 				return "", fmt.Errorf("%s: index %v out of range, args: %s", missingError, index, d.opts.args)
 			}
 
