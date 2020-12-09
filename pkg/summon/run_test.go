@@ -59,7 +59,7 @@ func TestRun(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "renderable invoker",
+			name:    "renderable-invoker",
 			helper:  "TestSummonRunHelper",
 			ref:     "docker",
 			expect:  "docker info",
