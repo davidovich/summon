@@ -16,7 +16,7 @@ exec:
     osArgs: ['osArgs:', '{{ .osArgs }}']
     templateref: ['{{ template "version"}}']
   docker {{ lower "INFO" }}: # template example
-    docker:
+    docker: []
   gobin -run:
     gobin: [github.com/myitcv/gobin@v0.0.8]
     gohack: [github.com/rogpeppe/gohack]

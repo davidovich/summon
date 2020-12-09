@@ -12,9 +12,10 @@ import (
 )
 
 type execUnit struct {
-	invoker string
-	invOpts string
-	targets []interface{}
+	invoker    string
+	invOpts    string
+	targets    config.ArgSliceSpec
+	targetSpec config.CmdSpec
 }
 
 // Run will run executable scripts described in the summon.config.yaml file
@@ -133,14 +134,20 @@ func (d *Driver) findExecutor(ref string) (execUnit, error) {
 				eu.invOpts = strings.TrimSpace(exec[1])
 			}
 
-			eu.targets = c
+			eu.targets, ok = c.Value.(config.ArgSliceSpec)
+			if !ok {
+				eu.targetSpec, ok = c.Value.(config.CmdSpec)
+				if !ok {
+					return execUnit{}, fmt.Errorf("config syntax error for 'exec:%s' in config %s", ref, config.ConfigFile)
+				}
+			}
 
 			break
 		}
 	}
 
 	if eu.invoker == "" {
-		return eu, fmt.Errorf("could not find exec handle reference %s in config %s", d.opts.ref, config.ConfigFile)
+		return eu, fmt.Errorf("could not find exec handle reference '%s' in config %s", d.opts.ref, config.ConfigFile)
 	}
 
 	return eu, nil
