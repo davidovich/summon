@@ -21,12 +21,17 @@ type Alias map[string]string
 // Config is the summon config
 type Config struct {
 	Version         int
-	Aliases         Alias                 `yaml:"aliases"`
-	OutputDir       string                `yaml:"outputdir"`
-	TemplateContext string                `yaml:"templates"`
-	Executables     map[string]Executable `yaml:"exec"`
-	Flags           map[string]string     `yaml:"flags"`
-	Help            string                `yaml:"help"`
+	Aliases         Alias       `yaml:"aliases"`
+	OutputDir       string      `yaml:"outputdir"`
+	TemplateContext string      `yaml:"templates"`
+	Exec            ExecContext `yaml:"exec"`
+	Help            string      `yaml:"help"`
+}
+
+// ExecContext houses invokers and global flags
+type ExecContext struct {
+	Invokers map[string]Executable `yaml:"invokers"`
+	Flags    map[string]string     `yaml:"flags"`
 }
 
 // ExecSpec allows unmarshaling complex subtype

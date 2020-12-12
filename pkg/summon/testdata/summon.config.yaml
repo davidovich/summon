@@ -6,20 +6,21 @@ outputdir: "overridden_dir"
 templates: >-
   {{ define "version" }}1.2.3{{ end }}
 exec:
-  bash:
-    hello-bash: [ hello.sh ]
-    bash-self-ref: ['{{ summon "hello.sh" }}']
-    run-example: ['{{ run "hello-bash" }}']
-    args: ['args:', '{{ arg 0 "" }}']
-    one-arg: ['args:', '{{arg 0 "" }}']
-    all-args: ['args:', '{{ args }}']
-    osArgs: ['osArgs:', '{{ .osArgs }}']
-    templateref: ['{{ template "version"}}']
-  docker {{ lower "INFO" }}: # template example
-    docker: []
-  gobin -run:
-    gobin: [github.com/myitcv/gobin@v0.0.8]
-    gohack: [github.com/rogpeppe/gohack]
-  python -c:
-    hello: ['print("hello from python!")']
+  invokers:
+    bash:
+      hello-bash: [ hello.sh ]
+      bash-self-ref: ['{{ summon "hello.sh" }}']
+      run-example: ['{{ run "hello-bash" }}']
+      args: ['args:', '{{ arg 0 "" }}']
+      one-arg: ['args:', '{{arg 0 "" }}']
+      all-args: ['args:', '{{ args }}']
+      osArgs: ['osArgs:', '{{ .osArgs }}']
+      templateref: ['{{ template "version"}}']
+    docker {{ lower "INFO" }}: # template example
+      docker: []
+    gobin -run:
+      gobin: [github.com/myitcv/gobin@v0.0.8]
+      gohack: [github.com/rogpeppe/gohack]
+    python -c:
+      hello: ['print("hello from python!")']
 
