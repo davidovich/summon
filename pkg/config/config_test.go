@@ -8,41 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func TestConfigWriter(t *testing.T) {
-// 	c := Config{
-// 		Version: 1,
-// 		Executables: map[string]Executable{
-// 			"go": {
-// 				"gobin":  []interface{}{"github.com/myitcv/gobin"},
-// 				"gohack": []interface{}{"github.com/rogppepe/gohack"},
-// 			},
-// 			"bash":      {"hello-bash": []interface{}{"hello.sh"}},
-// 			"python -c": {"hello": []interface{}{"print(\"hello from python!\")"}},
-// 		},
-// 	}
-
-// 	config, _ := yaml.Marshal(&c)
-
-// 	assert.Equal(t, `
-// version: 1
-// aliases: {}
-// outputdir: ""
-// templates: ""
-// exec:
-//   bash:
-//     hello-bash:
-//     - hello.sh
-//   go:
-//     gobin:
-//     - github.com/myitcv/gobin
-//     gohack:
-//     - github.com/rogppepe/gohack
-//   python -c:
-//     hello:
-//     - print("hello from python!")
-// `, "\n"+string(config))
-// }
-
 func TestConfigReader(t *testing.T) {
 	config := dedent.Dedent(`
     version: 1
@@ -50,7 +15,13 @@ func TestConfigReader(t *testing.T) {
       invokers:
         python -c:
           hello: [print("hello")]
-	`)
+        echo:
+          echo:
+            flags:
+              --special-wrapper: '{{ happy new year: . }}'
+            help: 'this is an echo adapter'
+            cmdArgs: ['{{ flag "--special-wrapper" }}', '{{ arg 1 ""}}', '{{ arg 0 "" }}']
+    `)
 
 	c := Config{}
 	err := c.Unmarshal([]byte(config))
@@ -58,4 +29,7 @@ func TestConfigReader(t *testing.T) {
 	require.Nil(t, err)
 	args := c.Exec.Invokers["python -c"]["hello"].Value.(ArgSliceSpec)
 	assert.Equal(t, "print(\"hello\")", args[0])
+
+	cmdSpec := c.Exec.Invokers["echo"]["echo"].Value.(CmdSpec)
+	assert.Equal(t, "{{ flag \"--special-wrapper\" }}", cmdSpec.CmdArgs[0])
 }
