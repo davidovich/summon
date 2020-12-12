@@ -47,14 +47,15 @@ func TestConfigReader(t *testing.T) {
 	config := dedent.Dedent(`
     version: 1
     exec:
-      python -c:
-        hello: [print("hello")]
+      invokers:
+        python -c:
+          hello: [print("hello")]
 	`)
 
 	c := Config{}
 	err := c.Unmarshal([]byte(config))
 
 	require.Nil(t, err)
-	args := c.Executables["python -c"]["hello"].Value.(ArgSliceSpec)
+	args := c.Exec.Invokers["python -c"]["hello"].Value.(ArgSliceSpec)
 	assert.Equal(t, "print(\"hello\")", args[0])
 }
