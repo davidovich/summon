@@ -109,7 +109,7 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-// ListInvocables lists the invocables in the config file under the exec:
+// ListInvocables lists the invokers in the config file under the exec:
 // key.
 func (d *Driver) ListInvocables() []string {
 	invocables := []string{}
