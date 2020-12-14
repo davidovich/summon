@@ -35,14 +35,26 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 
 	if !runCmdDisabled {
 		rcmd = &cobra.Command{
-			Use:       "run",
-			Short:     "Launch executable from summonables",
-			ValidArgs: invocables,
+			Use:   "run",
+			Short: "Launch executable from summonables",
+			//ValidArgs: invocables,
+			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+				return invocables, cobra.ShellCompDirectiveNoFileComp
+			},
 			Args: func(cmd *cobra.Command, args []string) error {
 				if len(args) < 1 {
 					return fmt.Errorf("requires at least 1 command to run, received 0")
 				}
-				return cobra.ExactValidArgs(1)(cmd, args)
+				validArgs, _ := cmd.ValidArgsFunction(cmd, args, "")
+				for _, a := range args {
+					for _, v := range validArgs {
+						if a == v {
+							return nil
+						}
+					}
+					return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
+				}
+				return nil
 			},
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			Run:                func(cmd *cobra.Command, args []string) {},
