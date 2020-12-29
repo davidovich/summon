@@ -140,10 +140,37 @@ func TestSummonRunHelper(t *testing.T) {
 }
 
 func TestListInvocables(t *testing.T) {
-	box := packr.New("test run box", "testdata")
+	box := packr.New("test List invocables", "")
 
-	s, _ := New(box)
+	config := `
+version: 1
+
+exec:
+  flags:
+    --config-root: 'CONFIG_ROOT=.'
+
+  invokers:
+    echo:
+      echo-pwd: ['pwd:', '{{ env "PWD" | base }}']
+
+    docker:
+      manifest:
+        help: 'render kubernetes manifests in build dir'
+        # popArg is used to remove the arg from user input
+        cmdArgs: ['manifests/{{ popArg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
+        completion: '{{ summon "make list-environments" }}'
+`
+
+	box.AddString("summon.config.yaml", config)
+
+	s, err := New(box)
+	assert.NoError(t, err)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello", "args", "one-arg", "all-args", "osArgs", "templateref"}, inv)
+	handles := []string{}
+
+	for h := range inv {
+		handles = append(handles, h)
+	}
+	assert.ElementsMatch(t, []string{"echo-pwd", "manifest"}, handles)
 }

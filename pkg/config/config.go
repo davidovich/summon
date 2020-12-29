@@ -30,8 +30,8 @@ type Config struct {
 
 // ExecContext houses invokers and global flags
 type ExecContext struct {
-	Invokers map[string]Executable `yaml:"invokers"`
-	Flags    map[string]string     `yaml:"flags"`
+	Invokers map[string]Handles `yaml:"invokers"`
+	Flags    map[string]string  `yaml:"flags"`
 }
 
 // ExecSpec allows unmarshaling complex subtype
@@ -39,9 +39,9 @@ type ExecSpec struct {
 	Value interface{}
 }
 
-// Executable describes a handle name and invocable target.
+// Handles describes a handle name and invocable target.
 // The ExecSpec target can be an ArgSliceSpec, or a CmdSpec
-type Executable map[string]ExecSpec
+type Handles map[string]ExecSpec
 
 // ArgSliceSpec is the basic form of args to pass to
 // invoker. It is a slice of string, or slices of strings.
