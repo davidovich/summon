@@ -33,10 +33,10 @@ import (
 
 // Main entrypoint, typically called from a data repository. Calling Main() relinquishes
 // control to Summon so it can manage the command line arguments and instantiation of assets
-// located in the packr.Box data repository parameter.
+// located in the WithBox(*packr.Box) data repository parameter.
 // Config opts functions are optional.
 // See https://github.com/gobuffalo/packr/tree/master/v2 for more information on packr Boxes.
-func Main(args []string, box *packr.Box, opts ...option) int {
+func Main(args []string, opts ...option) int {
 	options := &MainOptions{}
 
 	for _, o := range opts {
@@ -44,7 +44,7 @@ func Main(args []string, box *packr.Box, opts ...option) int {
 	}
 
 	summon.Name = args[0]
-	s, err := summon.New(box)
+	s, err := summon.New(options.Box)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create initial box: %v", err)
 		return 1
@@ -78,6 +78,13 @@ type option func(o *MainOptions)
 func WithoutRunCmd() option {
 	return func(o *MainOptions) {
 		o.WithoutRunSubcmd = true
+	}
+}
+
+// WithBox configures the packr box to use. This will be deprcated in the future.
+func WithBox(box *packr.Box) option {
+	return func(o *MainOptions) {
+		o.Box = box
 	}
 }
 

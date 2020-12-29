@@ -6,11 +6,13 @@ import (
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
+	"github.com/gobuffalo/packr/v2"
 )
 
 // MainOptions are used to configure summon at build time
 type MainOptions struct {
 	WithoutRunSubcmd bool
+	Box              *packr.Box
 }
 
 // options for all summon commands
