@@ -1,5 +1,7 @@
 package summon
 
+import "github.com/davidovich/summon/pkg/config"
+
 // ConfigurableRunner is a runner that can be configured.
 type ConfigurableRunner interface {
 	Configurer
@@ -9,7 +11,7 @@ type ConfigurableRunner interface {
 // Runner allows executing configured aliases from summon.config.yaml.
 type Runner interface {
 	Run(opts ...Option) error
-	ListInvocables() []string
+	ListInvocables() config.Handles
 }
 
 // Configurer allows configuring a driver from variadic options.

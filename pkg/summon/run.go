@@ -111,16 +111,16 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 
 // ListInvocables lists the invokers in the config file under the exec:
 // key.
-func (d *Driver) ListInvocables() []string {
-	invocables := []string{}
+func (d *Driver) ListInvocables() config.Handles {
+	handles := config.Handles{}
 
 	for _, invokers := range d.Config.Exec.Invokers {
-		for i := range invokers {
-			invocables = append(invocables, i)
+		for i, v := range invokers {
+			handles[i] = v
 		}
 	}
 
-	return invocables
+	return handles
 }
 
 func (d *Driver) findExecutor(ref string) (execUnit, error) {

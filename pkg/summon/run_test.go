@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 
@@ -164,8 +165,36 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 }
 
 func TestListInvocables(t *testing.T) {
-	s, _ := New(summonTestFS)
+	config := `
+version: 1
+
+exec:
+  flags:
+    --config-root: 'CONFIG_ROOT=.'
+
+  invokers:
+    echo:
+      echo-pwd: ['pwd:', '{{ env "PWD" | base }}']
+
+    docker:
+      manifest:
+        help: 'render kubernetes manifests in build dir'
+        # popArg is used to remove the arg from user input
+        cmdArgs: ['manifests/{{ popArg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
+        completion: '{{ summon "make list-environments" }}'
+`
+
+	testFs := fstest.MapFS{}
+	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(config)}
+
+	s, err := New(testFs)
+	assert.NoError(t, err)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "run-example", "docker", "gobin", "gohack", "hello", "args", "one-arg", "all-args", "osArgs", "templateref"}, inv)
+	handles := []string{}
+
+	for h := range inv {
+		handles = append(handles, h)
+	}
+	assert.ElementsMatch(t, []string{"echo-pwd", "manifest"}, handles)
 }

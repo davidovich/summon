@@ -29,7 +29,15 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		osArgs = *main.osArgs
 	}
 
-	invocables := driver.ListInvocables()
+	// read config for exec section
+	driver.Configure()
+	invocables := []string{}
+
+	handles := driver.ListInvocables()
+
+	for h := range handles {
+		invocables = append(invocables, h)
+	}
 
 	rcmd := root
 
@@ -37,7 +45,6 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		rcmd = &cobra.Command{
 			Use:   "run",
 			Short: "Launch executable from summonables",
-			//ValidArgs: invocables,
 			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 				return invocables, cobra.ShellCompDirectiveNoFileComp
 			},
@@ -63,10 +70,6 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 
 	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
-	firstUnknownArgPos := 3
-	if runCmdDisabled {
-		firstUnknownArgPos = 2
-	}
 	subRunE := func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -79,6 +82,10 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		// see https://github.com/spf13/pflag/pull/160
 		// https://github.com/spf13/cobra/issues/739
 		// and https://github.com/spf13/pflag/pull/199
+		firstUnknownArgPos := 3
+		if runCmdDisabled {
+			firstUnknownArgPos = 2
+		}
 		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
 		return runCmd.run()
 	}
