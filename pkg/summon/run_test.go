@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 func TestRun(t *testing.T) {
@@ -165,7 +166,7 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 }
 
 func TestListInvocables(t *testing.T) {
-	config := `
+	configFile := `
 version: 1
 
 exec:
@@ -185,7 +186,7 @@ exec:
 `
 
 	testFs := fstest.MapFS{}
-	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(config)}
+	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(configFile)}
 
 	s, err := New(testFs)
 	assert.NoError(t, err)
@@ -197,4 +198,7 @@ exec:
 		handles = append(handles, h)
 	}
 	assert.ElementsMatch(t, []string{"echo-pwd", "manifest"}, handles)
+
+	assert.IsType(t, config.ArgSliceSpec{}, inv["echo-pwd"].Value)
+	assert.IsType(t, config.CmdSpec{}, inv["manifest"].Value)
 }
