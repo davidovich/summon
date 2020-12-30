@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 func TestRun(t *testing.T) {
@@ -142,7 +143,7 @@ func TestSummonRunHelper(t *testing.T) {
 func TestListInvocables(t *testing.T) {
 	box := packr.New("test List invocables", "")
 
-	config := `
+	configFile := `
 version: 1
 
 exec:
@@ -161,7 +162,7 @@ exec:
         completion: '{{ summon "make list-environments" }}'
 `
 
-	box.AddString("summon.config.yaml", config)
+	box.AddString("summon.config.yaml", configFile)
 
 	s, err := New(box)
 	assert.NoError(t, err)
@@ -173,4 +174,7 @@ exec:
 		handles = append(handles, h)
 	}
 	assert.ElementsMatch(t, []string{"echo-pwd", "manifest"}, handles)
+
+	assert.IsType(t, config.ArgSliceSpec{}, inv["echo-pwd"].Value)
+	assert.IsType(t, config.CmdSpec{}, inv["manifest"].Value)
 }
