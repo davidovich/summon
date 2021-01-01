@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"os"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -91,13 +90,7 @@ func TestRunCmd(t *testing.T) {
 }
 
 func TestSummonRunHelper(t *testing.T) {
-	if testutil.IsHelper() {
-		defer os.Exit(0)
-
-		call := testutil.MakeCall()
-
-		testutil.WriteCall(call)
-	}
+	testutil.TestSummonRunHelper()
 }
 
 func TestExtractUnknownArgs(t *testing.T) {

@@ -145,3 +145,21 @@ func CleanHelperArgs(helperArgs []string) []string {
 
 	return args
 }
+
+// TestSummonRunHelper is a testing helper for go test subprocess mocking
+func TestSummonRunHelper() {
+	if IsHelper() {
+		defer os.Exit(0)
+
+		call := MakeCall()
+
+		WriteCall(call)
+	}
+}
+
+// TestFailRunHelper is a non zero exiting testing helper for go test subprocess mocking.
+func TestFailRunHelper() {
+	if IsHelper() {
+		os.Exit(1)
+	}
+}
