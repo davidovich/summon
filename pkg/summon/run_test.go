@@ -132,19 +132,11 @@ func TestRun(t *testing.T) {
 }
 
 func TestFailRunHelper(t *testing.T) {
-	if testutil.IsHelper() {
-		os.Exit(1)
-	}
+	testutil.TestFailRunHelper()
 }
 
 func TestSummonRunHelper(t *testing.T) {
-	if testutil.IsHelper() {
-		defer os.Exit(0)
-
-		call := testutil.MakeCall()
-
-		testutil.WriteCall(call)
-	}
+	testutil.TestSummonRunHelper()
 }
 
 func TestListInvocables(t *testing.T) {
