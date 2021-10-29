@@ -85,7 +85,7 @@ func (d *Driver) Run(opts ...Option) error {
 
 	if !d.opts.dryrun {
 		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = d.opts.out
 		cmd.Stderr = os.Stderr
 
 		return cmd.Run()
