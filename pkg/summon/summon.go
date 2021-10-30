@@ -111,6 +111,20 @@ func (d *Driver) resolveAlias(alias string) string {
 
 func summonFuncMap(d *Driver) template.FuncMap {
 	return template.FuncMap{
+		"run": func(args ...string) (string, error) {
+			driverCopy := Driver{
+				opts:        d.opts,
+				Config:      d.Config,
+				box:         d.box,
+				templateCtx: d.templateCtx,
+				execCommand: d.execCommand,
+				configRead:  d.configRead,
+			}
+			b := &strings.Builder{}
+			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), out(b))
+
+			return strings.TrimSpace(b.String()), err
+		},
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},

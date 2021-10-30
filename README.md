@@ -14,9 +14,11 @@
     - [Templating](#templating)
     - [Running A Binary](#running-a-binary)
       - [Templated Invokables](#templated-invokables)
-      - [Templated References](#templated-references)
       - [Keeping DRY](#keeping-dry)
-      - [Using Args](#using-args)
+      - [Template Functions Available in Summon](#template-functions-available-in-summon)
+        - [Summon Function](#summon-function)
+        - [Arg and Args Function](#arg-and-args-function)
+        - [Run Function](#run-function)
       - [Removing the run subcommand](#removing-the-run-subcommand)
     - [Dump the Data at a Location](#dump-the-data-at-a-location)
     - [Output a File to stdout](#output-a-file-to-stdout)
@@ -262,6 +264,7 @@ will yield:
 ```
 
 ### Running A Binary
+
 `summon run [executable]` allows to run executables declared in the
 [config file](#/summon-config-file).
 
@@ -278,33 +281,15 @@ in the config file:
 ```yaml
 ...
 exec:
-  docker run -v {{ env "PWD" }}:/mounted-app alpine ls:
-      list: [/mounted-app]
+  docker run -v {{ env "PWD" }}:/mounted-app alpine:
+      ls: [ls, /mounted-app]
 ```
 
-Calling `summon run list` would render the [{{ env "PWD" }}](https://masterminds.github.io/sprig/os.html) part to the current directory, resulting in this call:
+Calling `summon run ls` would render the
+[{{ env "PWD" }}](https://masterminds.github.io/sprig/os.html) part to the
+current directory, resulting in this call:
 
 `docker run -v [working-dir]:/mounted-app alpine ls /mounted-app`
-
-#### Templated References
-
-Say you would like to bundle a script in the data repo and also use it as an
-invocable (new in v.0.10.0). You would use the `summon` template function bundled in summon:
-
-```yaml
-exec:
-  bash -c:
-    hello: ['{{ summon "hello.sh" }}']
-```
-
-Assuming you have a `hello.sh` file in the assets repo, this would result in sommoning the file in a temp dir and calling the invoker:
-
-```
-bash -c /tmp/hello.sh
-```
-
-> Note that `hello.sh` could also contain templates that will be
-rendered at instanciation time.
 
 #### Keeping DRY
 
@@ -314,7 +299,6 @@ Sometimes you will use Summon as a proxy on a docker container. Some
 parameters will always need to be passed (volume mounts for example). You
 can use YAML anchors to define the static (but required) params in
 `summon.config.yaml`:
-
 
 ```yaml
 .base: &baseargs
@@ -330,7 +314,33 @@ exec:
 Here, when you run with the `echo` handle, the arrays will be flattened to produce
 `[echo, b, c, d]` for the construction of the command.
 
-#### Using Args
+#### Template Functions Available in Summon
+
+Summon comes with template functions that can be used in the config file or
+contained assets.
+
+##### Summon Function
+
+Say you would like to bundle a script in the data repo and also use it as an
+invocable (new in v.0.10.0). You would use the `summon` template function bundled in summon:
+
+```yaml
+exec:
+  bash -c:
+    hello: ['{{ summon "hello.sh" }}']
+```
+
+Assuming you have a `hello.sh` file in the assets repo, this would result in
+sommoning the file in a temp dir and calling the invoker:
+
+```shell
+bash -c /tmp/hello.sh
+```
+
+> Note that `hello.sh` could also contain templates that will be
+rendered at instanciation time.
+
+##### Arg and Args Function
 
 > New in v0.12.0
 
@@ -365,6 +375,38 @@ summon would only append the unconsumed args (after index 0).
 
 If the result of using args is a string representation of an array, like
 `[a b c d]` this array will be flattened to the final args array.
+
+##### Run Function
+
+> New in v0.12.0
+
+The `run` function allows running a configured handle of the config file, right
+inside the config file. This effectively opens many use cases of executing
+code to control arguments. Called subprocesses can have side effects and can
+be used to execute pre conditions.
+
+Consider:
+
+We want to mount volumes of a docker container, conditionally.
+
+```yaml
+exec:
+  docker run -it --rm {{ run "eval-mounts" }} alpine:
+    ls: ['ls']
+  bash -c:
+    eval-mounts: ["echo -v {{ env PWD }}:/app"]
+```
+
+When inovking `summon run ls`, summon will first invoke:
+
+`bash -c 'echo -v current_dir:/app'` which yields `-v current_dir:/app` and
+then call the `ls` handle to produce:
+
+`docker run -it --rm -v current_dir:/app alpine`
+
+> Warning: `run` must not start a recursive process as `summon` does not currently
+> protect from this type of call. The consequence of doing this will probably
+> result in a fork bomb.
 
 #### Removing the run subcommand
 
@@ -430,14 +472,14 @@ source <(summon completion)
 
 ## TODO
 
-* [ ] Add a `required` template function to enforce `.args` presence, and error
+- [ ] Add a `required` template function to enforce `.args` presence, and error
   with a message.
-* [ ] Add help documentation for proxied commands
-* [ ] Explore ways to hook completions from proxied commands.
+- [ ] Add help documentation for proxied commands
+- [ ] Explore ways to hook completions from proxied commands.
 
 ## FAQ
 
-* Why is the `exec:` config file ordered by "invoker" ?
+- Why is the `exec:` config file ordered by "invoker" ?
 
   Summon is oriented at providing an easy CLI interface to complex sub programs.
   In this regard, it tends to group invocations in the same execution "environment".
@@ -445,14 +487,14 @@ source <(summon completion)
   This helps in scenarios of supplying a dev container from which are surfaced
   tools for your team.
 
-* Why not use git directly ?
+- Why not use git directly ?
 
   While you could use git directly to bring an asset directory with a simple git clone, the result does not have executable properties.
 
   In summon you leverage go execution to bootstrap in one phase. So your data can do:
 
   ```bash
-  gobin -run github.com/davidovich/summon-example-assets/summon --help
+  go run github.com/davidovich/summon-example-assets/summon --help
   # or list the data deliverables
-  gobin -run github.com/davidovich/summon-example-assets/summon ls
+  go run github.com/davidovich/summon-example-assets/summon ls
   ```
