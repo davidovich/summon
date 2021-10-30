@@ -1,5 +1,7 @@
 module github.com/davidovich/summon
 
+go 1.17
+
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20190529205929-3e23dcd4532b
 	github.com/Masterminds/sprig/v3 v3.1.0
@@ -10,8 +12,30 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.5.1
-	golang.org/x/sys v0.0.0-20200819091447-39769834ee22 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
 
-go 1.15
+require (
+	github.com/Masterminds/goutils v1.1.0 // indirect
+	github.com/Masterminds/semver/v3 v3.1.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gobuffalo/envy v1.7.0 // indirect
+	github.com/gobuffalo/logger v1.0.0 // indirect
+	github.com/gobuffalo/packd v0.3.0 // indirect
+	github.com/google/uuid v1.1.1 // indirect
+	github.com/huandu/xstrings v1.3.1 // indirect
+	github.com/imdario/mergo v0.3.8 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/joho/godotenv v1.3.0 // indirect
+	github.com/karrick/godirwalk v1.10.12 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.3.0 // indirect
+	github.com/sirupsen/logrus v1.4.2 // indirect
+	github.com/spf13/cast v1.3.1 // indirect
+	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904 // indirect
+	golang.org/x/sys v0.0.0-20200819091447-39769834ee22 // indirect
+	golang.org/x/text v0.3.0 // indirect
+)
