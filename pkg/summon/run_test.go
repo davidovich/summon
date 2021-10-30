@@ -20,8 +20,8 @@ func TestRun(t *testing.T) {
 		name     string
 		helper   string
 		ref      string
-		expect   string
-		contains string
+		expect   []string
+		contains []string
 		args     []string
 		wantErr  bool
 	}{
@@ -29,21 +29,31 @@ func TestRun(t *testing.T) {
 			name:    "composite-invoker", // python -c
 			helper:  "TestSummonRunHelper",
 			ref:     "hello",
-			expect:  "python -c print(\"hello from python!\")",
+			expect:  []string{"python -c print(\"hello from python!\")"},
 			wantErr: false,
 		},
 		{
 			name:    "simple-invoker", // bash
 			helper:  "TestSummonRunHelper",
 			ref:     "hello-bash",
-			expect:  "bash hello.sh",
+			expect:  []string{"bash hello.sh"},
 			wantErr: false,
 		},
 		{
 			name:    "self-reference-invoker", // bash
 			helper:  "TestSummonRunHelper",
 			ref:     "bash-self-ref",
-			expect:  fmt.Sprintf("bash %s", filepath.Join(os.TempDir(), "hello.sh")),
+			expect:  []string{fmt.Sprintf("bash %s", filepath.Join(os.TempDir(), "hello.sh"))},
+			wantErr: false,
+		},
+		{
+			name:   "self-reference-run", // bash
+			helper: "TestSubCommandTemplateRunCall",
+			ref:    "run-example",
+			expect: []string{
+				"bash hello.sh",          // run first call (returns "hello from subcmd")
+				"bash hello from subcmd", // actual run-example call with args
+			},
 			wantErr: false,
 		},
 		{
@@ -62,7 +72,7 @@ func TestRun(t *testing.T) {
 			name:    "renderable invoker",
 			helper:  "TestSummonRunHelper",
 			ref:     "docker",
-			expect:  "docker info",
+			expect:  []string{"docker info"},
 			wantErr: false,
 		},
 		{
@@ -70,7 +80,7 @@ func TestRun(t *testing.T) {
 			helper:  "TestSummonRunHelper",
 			ref:     "args",
 			args:    []string{"a c", "b"},
-			expect:  "bash args: a c b",
+			expect:  []string{"bash args: a c b"},
 			wantErr: false,
 		},
 		{
@@ -78,7 +88,7 @@ func TestRun(t *testing.T) {
 			helper:  "TestSummonRunHelper",
 			ref:     "one-arg",
 			args:    []string{"\"acce ssed\"", "remainder1", "remainder2"},
-			expect:  "bash args: \"acce ssed\" remainder1 remainder2",
+			expect:  []string{"bash args: \"acce ssed\" remainder1 remainder2"},
 			wantErr: false,
 		},
 		{
@@ -86,21 +96,21 @@ func TestRun(t *testing.T) {
 			helper:  "TestSummonRunHelper",
 			ref:     "all-args",
 			args:    []string{"a", "b", "c", "d"},
-			expect:  "bash args: a b c d",
+			expect:  []string{"bash args: a b c d"},
 			wantErr: false,
 		},
 		{
 			name:     "osArgs access",
 			helper:   "TestSummonRunHelper",
 			ref:      "osArgs",
-			contains: "test",
+			contains: []string{"test"},
 			wantErr:  false,
 		},
 		{
 			name:     "global template render",
 			helper:   "TestSummonRunHelper",
 			ref:      "templateref",
-			contains: "bash 1.2.3",
+			contains: []string{"bash 1.2.3"},
 			wantErr:  false,
 		},
 	}
@@ -122,10 +132,17 @@ func TestRun(t *testing.T) {
 
 			if tt.wantErr {
 				assert.Len(t, c.Calls, 0)
-			} else if tt.expect != "" {
-				assert.Equal(t, tt.expect, c.Calls[0].Args)
-			} else if tt.contains != "" {
-				assert.Contains(t, c.Calls[0].Args, tt.contains)
+			} else {
+				if len(tt.expect) != 0 {
+					for i, e := range tt.expect {
+						assert.Equal(t, e, c.Calls[i].Args)
+					}
+				}
+				if len(tt.contains) != 0 {
+					for i, e := range tt.contains {
+						assert.Contains(t, c.Calls[i].Args, e)
+					}
+				}
 			}
 		})
 	}
@@ -139,11 +156,20 @@ func TestSummonRunHelper(t *testing.T) {
 	testutil.TestSummonRunHelper()
 }
 
+func TestSubCommandTemplateRunCall(t *testing.T) {
+	if testutil.IsHelper() {
+		defer os.Exit(0)
+		testutil.WriteCall(testutil.MakeCall())
+
+		fmt.Fprint(os.Stdout, "hello from subcmd")
+	}
+}
+
 func TestListInvocables(t *testing.T) {
 	box := packr.New("test run box", "testdata")
 
 	s, _ := New(box)
 
 	inv := s.ListInvocables()
-	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "docker", "gobin", "gohack", "hello", "args", "one-arg", "all-args", "osArgs", "templateref"}, inv)
+	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "run-example", "docker", "gobin", "gohack", "hello", "args", "one-arg", "all-args", "osArgs", "templateref"}, inv)
 }
