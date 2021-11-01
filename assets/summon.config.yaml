@@ -1,0 +1,69 @@
+# this is a sample summon config file
+# see https://github.com/davidovich/summon#configuration
+version: 1
+aliases: {"git-version": "bin/version.sh"}
+# outputdir: "overridden_dir"
+exec:
+  bash:
+    hello-bash: ['{{ summon "hello.sh" }}']
+
+  docker run -v {{ env "PWD" }}:/mounted-app alpine ls:
+      list: [/mounted-app]
+
+  gobin -run:
+    packr: [github.com/gobuffalo/packr/v2/packr2]
+    gobin: [github.com/myitcv/gobin@v0.0.13]
+    gohack: [github.com/rogpeppe/gohack@v1.0.2]
+
+  gobin:
+    update_gopls: [golang.org/x/tools/gopls@latest]
+
+  docker {{ lower "INFO" }}: # naive example of templating
+    docker-info:
+
+  ? docker run -ti --rm -w /{{ env "PWD" | base }}
+    -v {{ env "PWD" }}:/{{ env "PWD" | base }}
+    hairyhenderson/figlet
+  :
+    figlet: ['hello {{ env "USER" }}']
+
+  # echo: # future implementation idea
+  #   - handle: echo
+  #     args: ['echoing: {{ .Message }}']
+  #     env: []
+
+  python3 -c:
+    hello:
+      - |
+        import sys
+        print('pyhon version:'); print(sys.version)
+        if True:
+          print()
+          print(f"hello from python! args: {sys.argv}")
+
+  python -c:
+    hellopy2: [print('hello from python!')]
+
+  bash -c:
+    # small function to setup a temporary GOPATH compatible godoc server inside docker
+    # see https://github.com/golang/go/issues/26827. This allows serving documentation
+    # for a go modules enabled project.
+    godoc:
+      - |
+        function _godoc() {
+          [ ! -f "$(pwd)/go.mod" ] && echo "error: go.mod not found" ||
+            module=$(awk 'NR==1{print $2}' go.mod) &&
+            docker run --rm -ti -e "GOPATH=/tmp/go" -p 6060:6060 -v $(pwd):/tmp/go/src/$module golang:1.15 /bin/bash -c "GO111MODULE=on go get golang.org/x/tools/cmd/godoc && echo -e \"\nhttp://localhost:6060/pkg/$module\" && \$(go env GOPATH)/bin/godoc -http=:6060"
+            unset -f _godoc;
+        }
+        _godoc
+
+    # kmerge merges a the default kubeconfig with a kubeconfig file passed as argement
+    # https://github.com/kubernetes/kubernetes/issues/46381#issuecomment-461404505
+    kmerge:
+      - |
+        function kmerge() {
+          KUBECONFIG=~/.kube/config:$1 kubectl config view --flatten > ~/.kube/mergedkub && mv ~/.kube/mergedkub ~/.kube/config
+        }
+        kmerge
+
