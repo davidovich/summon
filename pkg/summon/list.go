@@ -1,6 +1,7 @@
 package summon
 
 import (
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -11,16 +12,36 @@ import (
 func (d *Driver) List(opts ...Option) ([]string, error) {
 	d.Configure(opts...)
 
-	list := d.box.List()
+	var list []string
+	err := fs.WalkDir(d.box, d.baseDataDir, func(path string, de fs.DirEntry, err error) error {
+		if path == d.baseDataDir {
+			return nil
+		}
+
+		// old packr.Box List would only produce actual entries, and not intermediate
+		// entries, simulate that by ignoring dir only entries.
+		if !de.IsDir() {
+			rel, err := filepath.Rel(d.baseDataDir, path)
+			if err != nil {
+				return err
+			}
+			list = append(list, rel)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	if d.opts.tree {
-		_, assetDir := filepath.Split(d.box.Path)
+		assetDir := d.baseDataDir
 		rootTree := &fileTree{
 			Tree:     gotree.New(assetDir),
 			children: map[string]*fileTree{},
 		}
-		for _, path := range list {
-			rootTree.addPath(path)
+		for _, p := range list {
+			rootTree.addPath(p)
 		}
 		return []string{strings.TrimSpace(rootTree.Print())}, nil
 	}

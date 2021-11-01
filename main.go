@@ -20,6 +20,7 @@ It can be bootstrapped in an empty directory by using:
 package summon
 
 import (
+	"embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,15 +29,13 @@ import (
 
 	"github.com/davidovich/summon/cmd"
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/gobuffalo/packr/v2"
 )
 
 // Main entrypoint, typically called from a data repository. Calling Main() relinquishes
 // control to Summon so it can manage the command line arguments and instantiation of assets
-// located in the packr.Box data repository parameter.
+// located in the embed.fs data repository parameter.
 // Config opts functions are optional.
-// See https://github.com/gobuffalo/packr/tree/master/v2 for more information on packr Boxes.
-func Main(args []string, box *packr.Box, opts ...option) int {
+func Main(args []string, box embed.FS, opts ...option) int {
 	options := &MainOptions{}
 
 	for _, o := range opts {

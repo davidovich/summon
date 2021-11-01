@@ -2,22 +2,23 @@ package summon
 
 import (
 	"bytes"
+	"embed"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/spf13/afero"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestErrorOnMissingFiles(t *testing.T) {
-	defer testutil.ReplaceFs()()
+//go:embed testdata/*
+var summonTestFS embed.FS
 
-	box := packr.New("test box", t.TempDir())
-	s, _ := New(box, Filename("missing"))
+func TestErrorOnMissingFiles(t *testing.T) {
+	s, _ := New(embed.FS{}, Filename("missing"))
 	path, err := s.Summon()
 
 	assert.NotNil(t, err)
@@ -27,12 +28,11 @@ func TestErrorOnMissingFiles(t *testing.T) {
 func TestMultifileInstanciation(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box multifile", t.TempDir())
+	testFs := fstest.MapFS{}
+	testFs["assets/text.txt"] = &fstest.MapFile{Data: []byte("this is a text")}
+	testFs["assets/another.txt"] = &fstest.MapFile{Data: []byte("another text")}
 
-	box.AddString("text.txt", "this is a text")
-	box.AddString("another.txt", "another text")
-
-	s, _ := New(box, All(true))
+	s, _ := New(testFs, All(true))
 
 	path, err := s.Summon()
 	assert.Nil(t, err)
@@ -50,11 +50,11 @@ func TestOneFileInstanciation(t *testing.T) {
 
 	a := assert.New(t)
 
-	box := packr.New("t1", t.TempDir())
-	box.AddString("text.txt", "this is a text")
+	testFs := fstest.MapFS{}
+	testFs["text.txt"] = &fstest.MapFile{Data: []byte("this is a text")}
 
 	// create a summoner to summon text.txt at
-	s, err := New(box, Filename("text.txt"), Dest(config.DefaultOutputDir))
+	s, err := New(testFs, Filename("text.txt"), Dest(config.DefaultOutputDir))
 	a.NoError(err)
 
 	path, err := s.Summon()
@@ -71,10 +71,8 @@ func TestSubfolderHierarchy(t *testing.T) {
 	defer testutil.ReplaceFs()()
 	a := assert.New(t)
 
-	box := packr.New("hierarchy", "testdata")
-
 	// create a summoner to summon a complete hierarchy
-	s, err := New(box, Filename("subdir/"), Dest("o"), JSON(`{"TemplatedName":"b", "Content":"b content"}`))
+	s, err := New(summonTestFS, Filename("subdir/"), Dest("o"), JSON(`{"TemplatedName":"b", "Content":"b content"}`))
 	a.NoError(err)
 
 	path, err := s.Summon()
@@ -160,22 +158,23 @@ func TestSummonScenarios(t *testing.T) {
 		},
 	}
 
-	box := packr.New("TestTemplateRendering", "testdata")
-
-	for _, tC := range testCases {
+	for _, tC := range testCases[len(testCases)-1:] {
 		t.Run(tC.desc, func(t *testing.T) {
 			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest), Raw(tC.raw)}
 			output := &bytes.Buffer{}
 			if tC.dest == "-" {
 				args = append(args, out(output))
 			}
-			s, err := New(box, args...)
+			s, err := New(summonTestFS, args...)
+			assert.NotNil(s)
+
 			if tC.wantError {
 				assert.Error(err)
 			} else {
 				assert.NoError(err)
 			}
 			path, err := s.Summon()
+			assert.NoError(err)
 
 			assert.Equal(tC.expectedFileName, path)
 			var b []byte

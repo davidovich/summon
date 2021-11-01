@@ -9,15 +9,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
-	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/gobuffalo/packr/v2/file"
 	"github.com/spf13/afero"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -47,29 +47,57 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 	}
 
 	if d.opts.all {
-		return destination, d.box.Walk(func(path string, info file.File) error {
-			_, err := d.copyOneFile(info, "")
-			return err
-		})
+		startdir := filepath.Clean(d.opts.filename)
+		if d.opts.filename == "" {
+			startdir = d.baseDataDir
+		}
+
+		return destination, fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
 	}
 
 	filename := filepath.Clean(d.opts.filename)
 	filename = d.resolveAlias(filename)
-
-	// User wants to extract a subdirectory
-	if d.box.HasDir(filename) {
-		return destination,
-			d.box.WalkPrefix(filename, func(path string, info file.File) error {
-				_, err := d.copyOneFile(info, filename)
-				return err
-			})
-	}
+	filename = path.Join(d.baseDataDir, filename)
 
 	boxedFile, err := d.box.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	return d.copyOneFile(boxedFile, "")
+	stat, err := boxedFile.Stat()
+	if err != nil {
+		return "", err
+	}
+	if stat.IsDir() {
+		// User wants to extract a subdirectory
+		startdir := filename
+		return destination,
+			fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
+	}
+
+	return d.copyOneFile(boxedFile, filename, d.baseDataDir)
+}
+
+func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntry, _ error) error {
+	return func(path string, de fs.DirEntry, _ error) error {
+		if de.IsDir() {
+			return nil
+		}
+		file, err := d.box.Open(path)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(d.baseDataDir, path)
+		if err != nil {
+			return err
+		}
+		subdir, err := filepath.Rel(d.baseDataDir, startdir)
+		if err != nil {
+			return err
+		}
+
+		_, err = d.copyOneFile(file, rel, subdir)
+		return err
+	}
 }
 
 func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
@@ -156,23 +184,18 @@ func summonFuncMap(d *Driver) template.FuncMap {
 	}
 }
 
-func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error) {
+func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, error) {
 	destination := d.opts.destination
-	// Write the file and print it'd path
-	stat, err := boxedFile.Stat()
-	if err != nil {
-		return "", err
-	}
-	filename := stat.Name()
 
 	if !d.opts.raw {
+		var err error
 		filename, err = d.renderTemplate(filename, d.opts.data)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	filename, err = filepath.Rel(rootDir, filename)
+	filename, err := filepath.Rel(root, filename)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +206,7 @@ func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error
 		out = d.opts.out
 	} else {
 		summonedFile = filepath.Join(destination, filename)
-		err = appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
+		err := appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
 		if err != nil {
 			return "", err
 		}
@@ -197,6 +220,9 @@ func (d *Driver) copyOneFile(boxedFile http.File, rootDir string) (string, error
 	}
 
 	boxedContent, err := ioutil.ReadAll(boxedFile)
+	if err != nil {
+		return "", err
+	}
 
 	var rendered string
 	if d.opts.raw {

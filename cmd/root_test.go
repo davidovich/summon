@@ -12,11 +12,10 @@ import (
 
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/gobuffalo/packr/v2"
 )
 
-func makeRootCmd(box *packr.Box, withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
-	s, _ := summon.New(box)
+func makeRootCmd(withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
+	s, _ := summon.New(runCmdTestFS)
 	rootCmd := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
 	rootCmd.SetArgs(args)
 	return s, rootCmd
@@ -24,10 +23,6 @@ func makeRootCmd(box *packr.Box, withoutRun bool, args ...string) (*summon.Drive
 
 func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
-
-	box := packr.New("test box", "testdata/plain")
-	box.AddString("a.txt", "a content")
-	box.AddString("b.txt", "b content")
 
 	mockBuildInfo := func() func() {
 		oldBi := buildInfo
@@ -52,7 +47,7 @@ func Test_createRootCmd(t *testing.T) {
 	}
 
 	makeRootCmd := func(args ...string) *cobra.Command {
-		_, c := makeRootCmd(box, false, args...)
+		_, c := makeRootCmd(false, args...)
 		return c
 	}
 
@@ -102,7 +97,7 @@ func Test_createRootCmd(t *testing.T) {
 		},
 		{
 			name:    "--json-file",
-			rootCmd: makeRootCmd("--json-file", "testdata/plain/json-for-template.json", "summon.config.yaml"),
+			rootCmd: makeRootCmd("--json-file", "testdata/json-for-template.json", "summon.config.yaml"),
 			wantErr: false,
 		},
 		{
@@ -139,7 +134,6 @@ func Test_createRootCmd(t *testing.T) {
 }
 
 func Test_RootCmdWithRunnables(t *testing.T) {
-	box := packr.New("test box runnables", "testdata/plain")
 
 	tests := []struct {
 		name         string
@@ -162,7 +156,7 @@ func Test_RootCmdWithRunnables(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
-			s, rootCmd := makeRootCmd(box, true, tt.args...)
+			s, rootCmd := makeRootCmd(true, tt.args...)
 
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
@@ -184,10 +178,6 @@ func Test_RootCmdWithRunnables(t *testing.T) {
 func Test_mainCmd_run(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	box := packr.New("test box Test_mainCmd_run", t.TempDir())
-	box.AddString("a.txt", "a content")
-	box.AddString("b.txt", "b content")
-
 	type fields struct {
 		copyAll  bool
 		dest     string
@@ -206,7 +196,7 @@ func Test_mainCmd_run(t *testing.T) {
 			fields: fields{
 				dest:     ".s",
 				filename: "a.txt",
-				driver:   func() *summon.Driver { s, _ := summon.New(box); return s }(),
+				driver:   func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
 			},
 			out: ".s/a.txt\n",
 		},
@@ -214,16 +204,16 @@ func Test_mainCmd_run(t *testing.T) {
 			name:       "ls-option",
 			lsAsOption: true,
 			fields: fields{
-				driver: func() *summon.Driver { s, _ := summon.New(box); return s }(),
+				driver: func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
 			},
-			out: "a.txt\nb.txt\n",
+			out: "a.txt\nb.txt\njson-for-template.json\nsummon.config.yaml\n",
 		},
 		{
 			name: "copyAll",
 			fields: fields{
 				copyAll: true,
 				dest:    ".s",
-				driver:  func() *summon.Driver { s, _ := summon.New(box); return s }(),
+				driver:  func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
 			},
 			out: ".s\n", // note dest dir
 		},
