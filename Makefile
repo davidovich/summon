@@ -1,43 +1,29 @@
 SHELL=/bin/bash
 
-HAS_PACKR2				:= $(shell command -v packr2)
-HAS_GOBIN				:= $(shell command -v gobin)
 HAS_GOCOVERUTIL			:= $(shell command -v gocoverutil)
-
-ifndef HAS_GOBIN
-$(shell GO111MODULE=off go get -u github.com/myitcv/gobin 2>/dev/null)
-endif
 
 export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
-PACKR_FILE := internal/scaffold/scaffold-packr.go
+SCAFFOLD_SRCS := $(shell GO111MODULE=on go list -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' github.com/davidovich/summon/scaffold/...)
 COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
 
 DOC_REPO_NAME := davidovich.github.io
 DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
 SUMMON_BADGE_JSON_FILE := $(DOC_REPO_NAME)/shields/summon/summon.json
 
-ASSETS := $(shell find internal/templates/scaffold)
+ASSETS := $(shell find internal/scaffold/templates/scaffold)
 
-all: $(PACKR_FILE) test $(SCAFFOLD_BIN)
+all: test $(SCAFFOLD_BIN)
 
 .PHONY: bin
-bin: $(PACKR_FILE) $(SCAFFOLD_BIN)
+bin: $(SCAFFOLD_BIN)
 
 .PHONY: $(SCAFFOLD_BIN)
-$(SCAFFOLD_BIN): $(PACKR_FILE)
-	@mkdir -p bin
+$(SCAFFOLD_BIN): $(ASSETS) $(SCAFFOLD_SRCS)
 	go build -o $@ $(@F)/$(@F).go
 
-$(PACKR_FILE): $(ASSETS)
-ifndef HAS_PACKR2
-	gobin github.com/gobuffalo/packr/v2/packr2
-endif
-	cd internal/scaffold && packr2
-
-GO_TESTS := pkg internal cmd
-COVERAGE := $(foreach t,$(GO_TESTS),build/coverage/report/$(t))
+COVERAGE := build/coverage/report/summon
 MERGED_COVERAGE := build/coverage/report/cover.merged.out
 HTML_COVERAGE := build/coverage/html/index.html
 
@@ -67,7 +53,7 @@ $(HTML_COVERAGE): $(MERGED_COVERAGE)
 
 $(COVERAGE):
 	@mkdir -p $(@D)
-	go test ./$(@F)/... --cover -coverprofile $@ -v
+	go test ./... --cover -coverprofile $@ -v
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)
@@ -85,5 +71,4 @@ endif
 
 .PHONY: clean
 clean:
-	packr2 clean
 	rm -rf bin build

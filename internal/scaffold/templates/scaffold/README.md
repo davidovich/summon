@@ -1,20 +1,19 @@
 Summon Data Provider Repo
 =========================
 
-This repository hosts a [{{ .SummonerName }}](https://github.com/davidovich/summon) data
-provider.
+This repository hosts a [{{ .SummonerName }}](https://github.com/davidovich/summon) data provider.
 
-You install this provider as `{{ .SummonerName }}`:
+You install the latest version of this provider as `{{ .SummonerName }}`:
 
-```
-go install {{ .ModName }}/{{.SummonerName}}
+```shell
+go install {{ .ModName }}/{{.SummonerName}}@latest
 ```
 
 And then use the `{{ .SummonerName }}` executable to summon assets.
 
 Summon `some-asset` like so:
 
-```
+```shell
 {{ .SummonerName }} some-asset
 ```
 

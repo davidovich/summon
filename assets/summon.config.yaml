@@ -10,13 +10,8 @@ exec:
   docker run -v {{ env "PWD" }}:/mounted-app alpine ls:
       list: [/mounted-app]
 
-  gobin -run:
-    packr: [github.com/gobuffalo/packr/v2/packr2]
-    gobin: [github.com/myitcv/gobin@v0.0.13]
+  go run:
     gohack: [github.com/rogpeppe/gohack@v1.0.2]
-
-  gobin:
-    update_gopls: [golang.org/x/tools/gopls@latest]
 
   docker {{ lower "INFO" }}: # naive example of templating
     docker-info:
