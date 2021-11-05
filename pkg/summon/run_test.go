@@ -7,14 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
 )
 
 func TestRun(t *testing.T) {
-	box := packr.New("test run box", "testdata")
 
 	tests := []struct {
 		name     string
@@ -116,7 +114,7 @@ func TestRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New(box, Ref(tt.ref))
+			s, err := New(summonTestFS, Ref(tt.ref))
 			assert.Nil(t, err)
 
 			stdout := &bytes.Buffer{}
@@ -166,9 +164,7 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 }
 
 func TestListInvocables(t *testing.T) {
-	box := packr.New("test run box", "testdata")
-
-	s, _ := New(box)
+	s, _ := New(summonTestFS)
 
 	inv := s.ListInvocables()
 	assert.ElementsMatch(t, []string{"hello-bash", "bash-self-ref", "run-example", "docker", "gobin", "gohack", "hello", "args", "one-arg", "all-args", "osArgs", "templateref"}, inv)

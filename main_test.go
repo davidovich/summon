@@ -4,20 +4,20 @@
 package summon_test
 
 import (
+	"embed"
 	"os"
 
 	"github.com/davidovich/summon"
-	"github.com/gobuffalo/packr/v2"
 )
+
+// fs captures the files of the assets tree
+//go:embed assets/*
+var fs embed.FS
 
 var exit = os.Exit
 
 // Here is the main() entry-point in summon.go
 func Example() {
-
-	// box captures the files of the assets tree
-	box := packr.New("Summon Box", "../assets")
-
 	// relinquish control to the summon library
-	exit(summon.Main(os.Args, box))
+	exit(summon.Main(os.Args, fs))
 }

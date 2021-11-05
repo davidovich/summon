@@ -2,14 +2,16 @@ package summon
 
 import (
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
+	"path"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
-	"github.com/gobuffalo/packr/v2"
 )
 
 // Summoner is the old name for Driver, use Driver instead.
@@ -22,20 +24,35 @@ var Name = "summon"
 type Driver struct {
 	opts        options
 	Config      config.Config
-	box         *packr.Box
+	box         fs.FS
+	baseDataDir string
 	templateCtx *template.Template
 	execCommand command.ExecCommandFn
 	configRead  bool
 }
 
 // New creates the Driver.
-func New(box *packr.Box, opts ...Option) (*Driver, error) {
+func New(box fs.FS, opts ...Option) (*Driver, error) {
 	d := &Driver{
 		box:         box,
 		execCommand: command.New,
 	}
 
-	err := d.Configure(opts...)
+	err := fs.WalkDir(d.box, ".", func(path string, de fs.DirEntry, err error) error {
+		if path == "." {
+			return nil
+		}
+		if de.IsDir() {
+			d.baseDataDir = path
+			return fs.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = d.Configure(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +67,13 @@ func (d *Driver) Configure(opts ...Option) error {
 	}
 	if !d.configRead {
 		// try to find a config file in the box
-		config, err := d.box.Find(config.ConfigFile)
+		configFile, err := d.box.Open(path.Join(d.baseDataDir, config.ConfigFile))
 		if err == nil {
+			defer configFile.Close()
+			config, err := io.ReadAll(configFile)
+			if err != nil {
+				return err
+			}
 			err = d.Config.Unmarshal(config)
 			if err != nil {
 				return err

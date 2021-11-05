@@ -1,25 +1,26 @@
 package scaffold
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/gobuffalo/packr/v2"
 )
+
+//go:embed templates/scaffold/*
+var scaffoldFS embed.FS
 
 const scaffoldParams = `{
 	"ModName": "%s",
 	"SummonerName": "%s",
-	"go": ".go"
+	"go": "go"
 }`
 
 // Create will create a folder structure at destination with templates resolved
 func Create(destDir, modName, summonerName string, force bool) error {
-	box := packr.New("Summon scaffold template", "../templates/scaffold")
-
-	s, err := summon.New(box)
+	s, err := summon.New(scaffoldFS)
 	if err != nil {
 		return err
 	}
@@ -33,6 +34,7 @@ func Create(destDir, modName, summonerName string, force bool) error {
 
 	_, err = s.Summon(
 		summon.All(true),
+		summon.Filename("templates/scaffold"),
 		summon.JSON(fmt.Sprintf(scaffoldParams, modName, summonerName)),
 		summon.Dest(destDir),
 	)

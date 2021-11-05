@@ -2,17 +2,19 @@ package cmd
 
 import (
 	"bytes"
+	"embed"
 	"testing"
 
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/gobuffalo/packr/v2"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 )
 
+//go:embed testdata/*
+var runCmdTestFS embed.FS
+
 func TestRunCmd(t *testing.T) {
-	box := packr.New("test box", "testdata/plain")
 
 	testCases := []struct {
 		desc      string
@@ -57,7 +59,7 @@ func TestRunCmd(t *testing.T) {
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			s, _ := summon.New(box)
+			s, _ := summon.New(runCmdTestFS)
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
 			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
