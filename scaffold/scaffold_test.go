@@ -24,7 +24,7 @@ func TestScaffolder(t *testing.T) {
 			desc:    "happy path",
 			args:    []string{"init", "example.com/my/assets"},
 			file:    "go.mod",
-			content: "module example.com/my/assets\n",
+			content: "module example.com/my/assets\n\nrequire github.com/davidovich/summon latest\n",
 		},
 		{
 			desc:    "non empty dir error",

@@ -37,6 +37,7 @@ import (
 
 	"github.com/davidovich/summon/internal/scaffold"
 	"github.com/davidovich/summon/pkg/command"
+	"github.com/davidovich/summon/pkg/summon"
 	"github.com/spf13/cobra"
 )
 
@@ -81,13 +82,18 @@ func newMainCmd() *cobra.Command {
 				gitcmd := execCmd(git, "-C", dest, "init")
 				gitcmd.Stdout = os.Stdout
 				_ = gitcmd.Run()
+
+				gocmd := execCmd("go", "mod", "tidy")
+				gocmd.Dir = dest
+				gocmd.Stdout = os.Stdout
+				_ = gocmd.Run()
 			}
 			return err
 		},
 	}
 
 	initCmd.Flags().StringVarP(&dest, "out", "o", ".", "destination directory")
-	initCmd.Flags().StringVarP(&summonName, "name", "n", "summon", "summon executable name")
+	initCmd.Flags().StringVarP(&summonName, "name", "n", summon.Name, "summon executable name")
 	initCmd.Flags().BoolVarP(&force, "force", "f", false, "force overwrite")
 
 	rootCmd.AddCommand(initCmd)

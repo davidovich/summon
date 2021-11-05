@@ -12,6 +12,8 @@ import (
 func TestCreateScaffold(t *testing.T) {
 	assert := assert.New(t)
 
+	content := "module example.com/my/assets\n\nrequire github.com/davidovich/summon latest\n"
+
 	testCases := []struct {
 		desc     string
 		args     []string
@@ -26,13 +28,13 @@ func TestCreateScaffold(t *testing.T) {
 			desc:    "happy path",
 			args:    []string{".", "example.com/my/assets", "summon"},
 			file:    "go.mod",
-			content: "module example.com/my/assets\n",
+			content: content,
 		},
 		{
 			desc:    "output dir",
 			args:    []string{"subdir", "example.com/my/assets", "summon"},
 			file:    "subdir/go.mod",
-			content: "module example.com/my/assets\n",
+			content: content,
 		},
 		{
 			desc:    "non empty dir error",
@@ -51,13 +53,13 @@ func TestCreateScaffold(t *testing.T) {
 				f.Close()
 			},
 			file:    "summon/go.mod",
-			content: "module example.com/my/assets\n",
+			content: content,
 		},
 		{
 			desc:    "named exe",
 			args:    []string{".", "example.com/my/assets", "my-assets"},
 			file:    "go.mod",
-			content: "module example.com/my/assets\n",
+			content: content,
 		},
 		{
 			desc:     "README rendered contents",

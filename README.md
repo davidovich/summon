@@ -6,6 +6,7 @@
   - [How it Works](#how-it-works)
   - [Configuration](#configuration)
     - [Data repository](#data-repository)
+      - [Migration from versions prior to v0.13.0](#migration-from-versions-prior-to-v0130)
     - [Summon config File](#summon-config-file)
   - [Build](#build)
   - [Install](#install)
@@ -70,8 +71,11 @@ coding is necessary in the assert repo.
 
 Summon also provides a boostrapping feature in the scaffold command.
 
-Summon builds upon the new go 1.16 [embed.FS](https://pkg.go.dev/embed) feature used to pack assets in a
-go binary. You then install this at destination using standard `go install`.
+> New in v0.13.0
+
+Summon builds upon the new go 1.16 [embed.FS](https://pkg.go.dev/embed) feature
+used to pack assets in a go binary. You then install this at destination using
+standard `go install`.
 
 When you invoke this binary with a contained asset path, the invoked files are
 placed locally and the summoned file path is returned so it can be consumed by
@@ -99,22 +103,31 @@ You will then have something resembling this structure:
 .
 ├── Makefile
 ├── README.md
-├── assets
-│   └── summon.config.yaml
 ├── go.mod
-└── summon.go
+├── go.sum
+└── summon
+    ├── assets
+    │   └── summon.config.yaml
+    └── summon.go
 ```
 
 There is an example setup at https://github.com/davidovich/summon-example-assets.
 
-You just need to populate the `assets` directory with your own data.
+You just need to populate the `summon/assets` directory with your own data.
 
-The `summon.go` file of the main module is the entry point to the summon
+The `summon/summon.go` file of the main module is the entry point to the summon
 library, and creates the main command executable.
+
+#### Migration from versions prior to v0.13.0
+
+The v0.13.0 version uses the embed.FS and the `//go:embed assets/*` directive.
+Prior versions used to reference the `assets/` dir at the root of the repo.
+This means that the data being embeded must now be a sibling of the source
+file containing `package main`.
 
 ### Summon config File
 
-The `assets/summon.config.yaml` is an (optional) configuration file to
+The `summon/assets/summon.config.yaml` is an (optional) configuration file to
 customize summon. You can define:
 
 - aliases
