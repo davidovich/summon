@@ -54,5 +54,6 @@ func (c completionCmdOpts) run() error {
 		})
 	}
 
-	return c.cmd.Root().GenBashCompletion(c.out)
+	// TODO support other shells
+	return c.cmd.Root().GenBashCompletionV2(c.out, true)
 }
