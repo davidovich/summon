@@ -149,7 +149,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				configRead:  d.configRead,
 			}
 			b := &strings.Builder{}
-			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), out(b))
+			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
 
 			return strings.TrimSpace(b.String()), err
 		},

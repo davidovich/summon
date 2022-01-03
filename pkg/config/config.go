@@ -44,16 +44,21 @@ type ExecSpec struct {
 type Handles map[string]ExecSpec
 
 // ArgSliceSpec is the basic form of args to pass to
-// invoker. It is a slice of string, or slices of strings.
+// invoker. It can be a slice of string, or slices of strings.
 type ArgSliceSpec []interface{}
 
 // CmdSpec describes a complex command
 type CmdSpec struct {
-	Args       []CmdSpec         `yaml:"subArgs,omitempty"`
-	Flags      map[string]string `yaml:"flags,omitempty"`
-	CmdArgs    ArgSliceSpec      `yaml:"cmdArgs"`
-	Help       string            `yaml:"help"`
-	Completion string            `yaml:"completion"`
+	// Args sub-arguments of current command
+	Args map[string]CmdSpec `yaml:"args,omitempty"`
+	// Flags of this command
+	Flags map[string]string `yaml:"flags,omitempty"`
+	// CmdArgs is the args that get added to the command
+	CmdArgs ArgSliceSpec `yaml:"cmdArgs"`
+	// Help of this command
+	Help string `yaml:"help"`
+	// Command to invoke to have a completion of this command
+	Completion string `yaml:"completion"`
 }
 
 // UnmarshalYAML the ExecSpec. It can be a CmdSpec or a ArgSliceSpec

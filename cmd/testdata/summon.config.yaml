@@ -10,6 +10,11 @@ exec:
         - echo
         - hello {{ .Name -}}
       hello-bash: [hello.sh]
+
+      tk:
+        cmdArgs: [tk]
+        completion: '{{ run "COMP_LINE=''osArgs'' tk" }}'
+
     gobin -run:
       gobin: [github.com/myitcv/gobin@v0.0.8]
       gohack: [github.com/rogpeppe/gohack]

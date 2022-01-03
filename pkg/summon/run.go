@@ -26,55 +26,12 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	eu, err := d.findExecutor(d.opts.ref)
+	rargs, err := d.BuildCommand()
 	if err != nil {
 		return err
 	}
 
-	data := d.opts.data
-	// add arguments
-	if data == nil {
-		data = map[string]interface{}{}
-	}
-
-	data["osArgs"] = os.Args
-
-	invOpts, err := d.renderTemplate(eu.invOpts, data)
-	if err != nil {
-		return err
-	}
-
-	targets := make([]string, 0, len(eu.targets))
-	var renderedTargets []string
-	for _, t := range FlattenStrings(eu.targets) {
-		rt, err := d.renderTemplate(t, data)
-		if err != nil {
-			return err
-		}
-
-		renderedTargets = []string{rt}
-		// Convert array to real array and merge
-		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
-			if err != nil {
-				return err
-			}
-		}
-
-		targets = append(targets, renderedTargets...)
-	}
-
-	rargs, err := shlex.Split(invOpts)
-	if err != nil {
-		return err
-	}
-
-	rargs = append(rargs, targets...)
-
-	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
-	rargs = append(rargs, unusedArgs...)
-
-	cmd := d.execCommand(eu.invoker, rargs...)
+	cmd := d.execCommand(rargs[0], rargs[1:]...)
 
 	if d.opts.debug || d.opts.dryrun {
 		msg := "Executing"
@@ -93,6 +50,58 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	return nil
+}
+
+func (d *Driver) BuildCommand() ([]string, error) {
+	eu, err := d.findExecutor(d.opts.ref)
+	if err != nil {
+		return nil, err
+	}
+
+	data := d.opts.data
+	// add arguments
+	if data == nil {
+		data = map[string]interface{}{}
+	}
+
+	data["osArgs"] = os.Args
+
+	invOpts, err := d.renderTemplate(eu.invOpts, data)
+	if err != nil {
+		return nil, err
+	}
+
+	targets := make([]string, 0, len(eu.targets))
+	var renderedTargets []string
+	for _, t := range FlattenStrings(eu.targets) {
+		rt, err := d.renderTemplate(t, data)
+		if err != nil {
+			return nil, err
+		}
+
+		renderedTargets = []string{rt}
+		// Convert array to real array and merge
+		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
+			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		targets = append(targets, renderedTargets...)
+	}
+
+	rargs, err := shlex.Split(invOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	rargs = append(rargs, targets...)
+
+	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
+	rargs = append(rargs, unusedArgs...)
+
+	return rargs, nil
 }
 
 func computeUnused(args []string, consumed map[int]struct{}) []string {

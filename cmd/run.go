@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/summon"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -53,15 +54,13 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 					return fmt.Errorf("requires at least 1 command to run, received 0")
 				}
 				validArgs, _ := cmd.ValidArgsFunction(cmd, args, "")
-				for _, a := range args {
-					for _, v := range validArgs {
-						if a == v {
-							return nil
-						}
+				a := args[0]
+				for _, v := range validArgs {
+					if a == v {
+						return nil
 					}
-					return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
 				}
-				return nil
+				return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
 			},
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			Run:                func(cmd *cobra.Command, args []string) {},
@@ -89,19 +88,69 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
 		return runCmd.run()
 	}
-	for _, i := range invocables {
-		runSubCmd := &cobra.Command{
-			Use:                i,
-			RunE:               subRunE,
-			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		}
-		rcmd.AddCommand(runSubCmd)
-	}
+
+	constructCommandTree(driver, rcmd, handles, subRunE)
+	// for _, i := range invocables {
+	// 	runSubCmd := &cobra.Command{
+	// 		Use:                i,
+	// 		RunE:               subRunE,
+	// 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+	// 	}
+	// 	rcmd.AddCommand(runSubCmd)
+	// }
 
 	if !runCmdDisabled && root != nil {
 		root.AddCommand(rcmd)
 	}
 	return rcmd
+}
+
+func addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(cmd *cobra.Command, args []string) error) {
+	subCmd := &cobra.Command{
+		Use:                arg,
+		RunE:               run,
+		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+	}
+	if cmdSpec.Args != nil {
+		for aName, cmdSpec := range cmdSpec.Args {
+			addCmdSpec(subCmd, aName, cmdSpec, run)
+		}
+
+	}
+	root.AddCommand(subCmd)
+}
+
+func constructCommandTree(driver summon.ConfigurableRunner, root *cobra.Command, handles config.Handles, run func(cmd *cobra.Command, args []string) error) {
+
+	for h, args := range handles {
+		subCmd := &cobra.Command{
+			Use:                h,
+			RunE:               run,
+			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+		}
+		root.AddCommand(subCmd)
+
+		switch t := args.Value.(type) {
+		case config.CmdSpec:
+			if t.Args != nil {
+				for aName, cmdSpec := range t.Args {
+					addCmdSpec(subCmd, aName, cmdSpec, run)
+				}
+			}
+			if t.Completion != "" {
+				subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+					//cmd, err := driver.BuildCommand()
+					//driver.Run(summon.Out(w io.Writer))
+					return nil, cobra.ShellCompDirectiveDefault
+				}
+			}
+		case config.ArgSliceSpec:
+			subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+				addedArgs := summon.FlattenStrings(t)
+				return addedArgs, cobra.ShellCompDirectiveNoFileComp
+			}
+		}
+	}
 }
 
 func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {

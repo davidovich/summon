@@ -64,7 +64,8 @@ func TestRunCmd(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
 
-			s.Configure(summon.ExecCmd(execCommand))
+			err := s.Configure(summon.ExecCmd(execCommand))
+			assert.NoError(t, err)
 
 			if tC.main == nil {
 				tC.main = &mainCmd{}
@@ -74,7 +75,7 @@ func TestRunCmd(t *testing.T) {
 			cmd := newRunCmd(false, nil, s, tC.main)
 			cmd.SetArgs(tC.args)
 
-			err := cmd.Execute()
+			err = cmd.Execute()
 			if tC.wantError {
 				assert.Error(t, err)
 				return

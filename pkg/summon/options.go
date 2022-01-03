@@ -115,7 +115,7 @@ func Dest(dest string) Option {
 	}
 }
 
-func out(w io.Writer) Option {
+func Out(w io.Writer) Option {
 	return func(opts *options) error {
 		opts.out = w
 		return nil

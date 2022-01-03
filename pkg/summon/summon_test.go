@@ -163,7 +163,7 @@ func TestSummonScenarios(t *testing.T) {
 			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest), Raw(tC.raw)}
 			output := &bytes.Buffer{}
 			if tC.dest == "-" {
-				args = append(args, out(output))
+				args = append(args, Out(output))
 			}
 			s, err := New(summonTestFS, args...)
 			assert.NotNil(s)
