@@ -1,0 +1,61 @@
+# this is a sample summon config file
+# see https://github.com/davidovich/summon#configuration
+version: 1
+aliases: {}
+outputdir: ".summoned"
+
+.base: &baseargs
+  - make
+  - -f
+  - /opsverseer/bootstrap/Makefile
+
+
+# .availablecommands: &commands
+#   make: [*baseargs, '{{template "parseArgs" 0 }}']
+#   tk:
+#     cmdArgs: [tk]
+#     completion: '{{ run "COMP_LINE=''tk args'' tk" }}'
+
+#   cobra-complete-v2:
+#     completion: '{{ run '
+
+flags:
+  - --config-root: 'CONFIG_ROOT=.'
+exec:
+  invokers:
+    bash:
+      #make: [*baseargs, '{{template "parseArgs" 0 }}']
+
+      tk:
+        cmdArgs: [tk]
+        completion: '{{ run "COMP_LINE=''osArgs'' tk" }}'
+
+      cobra-complete-v2:
+        completion: '{{ run "cobra-based-cmd" "__complete" args }}'
+
+      hello-bash: ['{{ summon "hello.sh" }}']
+
+      make: [echo 'env-a env-b envc']
+
+      manifest:
+        help: 'render kubernetes manifests in build dir'
+        cmdArgs: [*baseargs, 'manifests/{{arg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
+        completion: '{{ run "make" "list-environments" }}'
+
+      build:
+        help: 'build components'
+        cmdArgs: &build [*baseargs, 'build/{{arg 0 "build"}}','{{ flag "--config-root" }}']
+        args:
+          image:
+              cmdArgs: [*baseargs, 'build/image/{{arg 0 "build image"}}']
+              help: "build images in this repo"
+              completion: '{{ run "make" "to-do-implement-image-list" }}'
+
+          gitlab-ci.yaml:
+              flags:
+                --one-pipeline: '{{ if eq . "true"}} PARENT_CHILD=0 {{ else }} PARENT_CHILD=1'
+              cmdArgs: [*build, '{{ flag "--one-pipeline" }}']
+              help: "Initialize or merge gitlab-ci.yaml"
+
+    docker run -v {{ env "PWD" }}:/mounted-app alpine:
+      list: [ls, /mounted-app]
