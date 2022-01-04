@@ -13,7 +13,7 @@ exec:
 
       tk:
         cmdArgs: [tk]
-        completion: '{{ run "COMP_LINE=''osArgs'' tk" }}'
+        completion: '{{with $a := .osArgs | join " " }}{{printf "COMP_LINE=%s" $a | run }}{{end}}'
 
     gobin -run:
       gobin: [github.com/myitcv/gobin@v0.0.8]

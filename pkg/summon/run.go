@@ -14,8 +14,8 @@ import (
 type execUnit struct {
 	invoker    string
 	invOpts    string
-	targets    config.ArgSliceSpec
-	targetSpec config.CmdSpec
+	targets    *config.ArgSliceSpec
+	targetSpec *config.CmdSpec
 }
 
 // Run will run executable scripts described in the summon.config.yaml file
@@ -71,9 +71,9 @@ func (d *Driver) BuildCommand() ([]string, error) {
 		return nil, err
 	}
 
-	targets := make([]string, 0, len(eu.targets))
+	targets := make([]string, 0, len(*eu.targets))
 	var renderedTargets []string
-	for _, t := range FlattenStrings(eu.targets) {
+	for _, t := range FlattenStrings(*eu.targets) {
 		rt, err := d.renderTemplate(t, data)
 		if err != nil {
 			return nil, err
@@ -91,11 +91,12 @@ func (d *Driver) BuildCommand() ([]string, error) {
 		targets = append(targets, renderedTargets...)
 	}
 
-	rargs, err := shlex.Split(invOpts)
+	rargs := []string{eu.invoker}
+	opts, err := shlex.Split(invOpts)
 	if err != nil {
 		return nil, err
 	}
-
+	rargs = append(rargs, opts...)
 	rargs = append(rargs, targets...)
 
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
@@ -143,12 +144,15 @@ func (d *Driver) findExecutor(ref string) (execUnit, error) {
 				eu.invOpts = strings.TrimSpace(exec[1])
 			}
 
-			eu.targets, ok = c.Value.(config.ArgSliceSpec)
+			targets, ok := c.Value.(config.ArgSliceSpec)
 			if !ok {
-				eu.targetSpec, ok = c.Value.(config.CmdSpec)
+				cmdSpec, ok := c.Value.(config.CmdSpec)
 				if !ok {
 					return execUnit{}, fmt.Errorf("config syntax error for 'exec:%s' in config %s", ref, config.ConfigFile)
 				}
+				eu.targetSpec = &cmdSpec
+			} else {
+				eu.targets = &targets
 			}
 
 			break

@@ -5,6 +5,7 @@ aliases: {}
 outputdir: ".summoned"
 
 .base: &baseargs
+  - echo
   - make
   - -f
   - /opsverseer/bootstrap/Makefile
@@ -23,24 +24,31 @@ flags:
   - --config-root: 'CONFIG_ROOT=.'
 exec:
   invokers:
+
+    bash -c:
+      fake-make:
+        cmdArgs: [echo env-a env-b env-c]
+        help: simulate env call
+
     bash:
-      #make: [*baseargs, '{{template "parseArgs" 0 }}']
+      make: *baseargs
 
       tk:
         cmdArgs: [tk]
-        completion: '{{ run "COMP_LINE=''osArgs'' tk" }}'
+        # tk uses the posener/complete library. Fake a completion call by
+        # setting the COMP_LINE environment var.
+        completion: '{{with $a := args | join " " }}{{printf "COMP_LINE=%s " $a | run }}{{end}}'
 
-      cobra-complete-v2:
-        completion: '{{ run "cobra-based-cmd" "__complete" args }}'
+      kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
+        cmdArgs: [kubectl]
+        completion: '{{ join " " args | run "kubectl" "__complete" }}'
 
       hello-bash: ['{{ summon "hello.sh" }}']
-
-      make: [echo 'env-a env-b envc']
 
       manifest:
         help: 'render kubernetes manifests in build dir'
         cmdArgs: [*baseargs, 'manifests/{{arg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
-        completion: '{{ run "make" "list-environments" }}'
+        completion: '{{ run "fake-make" "list-environments" }}'
 
       build:
         help: 'build components'

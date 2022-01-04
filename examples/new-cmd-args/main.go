@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"embed"
+	"os"
 
 	"github.com/davidovich/summon"
 )
@@ -13,5 +13,5 @@ import (
 var fs embed.FS
 
 func main() {
-	os.Exit(summon.Main(os.Args, fs))
+	os.Exit(summon.Main(os.Args, fs, summon.WithoutRunCmd()))
 }

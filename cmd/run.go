@@ -69,35 +69,30 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 
 	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
-	subRunE := func(cmd *cobra.Command, args []string) error {
-		cmd.SilenceUsage = true
+	makeRunCmd := func(summonRef string) func(cmd *cobra.Command, args []string) error {
 
-		runCmd.ref = cmd.Name()
-		// calculate the extra args to pass to the referenced executable
-		// this is due to a limitation in spf13/cobra which eats
-		// all unknown args or flags making it hard to wrap other commands.
-		// We are lucky, we know the prefix order of params,
-		// extract args after the run command [summon run handle]
-		// see https://github.com/spf13/pflag/pull/160
-		// https://github.com/spf13/cobra/issues/739
-		// and https://github.com/spf13/pflag/pull/199
-		firstUnknownArgPos := 3
-		if runCmdDisabled {
-			firstUnknownArgPos = 2
+		return func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+
+			runCmd.ref = summonRef
+			// calculate the extra args to pass to the referenced executable
+			// this is due to a limitation in spf13/cobra which eats
+			// all unknown args or flags making it hard to wrap other commands.
+			// We are lucky, we know the prefix order of params,
+			// extract args after the run command [summon run handle]
+			// see https://github.com/spf13/pflag/pull/160
+			// https://github.com/spf13/cobra/issues/739
+			// and https://github.com/spf13/pflag/pull/199
+			firstUnknownArgPos := 3
+			if runCmdDisabled {
+				firstUnknownArgPos = 2
+			}
+			runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
+			return runCmd.run()
 		}
-		runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
-		return runCmd.run()
 	}
 
-	constructCommandTree(driver, rcmd, handles, subRunE)
-	// for _, i := range invocables {
-	// 	runSubCmd := &cobra.Command{
-	// 		Use:                i,
-	// 		RunE:               subRunE,
-	// 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-	// 	}
-	// 	rcmd.AddCommand(runSubCmd)
-	// }
+	constructCommandTree(driver, rcmd, handles, makeRunCmd)
 
 	if !runCmdDisabled && root != nil {
 		root.AddCommand(rcmd)
@@ -115,40 +110,44 @@ func addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run fun
 		for aName, cmdSpec := range cmdSpec.Args {
 			addCmdSpec(subCmd, aName, cmdSpec, run)
 		}
-
 	}
+	if cmdSpec.Completion != "" {
+		subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			//cmd, err := driver.BuildCommand()
+			//driver.Run(summon.Out(w io.Writer))
+			return nil, cobra.ShellCompDirectiveDefault
+		}
+	}
+	if len(cmdSpec.CmdArgs) != 0 {
+		_ = 0
+		// render template and FlattenResult
+		// apply result to driver Args
+	}
+	if len(cmdSpec.Flags) != 0 {
+		_ = 0
+		// declare a storage for flags
+		// add flags to cobra command
+		// pass flags storage to Driver
+	}
+
+	subCmd.Short = cmdSpec.Help
+
 	root.AddCommand(subCmd)
 }
 
-func constructCommandTree(driver summon.ConfigurableRunner, root *cobra.Command, handles config.Handles, run func(cmd *cobra.Command, args []string) error) {
-
+func constructCommandTree(driver summon.ConfigurableRunner, root *cobra.Command, handles config.Handles, makerun func(ref string) func(cmd *cobra.Command, args []string) error) {
 	for h, args := range handles {
-		subCmd := &cobra.Command{
-			Use:                h,
-			RunE:               run,
-			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		}
-		root.AddCommand(subCmd)
-
 		switch t := args.Value.(type) {
 		case config.CmdSpec:
-			if t.Args != nil {
-				for aName, cmdSpec := range t.Args {
-					addCmdSpec(subCmd, aName, cmdSpec, run)
-				}
-			}
-			if t.Completion != "" {
-				subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-					//cmd, err := driver.BuildCommand()
-					//driver.Run(summon.Out(w io.Writer))
-					return nil, cobra.ShellCompDirectiveDefault
-				}
-			}
+			addCmdSpec(root, h, t, makerun(h))
+
 		case config.ArgSliceSpec:
-			subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-				addedArgs := summon.FlattenStrings(t)
-				return addedArgs, cobra.ShellCompDirectiveNoFileComp
+			subCmd := &cobra.Command{
+				Use:                h,
+				RunE:               makerun(h),
+				FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			}
+			root.AddCommand(subCmd)
 		}
 	}
 }
