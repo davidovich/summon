@@ -12,10 +12,10 @@ import (
 )
 
 type execUnit struct {
-	invoker    string
-	invOpts    string
-	targets    *config.ArgSliceSpec
-	targetSpec *config.CmdSpec
+	invoker     string
+	invokerArgs string
+	env         []string
+	targetSpec  *config.CmdSpec
 }
 
 // Run will run executable scripts described in the summon.config.yaml file
@@ -26,7 +26,7 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	rargs, err := d.BuildCommand()
+	env, rargs, err := d.BuildCommand()
 	if err != nil {
 		return err
 	}
@@ -45,6 +45,7 @@ func (d *Driver) Run(opts ...Option) error {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = d.opts.out
 		cmd.Stderr = os.Stderr
+		cmd.Env = append(cmd.Env, env...)
 
 		return cmd.Run()
 	}
@@ -52,35 +53,68 @@ func (d *Driver) Run(opts ...Option) error {
 	return nil
 }
 
-func (d *Driver) BuildCommand() ([]string, error) {
+func (d *Driver) BuildCommand() ([]string, []string, error) {
 	eu, err := d.findExecutor(d.opts.ref)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	data := d.opts.data
-	// add arguments
-	if data == nil {
-		data = map[string]interface{}{}
-	}
-
-	data["osArgs"] = os.Args
-
-	invOpts, err := d.renderTemplate(eu.invOpts, data)
+	invArgs, err := d.renderTemplate(eu.invokerArgs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	targets := make([]string, 0, len(*eu.targets))
+	// See if we have an overridden command in the config.
+	// Each user-supplied args is tried in order to see if we have
+	// an override. If there is an override, this arg is consumed, Otherwize
+	// it is kept for the downstream commmand construction.
+	cmdSpec := *eu.targetSpec
+	if cmdSpec.Args != nil {
+		newArgs := []string{}
+		for _, a := range d.opts.args {
+			newCmdSpec, ok := cmdSpec.Args[a]
+			if ok {
+				// we have an override for this arg, try going deeper
+				cmdSpec = newCmdSpec
+			} else {
+				// no override, keep the user provided arg
+				newArgs = append(newArgs, a)
+			}
+		}
+		d.opts.args = newArgs
+	}
+
+	// Render and convert arguments array to real array and merge
+	targets, err := d.RenderArgs(cmdSpec.CmdArgs...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rargs := []string{eu.invoker}
+	opts, err := shlex.Split(invArgs)
+	if err != nil {
+		return nil, nil, err
+	}
+	rargs = append(rargs, opts...)
+	rargs = append(rargs, targets...)
+
+	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
+	rargs = append(rargs, unusedArgs...)
+
+	return eu.env, rargs, nil
+}
+
+func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
+	targets := make([]string, 0, len(args))
 	var renderedTargets []string
-	for _, t := range FlattenStrings(*eu.targets) {
-		rt, err := d.renderTemplate(t, data)
+	for _, t := range FlattenStrings(args) {
+		rt, err := d.renderTemplate(t)
 		if err != nil {
 			return nil, err
 		}
 
 		renderedTargets = []string{rt}
-		// Convert array to real array and merge
+
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
 			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
 			if err != nil {
@@ -90,19 +124,7 @@ func (d *Driver) BuildCommand() ([]string, error) {
 
 		targets = append(targets, renderedTargets...)
 	}
-
-	rargs := []string{eu.invoker}
-	opts, err := shlex.Split(invOpts)
-	if err != nil {
-		return nil, err
-	}
-	rargs = append(rargs, opts...)
-	rargs = append(rargs, targets...)
-
-	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
-	rargs = append(rargs, unusedArgs...)
-
-	return rargs, nil
+	return targets, nil
 }
 
 func computeUnused(args []string, consumed map[int]struct{}) []string {
@@ -136,31 +158,47 @@ func (d *Driver) ListInvocables() config.Handles {
 func (d *Driver) findExecutor(ref string) (execUnit, error) {
 	eu := execUnit{}
 
-	for ex, handles := range d.Config.Exec.Invokers {
-		if c, ok := handles[ref]; ok {
-			exec := strings.SplitAfterN(ex, " ", 2)
+	// Extract env part if present
+	env, err := shlex.Split(ref)
+	if err != nil {
+		return execUnit{}, err
+	}
+	handleIndex := 0
+	for i, e := range env {
+		if !strings.Contains(e, "=") {
+			handleIndex = i
+			break
+		}
+		eu.env = append(eu.env, e)
+	}
+	handle := env[handleIndex]
+
+	for invoker, handles := range d.Config.Exec.Invokers {
+		if h, ok := handles[handle]; ok {
+			if eu.invoker != "" {
+				return execUnit{}, fmt.Errorf("config syntax error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFile, handle)
+			}
+			exec := strings.SplitAfterN(invoker, " ", 2)
 			eu.invoker = strings.TrimSpace(exec[0])
 			if len(exec) == 2 {
-				eu.invOpts = strings.TrimSpace(exec[1])
+				eu.invokerArgs = strings.TrimSpace(exec[1])
 			}
 
-			targets, ok := c.Value.(config.ArgSliceSpec)
-			if !ok {
-				cmdSpec, ok := c.Value.(config.CmdSpec)
-				if !ok {
-					return execUnit{}, fmt.Errorf("config syntax error for 'exec:%s' in config %s", ref, config.ConfigFile)
-				}
-				eu.targetSpec = &cmdSpec
-			} else {
-				eu.targets = &targets
+			spec := config.CmdSpec{}
+			switch s := h.Value.(type) {
+			case config.ArgSliceSpec:
+				spec.CmdArgs = s
+			case config.CmdSpec:
+				spec = s
+			default:
+				return execUnit{}, fmt.Errorf("config syntax error for 'exec.invokers:%s:%s' in config %s", invoker, handle, config.ConfigFile)
 			}
-
-			break
+			eu.targetSpec = &spec
 		}
 	}
 
 	if eu.invoker == "" {
-		return eu, fmt.Errorf("could not find exec handle reference '%s' in config %s", d.opts.ref, config.ConfigFile)
+		return eu, fmt.Errorf("could not find exec handle reference '%s' in config %s", handle, config.ConfigFile)
 	}
 
 	return eu, nil

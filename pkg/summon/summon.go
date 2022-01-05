@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 var appFs = afero.NewOsFs()
@@ -30,7 +31,7 @@ func GetFs() afero.Fs {
 	return appFs
 }
 
-// Summon is the main comnand invocation
+// Summon is the main command invocation
 func (d *Driver) Summon(opts ...Option) (string, error) {
 	if d == nil {
 		return "", fmt.Errorf("Driver cannot be nil")
@@ -100,7 +101,8 @@ func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntr
 	}
 }
 
-func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
+func (d *Driver) renderTemplate(tmpl string) (string, error) {
+	data := d.opts.data
 	t := d.templateCtx
 	var err error
 	if t != nil {
@@ -109,11 +111,12 @@ func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (strin
 			return tmpl, err
 		}
 	} else {
-		t = template.New(Name).
-			Option("missingkey=zero").
-			Funcs(sprig.TxtFuncMap()).
-			Funcs(summonFuncMap(d))
+		t = template.New(Name)
 	}
+
+	t.Option("missingkey=zero").
+		Funcs(sprig.TxtFuncMap()).
+		Funcs(summonFuncMap(d))
 
 	t, err = t.Parse(tmpl)
 	if err != nil {
@@ -189,7 +192,7 @@ func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, 
 
 	if !d.opts.raw {
 		var err error
-		filename, err = d.renderTemplate(filename, d.opts.data)
+		filename, err = d.renderTemplate(filename)
 		if err != nil {
 			return "", err
 		}
@@ -225,10 +228,10 @@ func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, 
 	}
 
 	var rendered string
-	if d.opts.raw {
+	if d.opts.raw || filename == config.ConfigFile {
 		rendered = string(boxedContent)
 	} else {
-		rendered, err = d.renderTemplate(string(boxedContent), d.opts.data)
+		rendered, err = d.renderTemplate(string(boxedContent))
 		if err != nil {
 			return "", err
 		}

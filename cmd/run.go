@@ -7,16 +7,18 @@ import (
 
 	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/summon"
+	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 type runCmdOpts struct {
 	*mainCmd
-	driver summon.ConfigurableRunner
-	ref    string
-	args   []string
-	dryrun bool
+	driver   summon.ConfigurableRunner
+	ref      string
+	args     []string
+	dryrun   bool
+	userArgs []string
 }
 
 func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
@@ -29,24 +31,38 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 	if main.osArgs != nil {
 		osArgs = *main.osArgs
 	}
+	// calculate the extra args to pass to the referenced executable
+	// this is due to a limitation in spf13/cobra which eats
+	// all unknown args or flags making it hard to wrap other commands.
+	// We are lucky, we know the prefix order of params,
+	// extract args after the run command [summon run handle]
+	// see https://github.com/spf13/pflag/pull/160
+	// https://github.com/spf13/cobra/issues/739
+	// and https://github.com/spf13/pflag/pull/199
+	firstUnknownArgPos := 3
+	if runCmdDisabled {
+		firstUnknownArgPos = 2
+	}
+	if firstUnknownArgPos >= len(osArgs) {
+		firstUnknownArgPos = len(osArgs)
+	}
+	runCmd.userArgs = osArgs[firstUnknownArgPos:]
 
 	// read config for exec section
 	driver.Configure()
-	invocables := []string{}
-
 	handles := driver.ListInvocables()
-
-	for h := range handles {
-		invocables = append(invocables, h)
-	}
 
 	rcmd := root
 
 	if !runCmdDisabled {
 		rcmd = &cobra.Command{
-			Use:   "run",
+			Use:   "run [handle]",
 			Short: "Launch executable from summonables",
 			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+				invocables := make([]string, 0, len(handles))
+				for h := range handles {
+					invocables = append(invocables, h)
+				}
 				return invocables, cobra.ShellCompDirectiveNoFileComp
 			},
 			Args: func(cmd *cobra.Command, args []string) error {
@@ -70,29 +86,15 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
 	makeRunCmd := func(summonRef string) func(cmd *cobra.Command, args []string) error {
-
 		return func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
-
 			runCmd.ref = summonRef
-			// calculate the extra args to pass to the referenced executable
-			// this is due to a limitation in spf13/cobra which eats
-			// all unknown args or flags making it hard to wrap other commands.
-			// We are lucky, we know the prefix order of params,
-			// extract args after the run command [summon run handle]
-			// see https://github.com/spf13/pflag/pull/160
-			// https://github.com/spf13/cobra/issues/739
-			// and https://github.com/spf13/pflag/pull/199
-			firstUnknownArgPos := 3
-			if runCmdDisabled {
-				firstUnknownArgPos = 2
-			}
-			runCmd.args = extractUnknownArgs(cmd.Flags(), osArgs[firstUnknownArgPos:])
+			runCmd.args = extractUnknownArgs(cmd.Flags(), runCmd.userArgs)
 			return runCmd.run()
 		}
 	}
 
-	constructCommandTree(driver, rcmd, handles, makeRunCmd)
+	constructCommandTree(driver, rcmd, handles, makeRunCmd, runCmd.userArgs)
 
 	if !runCmdDisabled && root != nil {
 		root.AddCommand(rcmd)
@@ -100,7 +102,7 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 	return rcmd
 }
 
-func addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(cmd *cobra.Command, args []string) error) {
+func addCmdSpec(root *cobra.Command, driver summon.ConfigurableRunner, arg string, cmdSpec config.CmdSpec, run func(cmd *cobra.Command, args []string) error, userArgs []string) {
 	subCmd := &cobra.Command{
 		Use:                arg,
 		RunE:               run,
@@ -108,20 +110,30 @@ func addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run fun
 	}
 	if cmdSpec.Args != nil {
 		for aName, cmdSpec := range cmdSpec.Args {
-			addCmdSpec(subCmd, aName, cmdSpec, run)
+			addCmdSpec(subCmd, driver, aName, cmdSpec, run, userArgs)
 		}
 	}
 	if cmdSpec.Completion != "" {
-		subCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			//cmd, err := driver.BuildCommand()
-			//driver.Run(summon.Out(w io.Writer))
-			return nil, cobra.ShellCompDirectiveDefault
+		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			driver.Configure(summon.Args(userArgs...))
+			args, err := driver.RenderArgs(cmdSpec.Completion)
+			if err != nil {
+				fmt.Fprintln(cmd.ErrOrStderr(), err)
+				return nil, cobra.ShellCompDirectiveError
+			}
+			splitArgs, err := shlex.Split(strings.Join(args, " "))
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			candidates := []string{}
+			for _, a := range splitArgs {
+				if strings.Contains(a, toComplete) {
+					candidates = append(candidates, a)
+				}
+			}
+			return candidates, cobra.ShellCompDirectiveDefault
 		}
-	}
-	if len(cmdSpec.CmdArgs) != 0 {
-		_ = 0
-		// render template and FlattenResult
-		// apply result to driver Args
 	}
 	if len(cmdSpec.Flags) != 0 {
 		_ = 0
@@ -135,11 +147,16 @@ func addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run fun
 	root.AddCommand(subCmd)
 }
 
-func constructCommandTree(driver summon.ConfigurableRunner, root *cobra.Command, handles config.Handles, makerun func(ref string) func(cmd *cobra.Command, args []string) error) {
+func constructCommandTree(
+	driver summon.ConfigurableRunner,
+	root *cobra.Command, handles config.Handles,
+	makerun func(ref string) func(cmd *cobra.Command, args []string) error,
+	userArgs []string) {
+
 	for h, args := range handles {
 		switch t := args.Value.(type) {
 		case config.CmdSpec:
-			addCmdSpec(root, h, t, makerun(h))
+			addCmdSpec(root, driver, h, t, makerun(h), userArgs)
 
 		case config.ArgSliceSpec:
 			subCmd := &cobra.Command{

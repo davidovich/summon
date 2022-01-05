@@ -110,5 +110,12 @@ func (d *Driver) Configure(opts ...Option) error {
 		d.execCommand = d.opts.execCommand
 	}
 
+	// add arguments
+	if d.opts.data == nil {
+		d.opts.data = map[string]interface{}{}
+	}
+
+	d.opts.data["osArgs"] = os.Args
+
 	return nil
 }

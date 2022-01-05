@@ -11,7 +11,7 @@ type ConfigurableRunner interface {
 // Runner allows executing configured aliases from summon.config.yaml.
 type Runner interface {
 	Run(opts ...Option) error
-	BuildCommand() ([]string, error)
+	RenderArgs(args ...interface{}) ([]string, error)
 	ListInvocables() config.Handles
 }
 

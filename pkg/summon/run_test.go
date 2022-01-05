@@ -202,3 +202,32 @@ exec:
 	assert.IsType(t, config.ArgSliceSpec{}, inv["echo-pwd"].Value)
 	assert.IsType(t, config.CmdSpec{}, inv["manifest"].Value)
 }
+
+func TestFlattenStrings(t *testing.T) {
+	tests := []struct {
+		name string
+		args []interface{}
+		want []string
+	}{
+		{
+			name: "simple-slice",
+			args: []interface{}{"string1", "string2"},
+			want: []string{"string1", "string2"},
+		},
+		{
+			name: "empty",
+			args: []interface{}{},
+			want: []string{},
+		},
+		{
+			name: "slice-of-slice-of-string",
+			args: []interface{}{[]string{"elem"}},
+			want: []string{"elem"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, FlattenStrings(tt.args...))
+		})
+	}
+}
