@@ -159,7 +159,8 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},
-		"arg": func(index int, missingError string) (string, error) {
+		"arg": func(index int, missingErrors ...string) (string, error) {
+			missingError := strings.Join(missingErrors, " ")
 			if d.opts.args == nil {
 				return "", fmt.Errorf(missingError)
 			}

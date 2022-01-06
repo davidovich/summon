@@ -25,7 +25,7 @@ exec:
         help: call tanka directly
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
-        completion: '{{with $a := (args | join " ") }}{{ run (printf "COMP_LINE=''%s'' PATH=''%s'' tk" $a (env "PATH"))}}{{end}}'
+        completion: '{{ run (printf "COMP_LINE=''%s'' PATH=''%s'' tk" (join " " args) (env "PATH"))}}'
         #completion: '{{ run (printf "COMP_LINE=\"%s\"" (args | join " ")) "tk" }}'
 
       kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
@@ -41,7 +41,7 @@ exec:
 
       build:
         help: 'build components'
-        cmdArgs: [*baseargs, 'build/{{arg 0 "build"}}'] #,'{{ flag "--config-root" }}']
+        cmdArgs: [*baseargs, 'build/{{arg 0}}'] #,'{{ flag "--config-root" }}']
         args:
           image:
               cmdArgs: [*baseargs, 'build/image/{{- arg 0 "build image" -}}']
