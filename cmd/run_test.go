@@ -55,6 +55,12 @@ func TestRunCmd(t *testing.T) {
 			wantError: false,
 			noCalls:   true,
 		},
+		{
+			desc:      "run-completion",
+			args:      []string{"__complete", "tk", ""},
+			wantError: false,
+			out:       "a\nb\n",
+		},
 	}
 
 	for _, tC := range testCases {

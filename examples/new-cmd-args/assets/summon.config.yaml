@@ -26,7 +26,6 @@ exec:
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
         completion: '{{ run (printf "COMP_LINE=''%s'' PATH=''%s'' tk" (join " " args) (env "PATH"))}}'
-        #completion: '{{ run (printf "COMP_LINE=\"%s\"" (args | join " ")) "tk" }}'
 
       kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
         cmdArgs: [kubectl]

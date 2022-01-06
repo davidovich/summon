@@ -76,7 +76,7 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "args access",
+			name:    "args-access",
 			helper:  "TestSummonRunHelper",
 			ref:     "args",
 			args:    []string{"a c", "b"},
@@ -84,7 +84,7 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "one arg access remainder passed",
+			name:    "one-arg-access-remainder-passed",
 			helper:  "TestSummonRunHelper",
 			ref:     "one-arg",
 			args:    []string{"\"acce ssed\"", "remainder1", "remainder2"},
@@ -92,7 +92,7 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "all args access no remainder passed",
+			name:    "all-args-access-no-remainder-passed",
 			helper:  "TestSummonRunHelper",
 			ref:     "all-args",
 			args:    []string{"a", "b", "c", "d"},
@@ -100,18 +100,40 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:     "osArgs access",
+			name:     "osArgs-access",
 			helper:   "TestSummonRunHelper",
 			ref:      "osArgs",
 			contains: []string{"test"},
 			wantErr:  false,
 		},
 		{
-			name:     "global template render",
+			name:     "global-template-render",
 			helper:   "TestSummonRunHelper",
 			ref:      "templateref",
 			contains: []string{"bash 1.2.3"},
 			wantErr:  false,
+		},
+		{
+			name:   "run-with-env",
+			helper: "TestCommandWithEnvHelper",
+			ref:    "run-with-env",
+			expect: []string{
+				"bash hello.sh",                    // run first call
+				"bash env=HELLO=summon subcommand", // actual run-example call with args
+			},
+		},
+		{
+			name:   "new-cmd-spec",
+			helper: "TestSummonRunHelper",
+			ref:    "overrides",
+			expect: []string{"bash hello.sh"},
+		},
+		{
+			name:   "new-cmd-spec-subcmd",
+			helper: "TestSummonRunHelper",
+			ref:    "overrides",
+			args:   []string{"subcmd", "another"},
+			expect: []string{"bash hello.sh subcmd another"},
 		},
 	}
 	for _, tt := range tests {
@@ -162,6 +184,16 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 		testutil.WriteCall(testutil.MakeCall())
 
 		fmt.Fprint(os.Stdout, "hello from subcmd")
+	}
+}
+
+func TestCommandWithEnvHelper(t *testing.T) {
+	if testutil.IsHelper() {
+		defer os.Exit(0)
+		testutil.WriteCall(testutil.MakeCall())
+
+		hello := os.Getenv("HELLO")
+		fmt.Fprintf(os.Stdout, "env=HELLO=%s subcommand", hello)
 	}
 }
 

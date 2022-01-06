@@ -13,10 +13,14 @@ exec:
 
       tk:
         cmdArgs: [tk]
-        completion: '{{with $a := .osArgs | join " " }}{{printf "COMP_LINE=\"%s\"" $a | run }}{{end}}'
+        completion: '{{ run "fake-make" "a\nb\n" }}'
 
-    gobin -run:
-      gobin: [github.com/myitcv/gobin@v0.0.8]
-      gohack: [github.com/rogpeppe/gohack]
+    bash --norc --noprofile -c:
+      fake-make:
+        cmdArgs: ['echo -e "{{- args | join " " -}}"']
+        help: simulate make call echo params
+
+    go run:
+      gohack: [github.com/rogpeppe/gohack@latest]
     python -c:
       hello: [print("hello from python!")]

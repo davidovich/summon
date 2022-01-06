@@ -11,16 +11,23 @@ exec:
       hello-bash: [ hello.sh ]
       bash-self-ref: ['{{ summon "hello.sh" }}']
       run-example: ['{{ run "hello-bash" }}']
+      run-with-env: ['{{run "HELLO=summon hello-bash"}}']
       args: ['args:', '{{ arg 0 "" }}']
       one-arg: ['args:', '{{arg 0 "" }}']
       all-args: ['args:', '{{ args }}']
       osArgs: ['osArgs:', '{{ .osArgs }}']
       templateref: ['{{ template "version"}}']
+      overrides:
+        help: 'help override'
+        cmdArgs: [ hello.sh ]
+        args:
+          subcmd:
+            help: "override subcmd help"
+            cmdArgs: [hello.sh subcmd]
+
     docker {{ lower "INFO" }}: # template example
       docker: []
-    gobin -run:
-      gobin: [github.com/myitcv/gobin@v0.0.8]
-      gohack: [github.com/rogpeppe/gohack]
+    go run:
+      gohack: [github.com/rogpeppe/gohack@latest]
     python -c:
       hello: ['print("hello from python!")']
-
