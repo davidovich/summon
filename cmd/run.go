@@ -5,11 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/davidovich/summon/pkg/config"
-	"github.com/davidovich/summon/pkg/summon"
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"github.com/davidovich/summon/pkg/config"
+	"github.com/davidovich/summon/pkg/summon"
 )
 
 type runCmdOpts struct {
@@ -52,10 +53,10 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 	driver.Configure()
 	handles := driver.ListInvocables()
 
-	rcmd := root
+	rootcmd := root
 
 	if !runCmdDisabled {
-		rcmd = &cobra.Command{
+		rootcmd = &cobra.Command{
 			Use:   "run [handle]",
 			Short: "Launch executable from summonables",
 			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -83,40 +84,31 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		}
 	}
 
-	rcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
+	rootcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")
 
-	makeRunCmd := func(summonRef string) func(cmd *cobra.Command, args []string) error {
-		return func(cmd *cobra.Command, args []string) error {
-			cmd.SilenceUsage = true
-			runCmd.ref = summonRef
-			runCmd.args = extractUnknownArgs(cmd.Flags(), runCmd.userArgs)
-			return runCmd.run()
-		}
-	}
-
-	constructCommandTree(driver, rcmd, handles, makeRunCmd, runCmd.userArgs)
+	runCmd.constructCommandTree(rootcmd, handles)
 
 	if !runCmdDisabled && root != nil {
-		root.AddCommand(rcmd)
+		root.AddCommand(rootcmd)
 	}
-	return rcmd
+	return rootcmd
 }
 
-func addCmdSpec(root *cobra.Command, driver summon.ConfigurableRunner, arg string, cmdSpec config.CmdSpec, run func(cmd *cobra.Command, args []string) error, userArgs []string) {
+func (r *runCmdOpts) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(*cobra.Command, []string) error) {
 	subCmd := &cobra.Command{
 		Use:                arg,
 		RunE:               run,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
 	if cmdSpec.Args != nil {
-		for aName, cmdSpec := range cmdSpec.Args {
-			addCmdSpec(subCmd, driver, aName, cmdSpec, run, userArgs)
+		for cName, cmdSpec := range cmdSpec.Args {
+			r.addCmdSpec(subCmd, cName, cmdSpec, run)
 		}
 	}
 	if cmdSpec.Completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			driver.Configure(summon.Args(userArgs...))
-			args, err := driver.RenderArgs(cmdSpec.Completion)
+			r.driver.Configure(summon.Args(extractUnknownArgs(cmd.Flags(), r.userArgs)...))
+			args, err := r.driver.RenderArgs(cmdSpec.Completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
@@ -147,16 +139,26 @@ func addCmdSpec(root *cobra.Command, driver summon.ConfigurableRunner, arg strin
 	root.AddCommand(subCmd)
 }
 
-func constructCommandTree(
-	driver summon.ConfigurableRunner,
-	root *cobra.Command, handles config.Handles,
-	makerun func(ref string) func(cmd *cobra.Command, args []string) error,
-	userArgs []string) {
+func (r *runCmdOpts) constructCommandTree(root *cobra.Command, handles config.Handles) {
+	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
+		runCmd := runCmdOpts{
+			mainCmd:  r.mainCmd,
+			driver:   r.driver,
+			ref:      summonRef,
+			userArgs: r.userArgs,
+		}
+		return func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+			runCmd.dryrun = r.dryrun
+			runCmd.args = extractUnknownArgs(cmd.Flags(), runCmd.userArgs)
+			return runCmd.run()
+		}
+	}
 
 	for h, args := range handles {
 		switch t := args.Value.(type) {
 		case config.CmdSpec:
-			addCmdSpec(root, driver, h, t, makerun(h), userArgs)
+			r.addCmdSpec(root, h, t, makerun(h))
 
 		case config.ArgSliceSpec:
 			subCmd := &cobra.Command{
@@ -175,7 +177,7 @@ func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		var f *pflag.Flag
-		if a[0] == '-' && len(a) > 1 {
+		if len(a) > 0 && a[0] == '-' && len(a) > 1 {
 			if a[1] == '-' {
 				f = flags.Lookup(strings.SplitN(a[2:], "=", 2)[0])
 			} else {

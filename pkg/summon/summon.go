@@ -151,6 +151,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
 			}
+			driverCopy.opts.argsConsumed = map[int]struct{}{}
 			b := &strings.Builder{}
 			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
 
