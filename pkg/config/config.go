@@ -30,18 +30,18 @@ type Config struct {
 
 // ExecContext houses invokers and global flags
 type ExecContext struct {
-	Invokers map[string]Handles `yaml:"invokers"`
-	Flags    map[string]string  `yaml:"flags"`
+	Invokers    map[string]Handles  `yaml:"invokers"`
+	GlobalFlags map[string]FlagDesc `yaml:"flags"`
 }
 
-// ExecSpec allows unmarshaling complex subtype
-type ExecSpec struct {
+// ExecDesc allows unmarshaling complex subtype
+type ExecDesc struct {
 	Value interface{}
 }
 
 // Handles describes a handle name and invocable target.
-// The ExecSpec target can be an ArgSliceSpec, or a CmdSpec
-type Handles map[string]ExecSpec
+// The ExecDesc target can be an ArgSliceSpec, or a CmdSpec
+type Handles map[string]ExecDesc
 
 // ArgSliceSpec is the basic form of args to pass to
 // invoker. It can be a slice of string, or slices of strings.
@@ -52,7 +52,7 @@ type CmdSpec struct {
 	// Args sub-arguments of current command
 	Args map[string]CmdSpec `yaml:"args,omitempty"`
 	// Flags of this command
-	Flags map[string]string `yaml:"flags,omitempty"`
+	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
 	// CmdArgs is the args that get added to the command
 	CmdArgs ArgSliceSpec `yaml:"cmdArgs"`
 	// Help of this command
@@ -61,8 +61,39 @@ type CmdSpec struct {
 	Completion string `yaml:"completion"`
 }
 
-// UnmarshalYAML the ExecSpec. It can be a CmdSpec or a ArgSliceSpec
-func (e *ExecSpec) UnmarshalYAML(value *yaml.Node) error {
+// FlagDesc describes a simple string flag or complex FlagSpec
+type FlagDesc struct {
+	Value interface{}
+}
+
+// FlagSpec is uses when you want more control on flag creation
+type FlagSpec struct {
+	Effect    string `yaml:"effect"`
+	Shorthand string `yaml:"shorthand"`
+	Help      string `yaml:"help"`
+}
+
+// UnmarshalYAML the FlagSpec. It can be a String or a Flag
+func (e *FlagDesc) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		var args string
+		value.Decode(&args)
+		e.Value = args
+	case yaml.MappingNode:
+		flag := FlagSpec{}
+		value.Decode(&flag)
+		e.Value = flag
+	default:
+		return &yaml.TypeError{
+			Errors: []string{fmt.Sprintf("cannot unmarshal %v, content: %v", value.Tag, value.Content)},
+		}
+	}
+	return nil
+}
+
+// UnmarshalYAML the ExecDesc. It can be a CmdSpec or a ArgSliceSpec
+func (e *ExecDesc) UnmarshalYAML(value *yaml.Node) error {
 	switch value.Kind {
 	case yaml.SequenceNode:
 		args := ArgSliceSpec{}

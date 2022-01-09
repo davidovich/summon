@@ -203,7 +203,7 @@ version: 1
 
 exec:
   flags:
-    --config-root: 'CONFIG_ROOT=.'
+    config-root: 'CONFIG_ROOT=.'
 
   invokers:
     echo:
@@ -223,7 +223,7 @@ exec:
 	s, err := New(testFs)
 	assert.NoError(t, err)
 
-	inv := s.ListInvocables()
+	flags, inv := s.ExecContext()
 	handles := []string{}
 
 	for h := range inv {
@@ -233,6 +233,8 @@ exec:
 
 	assert.IsType(t, config.ArgSliceSpec{}, inv["echo-pwd"].Value)
 	assert.IsType(t, config.CmdSpec{}, inv["manifest"].Value)
+
+	assert.Contains(t, flags, "config-root")
 }
 
 func TestFlattenStrings(t *testing.T) {

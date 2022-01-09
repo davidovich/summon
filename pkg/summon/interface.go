@@ -12,7 +12,7 @@ type ConfigurableRunner interface {
 type Runner interface {
 	Run(opts ...Option) error
 	RenderArgs(args ...interface{}) ([]string, error)
-	ListInvocables() config.Handles
+	ExecContext() (map[string]config.FlagSpec, config.Handles)
 }
 
 // Configurer allows configuring a driver from variadic options.

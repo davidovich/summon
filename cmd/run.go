@@ -51,7 +51,7 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 
 	// read config for exec section
 	driver.Configure()
-	handles := driver.ListInvocables()
+	flags, handles := driver.ExecContext()
 
 	rootcmd := root
 
@@ -82,6 +82,11 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			Run:                func(cmd *cobra.Command, args []string) {},
 		}
+	}
+
+	for flagName, flag := range flags {
+		_ = flagName
+		_ = flag
 	}
 
 	rootcmd.PersistentFlags().BoolVarP(&runCmd.dryrun, "dry-run", "n", false, "only show what would be executed")

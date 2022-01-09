@@ -15,6 +15,7 @@ type execUnit struct {
 	invoker     string
 	invokerArgs string
 	env         []string
+	flags       *config.FlagSpec
 	targetSpec  *config.CmdSpec
 }
 
@@ -84,7 +85,7 @@ func (d *Driver) BuildCommand() ([]string, []string, error) {
 		d.opts.args = newArgs
 	}
 
-	// Render and convert arguments array to real array and merge
+	// Render and flatten arguments array of arrays to simple array
 	targets, err := d.RenderArgs(cmdSpec.CmdArgs...)
 	if err != nil {
 		return nil, nil, err
@@ -141,18 +142,34 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-// ListInvocables lists the invokers in the config file under the exec:
+// ExecContext lists the invokers in the config file under the exec:
 // key.
-func (d *Driver) ListInvocables() config.Handles {
+func (d *Driver) ExecContext() (map[string]config.FlagSpec, config.Handles) {
 	handles := config.Handles{}
 
+	normalizedFlags := normalizeFlags(d.Config.Exec.GlobalFlags)
 	for _, invokers := range d.Config.Exec.Invokers {
 		for i, v := range invokers {
 			handles[i] = v
 		}
 	}
 
-	return handles
+	return normalizedFlags, handles
+}
+
+func normalizeFlags(flagsDesc map[string]config.FlagDesc) map[string]config.FlagSpec {
+	normalizedFlags := map[string]config.FlagSpec{}
+	for flagName, flags := range flagsDesc {
+		switch f := flags.Value.(type) {
+		case string:
+			normalizedFlags[flagName] = config.FlagSpec{
+				Effect: f,
+			}
+		case config.FlagSpec:
+			normalizedFlags[flagName] = f
+		}
+	}
+	return normalizedFlags
 }
 
 func (d *Driver) findExecutor(ref string) (execUnit, error) {
