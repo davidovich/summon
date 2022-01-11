@@ -112,6 +112,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 		},
 	}
 
+	// TODO These should probably be simple flags (not persistent)
 	rootCmd.PersistentFlags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.PersistentFlags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
 	rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")

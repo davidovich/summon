@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -246,4 +248,144 @@ func FlattenStrings(args ...interface{}) []string {
 		s = append(s, f.(string))
 	}
 	return s
+}
+
+func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) *cobra.Command {
+
+	_, handles := d.ExecContext()
+
+	if !runCmdDisabled {
+		newRoot := &cobra.Command{
+			Use:   "run [handle]",
+			Short: "Launch executable from summonables",
+			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+				invocables := make([]string, 0, len(handles))
+				for h := range handles {
+					invocables = append(invocables, h)
+				}
+				return invocables, cobra.ShellCompDirectiveNoFileComp
+			},
+			Args: func(cmd *cobra.Command, args []string) error {
+				if len(args) < 1 {
+					return fmt.Errorf("requires at least 1 command to run, received 0")
+				}
+				validArgs, _ := cmd.ValidArgsFunction(cmd, args, "")
+				a := args[0]
+				for _, v := range validArgs {
+					if a == v {
+						return nil
+					}
+				}
+				return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
+			},
+			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+			Run:                func(cmd *cobra.Command, args []string) {},
+		}
+
+		if root != nil {
+			root.AddCommand(newRoot)
+		}
+		root = newRoot
+	}
+	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
+
+	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
+		return func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+
+			return d.Run(Ref(summonRef),
+				Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
+		}
+	}
+
+	for h, args := range handles {
+		switch t := args.Value.(type) {
+		case config.CmdSpec:
+			d.addCmdSpec(root, h, t, makerun(h))
+
+		case config.ArgSliceSpec:
+			subCmd := &cobra.Command{
+				Use:                h,
+				RunE:               makerun(h),
+				FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+			}
+			root.AddCommand(subCmd)
+		}
+	}
+	return root
+}
+
+func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(*cobra.Command, []string) error) {
+	subCmd := &cobra.Command{
+		Use:                arg,
+		RunE:               run,
+		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+	}
+	if cmdSpec.Args != nil {
+		for cName, cmdSpec := range cmdSpec.Args {
+			d.addCmdSpec(subCmd, cName, cmdSpec, run)
+		}
+	}
+	if cmdSpec.Completion != "" {
+		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
+			args, err := d.RenderArgs(cmdSpec.Completion)
+			if err != nil {
+				fmt.Fprintln(cmd.ErrOrStderr(), err)
+				return nil, cobra.ShellCompDirectiveError
+			}
+			splitArgs, err := shlex.Split(strings.Join(args, " "))
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			candidates := []string{}
+			for _, a := range splitArgs {
+				if strings.Contains(a, toComplete) {
+					candidates = append(candidates, a)
+				}
+			}
+			return candidates, cobra.ShellCompDirectiveDefault
+		}
+	}
+	if len(cmdSpec.Flags) != 0 {
+		_ = 0
+		//subCmd.PersistentFlags().String(name string, value string, usage string)
+		// declare a storage for flags
+		// add flags to cobra command
+		// pass flags storage to Driver
+	}
+
+	subCmd.Short = cmdSpec.Help
+
+	root.AddCommand(subCmd)
+}
+
+func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {
+	unknownArgs := []string{}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		var f *pflag.Flag
+		if len(a) > 0 && a[0] == '-' && len(a) > 1 {
+			if a[1] == '-' {
+				f = flags.Lookup(strings.SplitN(a[2:], "=", 2)[0])
+			} else {
+				for _, s := range a[1:] {
+					f = flags.ShorthandLookup(string(s))
+					if f == nil {
+						break
+					}
+				}
+			}
+		}
+		if f != nil {
+			if f.NoOptDefVal == "" && i+1 < len(args) && f.Value.String() == args[i+1] {
+				i++
+			}
+			continue
+		}
+		unknownArgs = append(unknownArgs, a)
+	}
+	return unknownArgs
 }

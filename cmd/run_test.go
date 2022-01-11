@@ -5,10 +5,10 @@ import (
 	"embed"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/summon"
-	"github.com/spf13/pflag"
-	"github.com/stretchr/testify/assert"
 )
 
 //go:embed testdata/*
@@ -100,23 +100,4 @@ func TestRunCmd(t *testing.T) {
 
 func TestSummonRunHelper(t *testing.T) {
 	testutil.TestSummonRunHelper()
-}
-
-func TestExtractUnknownArgs(t *testing.T) {
-	fset := pflag.NewFlagSet("test", pflag.ContinueOnError)
-
-	json := ""
-	fset.StringVarP(&json, "json", "j", "{}", "")
-
-	unknown := extractUnknownArgs(fset, []string{"--json", "{}", "--unknown"})
-	assert.Equal(t, []string{"--unknown"}, unknown)
-
-	unknown = extractUnknownArgs(fset, []string{"--"})
-	assert.Equal(t, []string{"--"}, unknown)
-
-	unknownShort := extractUnknownArgs(fset, []string{"-j", "--unknown"})
-	assert.Equal(t, []string{"--unknown"}, unknownShort)
-
-	unknownShort = extractUnknownArgs(fset, []string{"-"})
-	assert.Equal(t, []string{"-"}, unknownShort)
 }

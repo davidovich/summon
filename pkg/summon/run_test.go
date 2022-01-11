@@ -8,6 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
@@ -264,4 +265,23 @@ func TestFlattenStrings(t *testing.T) {
 			assert.Equal(t, tt.want, FlattenStrings(tt.args...))
 		})
 	}
+}
+
+func TestExtractUnknownArgs(t *testing.T) {
+	fset := pflag.NewFlagSet("test", pflag.ContinueOnError)
+
+	json := ""
+	fset.StringVarP(&json, "json", "j", "{}", "")
+
+	unknown := extractUnknownArgs(fset, []string{"--json", "{}", "--unknown"})
+	assert.Equal(t, []string{"--unknown"}, unknown)
+
+	unknown = extractUnknownArgs(fset, []string{"--"})
+	assert.Equal(t, []string{"--"}, unknown)
+
+	unknownShort := extractUnknownArgs(fset, []string{"-j", "--unknown"})
+	assert.Equal(t, []string{"--unknown"}, unknownShort)
+
+	unknownShort = extractUnknownArgs(fset, []string{"-"})
+	assert.Equal(t, []string{"-"}, unknownShort)
 }

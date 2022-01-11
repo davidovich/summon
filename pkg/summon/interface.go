@@ -1,6 +1,8 @@
 package summon
 
-import "github.com/davidovich/summon/pkg/config"
+import (
+	"github.com/spf13/cobra"
+)
 
 // ConfigurableRunner is a runner that can be configured.
 type ConfigurableRunner interface {
@@ -11,8 +13,7 @@ type ConfigurableRunner interface {
 // Runner allows executing configured aliases from summon.config.yaml.
 type Runner interface {
 	Run(opts ...Option) error
-	RenderArgs(args ...interface{}) ([]string, error)
-	ExecContext() (map[string]config.FlagSpec, config.Handles)
+	ConstructCommandTree(*cobra.Command, bool) *cobra.Command
 }
 
 // Configurer allows configuring a driver from variadic options.
