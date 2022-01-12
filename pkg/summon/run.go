@@ -258,25 +258,15 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) 
 		newRoot := &cobra.Command{
 			Use:   "run [handle]",
 			Short: "Launch executable from summonables",
-			ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-				invocables := make([]string, 0, len(handles))
-				for h := range handles {
-					invocables = append(invocables, h)
-				}
-				return invocables, cobra.ShellCompDirectiveNoFileComp
-			},
 			Args: func(cmd *cobra.Command, args []string) error {
 				if len(args) < 1 {
 					return fmt.Errorf("requires at least 1 command to run, received 0")
 				}
-				validArgs, _ := cmd.ValidArgsFunction(cmd, args, "")
 				a := args[0]
-				for _, v := range validArgs {
-					if a == v {
-						return nil
-					}
+				if _, ok := handles[a]; !ok {
+					return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
 				}
-				return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
+				return nil
 			},
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			Run:                func(cmd *cobra.Command, args []string) {},
@@ -334,13 +324,9 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdS
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
 			}
-			splitArgs, err := shlex.Split(strings.Join(args, " "))
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
 
 			candidates := []string{}
-			for _, a := range splitArgs {
+			for _, a := range args {
 				if strings.Contains(a, toComplete) {
 					candidates = append(candidates, a)
 				}
