@@ -9,7 +9,7 @@ import (
 	"github.com/davidovich/summon/pkg/summon"
 )
 
-func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) *cobra.Command {
+func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) (*cobra.Command, error) {
 	osArgs := os.Args
 	if main.osArgs != nil {
 		osArgs = *main.osArgs

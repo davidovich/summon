@@ -242,7 +242,7 @@ exec:
       manifest:
         help: 'render kubernetes manifests in build dir'
         # popArg is used to remove the arg from user input
-        cmdArgs: ['manifests/{{ popArg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
+        cmdArgs: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
         completion: '{{ summon "make list-environments" }}'
 `
 
@@ -252,16 +252,17 @@ exec:
 	s, err := New(testFs)
 	assert.NoError(t, err)
 
-	flags, inv := s.ExecContext()
-	handles := []string{}
+	flags, handles, err := s.execContext()
+	assert.NoError(t, err)
+	assert.Contains(t, handles, "echo-pwd")
+	assert.Contains(t, handles, "manifest")
 
-	for h := range inv {
-		handles = append(handles, h)
-	}
-	assert.ElementsMatch(t, []string{"echo-pwd", "manifest"}, handles)
-
-	assert.IsType(t, config.ArgSliceSpec{}, inv["echo-pwd"].Value)
-	assert.IsType(t, config.CmdSpec{}, inv["manifest"].Value)
+	assert.Equal(t,
+		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
+		FlattenStrings(handles["echo-pwd"].CmdArgs...))
+	assert.Equal(t,
+		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
+		FlattenStrings(handles["manifest"].CmdArgs))
 
 	assert.Contains(t, flags, "config-root")
 }
@@ -408,7 +409,8 @@ func TestConstructCommandTree(t *testing.T) {
 			assert.NoError(t, err)
 
 			rootCmd := cobra.Command{Use: "root"}
-			cmd := s.ConstructCommandTree(&rootCmd, !tt.withRunCmd)
+			cmd, err := s.ConstructCommandTree(&rootCmd, !tt.withRunCmd)
+			assert.NoError(t, err)
 			if !tt.withRunCmd {
 				assert.Equal(t, cmd.Use, rootCmd.Use)
 			}
@@ -451,10 +453,9 @@ func TestDuplicateHandles(t *testing.T) {
 	assert.NoError(t, err)
 
 	rootCmd := &cobra.Command{Use: "root"}
-	s.ConstructCommandTree(rootCmd, true)
-
-	args := append([]string{}, "manifest")
-	_, err = executeCommand(rootCmd, args...)
-
-	assert.Errorf(t, err, "config syntax error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", "bash", "manifest", config.ConfigFile)
+	_, err = s.ConstructCommandTree(rootCmd, true)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(),
+			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFile, "manifest"))
+	}
 }

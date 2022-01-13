@@ -144,19 +144,37 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-// ExecContext lists the invokers in the config file under the exec:
+// execContext lists the invokers in the config file under the exec:
 // key.
-func (d *Driver) ExecContext() (map[string]config.FlagSpec, config.Handles) {
-	handles := config.Handles{}
-
-	normalizedFlags := normalizeFlags(d.Config.Exec.GlobalFlags)
-	for _, invokers := range d.Config.Exec.Invokers {
-		for i, v := range invokers {
-			handles[i] = v
-		}
+func (d *Driver) execContext() (config.Flags, config.Handles, error) {
+	if d.globalFlags == nil {
+		d.globalFlags = normalizeFlags(d.config.Exec.GlobalFlags)
 	}
 
-	return normalizedFlags, handles
+	if d.handles == nil {
+		handles := config.Handles{}
+		for invoker, handleDescs := range d.config.Exec.Invokers {
+			for handle, desc := range handleDescs {
+				if _, present := handles[handle]; present {
+					return config.Flags{}, config.Handles{},
+						fmt.Errorf("config error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFile, handle)
+				}
+				switch descType := desc.Value.(type) {
+				case config.ArgSliceSpec:
+					c := config.CmdSpec{}
+					c.CmdArgs = descType
+					c.Invoker = invoker
+					handles[handle] = c
+				case config.CmdSpec:
+					descType.Invoker = invoker
+					handles[handle] = descType
+				}
+			}
+		}
+		d.handles = handles
+	}
+
+	return d.globalFlags, d.handles, nil
 }
 
 func normalizeFlags(flagsDesc map[string]config.FlagDesc) map[string]config.FlagSpec {
@@ -192,28 +210,20 @@ func (d *Driver) findExecutor(ref string) (execUnit, error) {
 	}
 	handle := env[handleIndex]
 
-	for invoker, handles := range d.Config.Exec.Invokers {
-		if h, ok := handles[handle]; ok {
-			if eu.invoker != "" {
-				return execUnit{}, fmt.Errorf("config syntax error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFile, handle)
-			}
-			exec := strings.SplitAfterN(invoker, " ", 2)
-			eu.invoker = strings.TrimSpace(exec[0])
-			if len(exec) == 2 {
-				eu.invokerArgs = strings.TrimSpace(exec[1])
-			}
+	// prime execContext cache
+	_, handles, err := d.execContext()
+	if err != nil {
+		return execUnit{}, err
+	}
 
-			spec := config.CmdSpec{}
-			switch s := h.Value.(type) {
-			case config.ArgSliceSpec:
-				spec.CmdArgs = s
-			case config.CmdSpec:
-				spec = s
-			default:
-				return execUnit{}, fmt.Errorf("config syntax error for 'exec.invokers:%s:%s' in config %s", invoker, handle, config.ConfigFile)
-			}
-			eu.targetSpec = &spec
+	if spec, ok := handles[handle]; ok {
+		exec := strings.SplitAfterN(spec.Invoker, " ", 2)
+		eu.invoker = strings.TrimSpace(exec[0])
+		if len(exec) == 2 {
+			eu.invokerArgs = strings.TrimSpace(exec[1])
 		}
+
+		eu.targetSpec = &spec
 	}
 
 	if eu.invoker == "" {
@@ -250,9 +260,12 @@ func FlattenStrings(args ...interface{}) []string {
 	return s
 }
 
-func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) *cobra.Command {
+func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) (*cobra.Command, error) {
 
-	_, handles := d.ExecContext()
+	_, handles, err := d.execContext()
+	if err != nil {
+		return nil, err
+	}
 
 	if !runCmdDisabled {
 		newRoot := &cobra.Command{
@@ -288,21 +301,10 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) 
 		}
 	}
 
-	for h, args := range handles {
-		switch t := args.Value.(type) {
-		case config.CmdSpec:
-			d.addCmdSpec(root, h, t, makerun(h))
-
-		case config.ArgSliceSpec:
-			subCmd := &cobra.Command{
-				Use:                h,
-				RunE:               makerun(h),
-				FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-			}
-			root.AddCommand(subCmd)
-		}
+	for h, spec := range handles {
+		d.addCmdSpec(root, h, spec, makerun(h))
 	}
-	return root
+	return root, nil
 }
 
 func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(*cobra.Command, []string) error) {

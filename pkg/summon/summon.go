@@ -133,7 +133,7 @@ func (d *Driver) renderTemplate(tmpl string) (string, error) {
 }
 
 func (d *Driver) resolveAlias(alias string) string {
-	if resolved, ok := d.Config.Aliases[alias]; ok {
+	if resolved, ok := d.config.Aliases[alias]; ok {
 		return resolved
 	}
 
@@ -145,7 +145,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		"run": func(args ...string) (string, error) {
 			driverCopy := Driver{
 				opts:        d.opts,
-				Config:      d.Config,
+				config:      d.config,
 				box:         d.box,
 				templateCtx: d.templateCtx,
 				execCommand: d.execCommand,

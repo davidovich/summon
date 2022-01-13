@@ -30,8 +30,8 @@ type Config struct {
 
 // ExecContext houses invokers and global flags
 type ExecContext struct {
-	Invokers    map[string]Handles  `yaml:"invokers"`
-	GlobalFlags map[string]FlagDesc `yaml:"flags"`
+	Invokers    map[string]HandlesDesc `yaml:"invokers"`
+	GlobalFlags map[string]FlagDesc    `yaml:"flags"`
 }
 
 // ExecDesc allows unmarshaling complex subtype
@@ -39,9 +39,15 @@ type ExecDesc struct {
 	Value interface{}
 }
 
-// Handles describes a handle name and invocable target.
+// HandlesDesc describes a handle name and invocable target.
 // The ExecDesc target can be an ArgSliceSpec, or a CmdSpec
-type Handles map[string]ExecDesc
+type HandlesDesc map[string]ExecDesc
+
+// Handles are the normalized version of the configs HandleDesc
+type Handles map[string]CmdSpec
+
+// Flags are the normalized FlagDesc
+type Flags map[string]FlagSpec
 
 // ArgSliceSpec is the basic form of args to pass to
 // invoker. It can be a slice of string, or slices of strings.
@@ -49,12 +55,14 @@ type ArgSliceSpec []interface{}
 
 // CmdSpec describes a complex command
 type CmdSpec struct {
+	// Invoker is the caller environment
+	Invoker string
+	// CmdArgs is the args that get added to the command
+	CmdArgs ArgSliceSpec `yaml:"cmdArgs"`
 	// Args sub-arguments of current command
 	Args map[string]CmdSpec `yaml:"args,omitempty"`
 	// Flags of this command
 	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
-	// CmdArgs is the args that get added to the command
-	CmdArgs ArgSliceSpec `yaml:"cmdArgs"`
 	// Help of this command
 	Help string `yaml:"help"`
 	// Command to invoke to have a completion of this command

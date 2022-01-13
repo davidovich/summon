@@ -23,8 +23,10 @@ var Name = "summon"
 // Driver manages functionality of summon.
 type Driver struct {
 	opts        options
-	Config      config.Config
 	box         fs.FS
+	config      config.Config
+	globalFlags config.Flags
+	handles     config.Handles
 	baseDataDir string
 	templateCtx *template.Template
 	execCommand command.ExecCommandFn
@@ -60,6 +62,10 @@ func New(box fs.FS, opts ...Option) (*Driver, error) {
 	return d, nil
 }
 
+func (d Driver) OutputDir() string {
+	return d.config.OutputDir
+}
+
 // Configure is used to extract options and customize the summon.Driver.
 func (d *Driver) Configure(opts ...Option) error {
 	if d == nil {
@@ -74,16 +80,16 @@ func (d *Driver) Configure(opts ...Option) error {
 			if err != nil {
 				return err
 			}
-			err = d.Config.Unmarshal(config)
+			err = d.config.Unmarshal(config)
 			if err != nil {
 				return err
 			}
-			d.opts.DefaultsFrom(d.Config)
+			d.opts.DefaultsFrom(d.config)
 			d.templateCtx, err = template.New(Name).
 				Option("missingkey=zero").
 				Funcs(sprig.TxtFuncMap()).
 				Funcs(summonFuncMap(d)).
-				Parse(d.Config.TemplateContext)
+				Parse(d.config.TemplateContext)
 			if err != nil {
 				return err
 			}
