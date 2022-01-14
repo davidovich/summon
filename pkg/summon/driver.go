@@ -93,6 +93,12 @@ func (d *Driver) Configure(opts ...Option) error {
 			if err != nil {
 				return err
 			}
+			// prime execContext cache
+			_, _, err = d.execContext()
+			if err != nil {
+				return err
+			}
+
 			d.configRead = true
 		}
 	}

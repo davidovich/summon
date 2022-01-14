@@ -449,11 +449,7 @@ func TestDuplicateHandles(t *testing.T) {
 	testFs := fstest.MapFS{}
 	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(configFile)}
 
-	s, err := New(testFs)
-	assert.NoError(t, err)
-
-	rootCmd := &cobra.Command{Use: "root"}
-	_, err = s.ConstructCommandTree(rootCmd, true)
+	_, err := New(testFs)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
 			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFile, "manifest"))
