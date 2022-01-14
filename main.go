@@ -84,5 +84,5 @@ func WithoutRunCmd() option {
 	}
 }
 
-// MainOptions hold comptile-time configurations
+// MainOptions hold compile-time configurations.
 type MainOptions = summon.MainOptions

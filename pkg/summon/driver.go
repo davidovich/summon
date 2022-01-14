@@ -23,8 +23,8 @@ var Name = "summon"
 // Driver manages functionality of summon.
 type Driver struct {
 	opts        options
-	box         fs.FS
 	config      config.Config
+	fs          fs.FS
 	globalFlags config.Flags
 	handles     config.Handles
 	baseDataDir string
@@ -34,13 +34,13 @@ type Driver struct {
 }
 
 // New creates the Driver.
-func New(box fs.FS, opts ...Option) (*Driver, error) {
+func New(filesystem fs.FS, opts ...Option) (*Driver, error) {
 	d := &Driver{
-		box:         box,
+		fs:          filesystem,
 		execCommand: command.New,
 	}
 
-	err := fs.WalkDir(d.box, ".", func(path string, de fs.DirEntry, err error) error {
+	err := fs.WalkDir(d.fs, ".", func(path string, de fs.DirEntry, err error) error {
 		if path == "." {
 			return nil
 		}
@@ -72,8 +72,8 @@ func (d *Driver) Configure(opts ...Option) error {
 		return fmt.Errorf("driver cannot be nil")
 	}
 	if !d.configRead {
-		// try to find a config file in the box
-		configFile, err := d.box.Open(path.Join(d.baseDataDir, config.ConfigFile))
+		// try to find a config file in the embedded assets filesystem
+		configFile, err := d.fs.Open(path.Join(d.baseDataDir, config.ConfigFile))
 		if err == nil {
 			defer configFile.Close()
 			config, err := io.ReadAll(configFile)

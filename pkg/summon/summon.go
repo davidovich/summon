@@ -53,18 +53,18 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 			startdir = d.baseDataDir
 		}
 
-		return destination, fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
+		return destination, fs.WalkDir(d.fs, startdir, makeCopyFileFun(startdir, d))
 	}
 
 	filename := filepath.Clean(d.opts.filename)
 	filename = d.resolveAlias(filename)
 	filename = path.Join(d.baseDataDir, filename)
 
-	boxedFile, err := d.box.Open(filename)
+	embeddedFile, err := d.fs.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	stat, err := boxedFile.Stat()
+	stat, err := embeddedFile.Stat()
 	if err != nil {
 		return "", err
 	}
@@ -72,10 +72,10 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 		// User wants to extract a subdirectory
 		startdir := filename
 		return destination,
-			fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
+			fs.WalkDir(d.fs, startdir, makeCopyFileFun(startdir, d))
 	}
 
-	return d.copyOneFile(boxedFile, filename, d.baseDataDir)
+	return d.copyOneFile(embeddedFile, filename, d.baseDataDir)
 }
 
 func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntry, _ error) error {
@@ -83,7 +83,7 @@ func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntr
 		if de.IsDir() {
 			return nil
 		}
-		file, err := d.box.Open(path)
+		file, err := d.fs.Open(path)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			driverCopy := Driver{
 				opts:        d.opts,
 				config:      d.config,
-				box:         d.box,
+				fs:          d.fs,
 				templateCtx: d.templateCtx,
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
@@ -159,6 +159,11 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		},
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
+		},
+		"flag": func(flag string) (string, error) {
+			//d.normalizeFlags(d.Config.Exec.GlobalFlags)
+			//d.RenderArgs(d.Con)
+			return "", nil
 		},
 		"arg": func(index int, missingErrors ...string) (string, error) {
 			missingError := strings.Join(missingErrors, " ")
@@ -189,7 +194,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 	}
 }
 
-func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, error) {
+func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (string, error) {
 	destination := d.opts.destination
 
 	if !d.opts.raw {
@@ -224,16 +229,16 @@ func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, 
 		out = outf
 	}
 
-	boxedContent, err := ioutil.ReadAll(boxedFile)
+	fileContent, err := ioutil.ReadAll(embeddedFile)
 	if err != nil {
 		return "", err
 	}
 
 	var rendered string
 	if d.opts.raw || filename == config.ConfigFile {
-		rendered = string(boxedContent)
+		rendered = string(fileContent)
 	} else {
-		rendered, err = d.renderTemplate(string(boxedContent))
+		rendered, err = d.renderTemplate(string(fileContent))
 		if err != nil {
 			return "", err
 		}
