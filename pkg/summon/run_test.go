@@ -242,7 +242,7 @@ exec:
       manifest:
         help: 'render kubernetes manifests in build dir'
         # popArg is used to remove the arg from user input
-        cmdArgs: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
+        cmd: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
         completion: '{{ summon "make list-environments" }}'
 `
 
@@ -259,10 +259,10 @@ exec:
 
 	assert.Equal(t,
 		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
-		FlattenStrings(handles["echo-pwd"].CmdArgs...))
+		FlattenStrings(handles["echo-pwd"].Cmd...))
 	assert.Equal(t,
 		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
-		FlattenStrings(handles["manifest"].CmdArgs))
+		FlattenStrings(handles["manifest"].Cmd))
 
 	assert.Contains(t, flags, "config-root")
 }
@@ -344,8 +344,8 @@ func TestConstructCommandTree(t *testing.T) {
 		        help: 'render kubernetes manifests in build dir'
 		        args:
 		          all:
-		            cmdArgs: [all subcmd]
-		        cmdArgs: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
+		            cmd: [all subcmd]
+		        cmd: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
 		        completion: 'a-completion'
 		      simple: [hello]
 		`)

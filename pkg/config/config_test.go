@@ -20,7 +20,7 @@ func TestConfigReader(t *testing.T) {
             flags:
               special-wrapper: '{{ happy new year: . }}'
             help: 'this is an echo adapter'
-            cmdArgs: ['{{ flag "--special-wrapper" }}', '{{ arg 1 ""}}', '{{ arg 0 "" }}']
+            cmd: ['{{ flag "--special-wrapper" }}', '{{ arg 1 ""}}', '{{ arg 0 "" }}']
 
           with-flag:
             flags:
@@ -39,7 +39,7 @@ func TestConfigReader(t *testing.T) {
 	assert.Equal(t, "print(\"hello\")", args[0])
 
 	cmdSpec := c.Exec.Invokers["bash"]["echo"].Value.(CmdSpec)
-	assert.Equal(t, "{{ flag \"--special-wrapper\" }}", cmdSpec.CmdArgs[0])
+	assert.Equal(t, "{{ flag \"--special-wrapper\" }}", cmdSpec.Cmd[0])
 
 	assert.IsType(t, "", cmdSpec.Flags["special-wrapper"].Value)
 

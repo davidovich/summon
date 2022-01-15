@@ -19,11 +19,11 @@ exec:
       templateref: ['{{ template "version"}}']
       overrides:
         help: 'help override'
-        cmdArgs: [ hello.sh ]
+        cmd: [ hello.sh ]
         args:
           subcmd:
             help: "override subcmd help"
-            cmdArgs: [hello.sh subcmd]
+            cmd: [hello.sh subcmd]
 
     docker {{ lower "INFO" }}: # template example
       docker: []

@@ -88,7 +88,7 @@ func (d *Driver) BuildCommand() ([]string, []string, error) {
 	}
 
 	// Render and flatten arguments array of arrays to simple array
-	targets, err := d.RenderArgs(cmdSpec.CmdArgs...)
+	targets, err := d.RenderArgs(cmdSpec.Cmd...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -162,11 +162,11 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 				switch descType := desc.Value.(type) {
 				case config.ArgSliceSpec:
 					c := config.CmdSpec{}
-					c.CmdArgs = descType
-					c.Invoker = invoker
+					c.Cmd = descType
+					c.ExecEnvironment = invoker
 					handles[handle] = c
 				case config.CmdSpec:
-					descType.Invoker = invoker
+					descType.ExecEnvironment = invoker
 					handles[handle] = descType
 				}
 			}
@@ -210,14 +210,13 @@ func (d *Driver) findExecutor(ref string) (execUnit, error) {
 	}
 	handle := env[handleIndex]
 
-	// prime execContext cache
 	_, handles, err := d.execContext()
 	if err != nil {
 		return execUnit{}, err
 	}
 
 	if spec, ok := handles[handle]; ok {
-		exec := strings.SplitAfterN(spec.Invoker, " ", 2)
+		exec := strings.SplitAfterN(spec.ExecEnvironment, " ", 2)
 		eu.invoker = strings.TrimSpace(exec[0])
 		if len(exec) == 2 {
 			eu.invokerArgs = strings.TrimSpace(exec[1])

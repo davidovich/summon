@@ -55,10 +55,10 @@ type ArgSliceSpec []interface{}
 
 // CmdSpec describes a complex command
 type CmdSpec struct {
-	// Invoker is the caller environment
-	Invoker string
-	// CmdArgs is the args that get added to the command
-	CmdArgs ArgSliceSpec `yaml:"cmdArgs"`
+	// ExecEnvironment is the caller environment
+	ExecEnvironment string
+	// Cmd is the command and args that get executed in the ExecEnvironment
+	Cmd ArgSliceSpec `yaml:"cmd"`
 	// Args sub-arguments of current command
 	Args map[string]CmdSpec `yaml:"args,omitempty"`
 	// Flags of this command
