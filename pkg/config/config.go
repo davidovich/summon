@@ -44,10 +44,10 @@ type ExecDesc struct {
 type HandlesDesc map[string]ExecDesc
 
 // Handles are the normalized version of the configs HandleDesc
-type Handles map[string]CmdSpec
+type Handles map[string]*CmdSpec
 
 // Flags are the normalized FlagDesc
-type Flags map[string]FlagSpec
+type Flags map[string]*FlagSpec
 
 // ArgSliceSpec is the basic form of args to pass to
 // invoker. It can be a slice of string, or slices of strings.

@@ -161,13 +161,13 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 				}
 				switch descType := desc.Value.(type) {
 				case config.ArgSliceSpec:
-					c := config.CmdSpec{}
+					c := &config.CmdSpec{}
 					c.Cmd = descType
 					c.ExecEnvironment = invoker
 					handles[handle] = c
 				case config.CmdSpec:
 					descType.ExecEnvironment = invoker
-					handles[handle] = descType
+					handles[handle] = &descType
 				}
 			}
 		}
@@ -177,16 +177,16 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 	return d.globalFlags, d.handles, nil
 }
 
-func normalizeFlags(flagsDesc map[string]config.FlagDesc) map[string]config.FlagSpec {
-	normalizedFlags := map[string]config.FlagSpec{}
+func normalizeFlags(flagsDesc map[string]config.FlagDesc) config.Flags {
+	normalizedFlags := config.Flags{}
 	for flagName, flags := range flagsDesc {
 		switch f := flags.Value.(type) {
 		case string:
-			normalizedFlags[flagName] = config.FlagSpec{
+			normalizedFlags[flagName] = &config.FlagSpec{
 				Effect: f,
 			}
 		case config.FlagSpec:
-			normalizedFlags[flagName] = f
+			normalizedFlags[flagName] = &f
 		}
 	}
 	return normalizedFlags
@@ -222,7 +222,7 @@ func (d *Driver) findExecutor(ref string) (execUnit, error) {
 			eu.invokerArgs = strings.TrimSpace(exec[1])
 		}
 
-		eu.targetSpec = &spec
+		eu.targetSpec = spec
 	}
 
 	if eu.invoker == "" {
@@ -306,7 +306,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) 
 	return root, nil
 }
 
-func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdSpec, run func(*cobra.Command, []string) error) {
+func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.CmdSpec, run func(*cobra.Command, []string) error) {
 	subCmd := &cobra.Command{
 		Use:                arg,
 		RunE:               run,
@@ -314,7 +314,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec config.CmdS
 	}
 	if cmdSpec.Args != nil {
 		for cName, cmdSpec := range cmdSpec.Args {
-			d.addCmdSpec(subCmd, cName, cmdSpec, run)
+			d.addCmdSpec(subCmd, cName, &cmdSpec, run)
 		}
 	}
 	if cmdSpec.Completion != "" {
