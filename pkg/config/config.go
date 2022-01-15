@@ -60,7 +60,7 @@ type CmdSpec struct {
 	// Cmd is the command and args that get executed in the ExecEnvironment
 	Cmd ArgSliceSpec `yaml:"cmd"`
 	// Args sub-arguments of current command
-	Args map[string]CmdSpec `yaml:"args,omitempty"`
+	Args map[string]*CmdSpec `yaml:"args,omitempty"`
 	// Flags of this command
 	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
 	// Help of this command

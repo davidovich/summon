@@ -13,14 +13,6 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
-type execUnit struct {
-	invoker     string
-	invokerArgs string
-	env         []string
-	flags       *config.FlagSpec
-	targetSpec  *config.CmdSpec
-}
-
 // Run will run executable scripts described in the summon.config.yaml file
 // of the data repository module.
 func (d *Driver) Run(opts ...Option) error {
@@ -29,7 +21,7 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	env, rargs, err := d.BuildCommand()
+	rargs, err := d.BuildCommand()
 	if err != nil {
 		return err
 	}
@@ -48,7 +40,6 @@ func (d *Driver) Run(opts ...Option) error {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = d.opts.out
 		cmd.Stderr = os.Stderr
-		cmd.Env = append(cmd.Env, env...)
 
 		return cmd.Run()
 	}
@@ -56,28 +47,28 @@ func (d *Driver) Run(opts ...Option) error {
 	return nil
 }
 
-func (d *Driver) BuildCommand() ([]string, []string, error) {
-	eu, err := d.findExecutor(d.opts.ref)
+func (d *Driver) BuildCommand() ([]string, error) {
+	cmdSpec, err := d.findExecutor(d.opts.ref)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	invArgs, err := d.renderTemplate(eu.invokerArgs)
+	execEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// See if we have an overridden command in the config.
 	// Each user-supplied args is tried in order to see if we have
 	// an override. If there is an override, this arg is consumed, Otherwize
 	// it is kept for the downstream commmand construction.
-	cmdSpec := *eu.targetSpec
 	if cmdSpec.Args != nil {
 		newArgs := []string{}
 		for _, a := range d.opts.args {
 			newCmdSpec, ok := cmdSpec.Args[a]
 			if ok {
 				// we have an override for this arg, try going deeper
+				newCmdSpec.ExecEnvironment = cmdSpec.ExecEnvironment
 				cmdSpec = newCmdSpec
 			} else {
 				// no override, keep the user provided arg
@@ -90,21 +81,20 @@ func (d *Driver) BuildCommand() ([]string, []string, error) {
 	// Render and flatten arguments array of arrays to simple array
 	targets, err := d.RenderArgs(cmdSpec.Cmd...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	rargs := []string{eu.invoker}
-	opts, err := shlex.Split(invArgs)
+	opts, err := shlex.Split(execEnv)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	rargs = append(rargs, opts...)
-	rargs = append(rargs, targets...)
+
+	rargs := append(opts, targets...)
 
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
 	rargs = append(rargs, unusedArgs...)
 
-	return eu.env, rargs, nil
+	return rargs, nil
 }
 
 func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
@@ -192,44 +182,17 @@ func normalizeFlags(flagsDesc map[string]config.FlagDesc) config.Flags {
 	return normalizedFlags
 }
 
-func (d *Driver) findExecutor(ref string) (execUnit, error) {
-	eu := execUnit{}
-
-	// Extract env part if present
-	env, err := shlex.Split(ref)
-	if err != nil {
-		return execUnit{}, err
-	}
-	handleIndex := 0
-	for i, e := range env {
-		if !strings.Contains(e, "=") {
-			handleIndex = i
-			break
-		}
-		eu.env = append(eu.env, e)
-	}
-	handle := env[handleIndex]
-
+func (d *Driver) findExecutor(ref string) (*config.CmdSpec, error) {
 	_, handles, err := d.execContext()
 	if err != nil {
-		return execUnit{}, err
+		return nil, err
 	}
 
-	if spec, ok := handles[handle]; ok {
-		exec := strings.SplitAfterN(spec.ExecEnvironment, " ", 2)
-		eu.invoker = strings.TrimSpace(exec[0])
-		if len(exec) == 2 {
-			eu.invokerArgs = strings.TrimSpace(exec[1])
-		}
-
-		eu.targetSpec = spec
+	if spec, ok := handles[ref]; ok {
+		return spec, nil
 	}
 
-	if eu.invoker == "" {
-		return eu, fmt.Errorf("could not find exec handle reference '%s' in config %s", handle, config.ConfigFile)
-	}
-
-	return eu, nil
+	return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFile)
 }
 
 func flatten(args []interface{}, v reflect.Value) []interface{} {
@@ -314,7 +277,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 	}
 	if cmdSpec.Args != nil {
 		for cName, cmdSpec := range cmdSpec.Args {
-			d.addCmdSpec(subCmd, cName, &cmdSpec, run)
+			d.addCmdSpec(subCmd, cName, cmdSpec, run)
 		}
 	}
 	if cmdSpec.Completion != "" {

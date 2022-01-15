@@ -11,7 +11,6 @@ exec:
       hello-bash: [ hello.sh ]
       bash-self-ref: ['{{ summon "hello.sh" }}']
       run-example: ['{{ run "hello-bash" }}']
-      run-with-env: ['{{run "HELLO=summon hello-bash"}}']
       args: ['args:', '{{ arg 0 "" }}']
       one-arg: ['args:', '{{arg 0 "" }}']
       all-args: ['args:', '{{ args }}']
