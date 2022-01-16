@@ -22,15 +22,16 @@ var Name = "summon"
 
 // Driver manages functionality of summon.
 type Driver struct {
-	opts        options
-	config      config.Config
-	fs          fs.FS
-	globalFlags config.Flags
-	handles     config.Handles
-	baseDataDir string
-	templateCtx *template.Template
-	execCommand command.ExecCommandFn
-	configRead  bool
+	opts          options
+	config        config.Config
+	fs            fs.FS
+	globalFlags   config.Flags
+	handles       config.Handles
+	baseDataDir   string
+	templateCtx   *template.Template
+	execCommand   command.ExecCommandFn
+	configRead    bool
+	flagsToRender map[string]*flagValue
 }
 
 // New creates the Driver.
@@ -73,7 +74,7 @@ func (d *Driver) Configure(opts ...Option) error {
 	}
 	if !d.configRead {
 		// try to find a config file in the embedded assets filesystem
-		configFile, err := d.fs.Open(path.Join(d.baseDataDir, config.ConfigFile))
+		configFile, err := d.fs.Open(path.Join(d.baseDataDir, config.ConfigFileName))
 		if err == nil {
 			defer configFile.Close()
 			config, err := io.ReadAll(configFile)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 )
 
@@ -228,7 +230,7 @@ exec:
 `
 
 	testFs := fstest.MapFS{}
-	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(configFile)}
+	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
 
 	s, err := New(testFs)
 	assert.NoError(t, err)
@@ -379,7 +381,7 @@ func TestConstructCommandTree(t *testing.T) {
 		},
 	}
 	testFs := fstest.MapFS{}
-	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(configFile)}
+	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -428,11 +430,55 @@ func TestDuplicateHandles(t *testing.T) {
 		      manifest: [hello]
 		`)
 	testFs := fstest.MapFS{}
-	testFs["summon.config.yaml"] = &fstest.MapFile{Data: []byte(configFile)}
+	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
 
 	_, err := New(testFs)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
-			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFile, "manifest"))
+			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFileName, "manifest"))
 	}
+}
+
+func TestFlagUsages(t *testing.T) {
+	configFile := dedent.Dedent(`
+		exec:
+		  flags:
+		    global-flag:
+		      effect: 'global-flag-set'
+		      explicit: true
+		  invokers:
+		    bash:
+		      a-command:
+		        cmd: [-c]
+		        flags:
+		          user-flag:
+		            effect: 'CONVERTED={{.flag}}'
+		            help: user-flag allows user to flag something to the callee
+		            shorthand: u
+		      b-cmd:
+		        cmd: [b-cmd, {{flagValue "global-flag"}}]
+		`)
+	testFs := fstest.MapFS{}
+	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
+
+	s, err := New(testFs, ExecCmd(func(s1 string, s2 ...string) *command.Cmd {
+		return &command.Cmd{
+			Cmd: &exec.Cmd{},
+			Run: func() error {
+				assert.Equal(t, []string{"bash", "-c", "CONVERTED=user-value"}, append([]string{s1}, s2...))
+				return nil
+			},
+		}
+	}))
+	assert.NoError(t, err)
+
+	rootCmd := cobra.Command{Use: "root"}
+	cmd, err := s.ConstructCommandTree(&rootCmd, true)
+	assert.NoError(t, err)
+
+	_, err = executeCommand(cmd, "a-command", "--user-flag", "user-value")
+	assert.NoError(t, err)
+
+	_, err = executeCommand(cmd, "a-command", "--global-flag", "a")
+	assert.NoError(t, err)
 }

@@ -21,12 +21,12 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
-	rargs, err := d.BuildCommand()
+	cmdArgs, err := d.buildCmdArgs()
 	if err != nil {
 		return err
 	}
 
-	cmd := d.execCommand(rargs[0], rargs[1:]...)
+	cmd := d.execCommand(cmdArgs[0], cmdArgs[1:]...)
 
 	if d.opts.debug || d.opts.dryrun {
 		msg := "Executing"
@@ -47,13 +47,8 @@ func (d *Driver) Run(opts ...Option) error {
 	return nil
 }
 
-func (d *Driver) BuildCommand() ([]string, error) {
+func (d *Driver) buildCmdArgs() ([]string, error) {
 	cmdSpec, err := d.findExecutor(d.opts.ref)
-	if err != nil {
-		return nil, err
-	}
-
-	execEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +57,13 @@ func (d *Driver) BuildCommand() ([]string, error) {
 	// Each user-supplied args is tried in order to see if we have
 	// an override. If there is an override, this arg is consumed, Otherwize
 	// it is kept for the downstream commmand construction.
+	//
+	// TODO: might be interesting to use the cobra command tree directly here.
+	// Historically, there was only one entry point to select the command
+	// configuration (the unique execution handle). Now there is a possibility
+	// to describe command trees in the config and the user will invoke
+	// a cobra based command string, which already has the correct parsing
+	// and parenting from the command line.
 	if cmdSpec.Args != nil {
 		newArgs := []string{}
 		for _, a := range d.opts.args {
@@ -78,36 +80,52 @@ func (d *Driver) BuildCommand() ([]string, error) {
 		d.opts.args = newArgs
 	}
 
+	renderedExecEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
+	if err != nil {
+		return nil, err
+	}
+	execEnv, err := shlex.Split(renderedExecEnv)
+	if err != nil {
+		return nil, err
+	}
 	// Render and flatten arguments array of arrays to simple array
-	targets, err := d.RenderArgs(cmdSpec.Cmd...)
+	arguments, err := d.RenderArgs(cmdSpec.Cmd...)
 	if err != nil {
 		return nil, err
 	}
+	finalCmd := append(execEnv, arguments...)
 
-	opts, err := shlex.Split(execEnv)
-	if err != nil {
-		return nil, err
+	// Render flags
+	renderedFlags := []string{}
+	for _, flag := range d.flagsToRender {
+		// if the flag was used in a template call do not use it implicitely
+		if flag.explicit {
+			continue
+		}
+		renderedFlag, err := flag.renderTemplate()
+		if err != nil {
+			return nil, err
+		}
+		renderedFlags = append(renderedFlags, renderedFlag)
 	}
 
-	rargs := append(opts, targets...)
-
+	finalCmd = append(finalCmd, renderedFlags...)
+	// add user args that were not consumed by a template render
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
-	rargs = append(rargs, unusedArgs...)
+	finalCmd = append(finalCmd, unusedArgs...)
 
-	return rargs, nil
+	return finalCmd, nil
 }
 
 func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
 	targets := make([]string, 0, len(args))
-	var renderedTargets []string
 	for _, t := range FlattenStrings(args) {
 		rt, err := d.renderTemplate(t)
 		if err != nil {
 			return nil, err
 		}
 
-		renderedTargets = []string{rt}
-
+		renderedTargets := []string{rt}
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
 			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
 			if err != nil {
@@ -147,7 +165,7 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 			for handle, desc := range handleDescs {
 				if _, present := handles[handle]; present {
 					return config.Flags{}, config.Handles{},
-						fmt.Errorf("config error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFile, handle)
+						fmt.Errorf("config error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
 				}
 				switch descType := desc.Value.(type) {
 				case config.ArgSliceSpec:
@@ -192,7 +210,7 @@ func (d *Driver) findExecutor(ref string) (*config.CmdSpec, error) {
 		return spec, nil
 	}
 
-	return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFile)
+	return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 }
 
 func flatten(args []interface{}, v reflect.Value) []interface{} {
@@ -224,7 +242,7 @@ func FlattenStrings(args ...interface{}) []string {
 
 func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) (*cobra.Command, error) {
 
-	_, handles, err := d.execContext()
+	globalFlags, handles, err := d.execContext()
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +272,8 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) 
 	}
 	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
 
+	d.AddFlags(root, globalFlags)
+
 	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
 		return func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -267,6 +287,57 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) 
 		d.addCmdSpec(root, h, spec, makerun(h))
 	}
 	return root, nil
+}
+
+func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags) {
+	for f, flagSpec := range flags {
+		v := &flagValue{
+			name:      f,
+			d:         d,
+			effect:    flagSpec.Effect,
+			userValue: flagSpec.Default,
+			explicit:  flagSpec.Explicit,
+		}
+		cmd.PersistentFlags().VarP(v, f, flagSpec.Shorthand, flagSpec.Help)
+	}
+}
+
+type flagValue struct {
+	d         *Driver
+	name      string
+	effect    string
+	userValue string
+	rendered  string
+	explicit  bool
+}
+
+func (f *flagValue) Set(s string) error {
+	if f.d.flagsToRender == nil {
+		f.d.flagsToRender = map[string]*flagValue{}
+	}
+	f.d.flagsToRender[f.name] = f
+	f.userValue = s
+	return nil
+}
+
+// String returns the current value
+func (f *flagValue) String() string {
+	return f.rendered
+}
+
+func (f *flagValue) Type() string {
+	return "string"
+}
+
+func (f *flagValue) renderTemplate() (string, error) {
+	if f.rendered != "" {
+		return f.rendered, nil
+	}
+	var err error
+	f.d.opts.data["flag"] = f.userValue
+	f.rendered, err = f.d.renderTemplate(f.effect)
+	delete(f.d.opts.data, "flag")
+	return f.rendered, err
 }
 
 func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.CmdSpec, run func(*cobra.Command, []string) error) {
@@ -298,13 +369,8 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 			return candidates, cobra.ShellCompDirectiveDefault
 		}
 	}
-	if len(cmdSpec.Flags) != 0 {
-		_ = 0
-		//subCmd.PersistentFlags().String(name string, value string, usage string)
-		// declare a storage for flags
-		// add flags to cobra command
-		// pass flags storage to Driver
-	}
+
+	d.AddFlags(subCmd, normalizeFlags(cmdSpec.Flags))
 
 	subCmd.Short = cmdSpec.Help
 

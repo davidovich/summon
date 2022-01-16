@@ -101,14 +101,13 @@ func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntr
 	}
 }
 
-func (d *Driver) renderTemplate(tmpl string) (string, error) {
-	data := d.opts.data
+func (d *Driver) prepareTemplate() (*template.Template, error) {
 	t := d.templateCtx
 	var err error
 	if t != nil {
 		t, err = t.Clone()
 		if err != nil {
-			return tmpl, err
+			return nil, err
 		}
 	} else {
 		t = template.New(Name)
@@ -118,18 +117,32 @@ func (d *Driver) renderTemplate(tmpl string) (string, error) {
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(summonFuncMap(d))
 
-	t, err = t.Parse(tmpl)
-	if err != nil {
-		return tmpl, err
-	}
+	return t, nil
+}
 
+func executeTemplate(t *template.Template, data interface{}) (string, error) {
 	buf := &bytes.Buffer{}
-	err = t.Execute(buf, data)
+	err := t.Execute(buf, data)
 
 	// The zero value for an interface is a nil interface{} which
 	// has a string representation of <no value>. Strip this out.
 	// https://github.com/golang/go/issues/24963
 	return strings.ReplaceAll(buf.String(), "<no value>", ""), err
+}
+
+func (d *Driver) renderTemplate(tmpl string) (string, error) {
+	t, err := d.prepareTemplate()
+	if err != nil {
+		return tmpl, err
+	}
+
+	t, err = t.Parse(tmpl)
+	if err != nil {
+		return tmpl, err
+	}
+
+	data := d.opts.data
+	return executeTemplate(t, data)
 }
 
 func (d *Driver) resolveAlias(alias string) string {
@@ -160,9 +173,11 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},
-		"flag": func(flag string) (string, error) {
-			//d.normalizeFlags(d.Config.Exec.GlobalFlags)
-			//d.RenderArgs(d.Con)
+		"flagValue": func(flag string) (string, error) {
+			if f, ok := d.flagsToRender[flag]; ok {
+				f.explicit = true
+				return f.renderTemplate()
+			}
 			return "", nil
 		},
 		"arg": func(index int, missingErrors ...string) (string, error) {
@@ -235,7 +250,7 @@ func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (strin
 	}
 
 	var rendered string
-	if d.opts.raw || filename == config.ConfigFile {
+	if d.opts.raw || filename == config.ConfigFileName {
 		rendered = string(fileContent)
 	} else {
 		rendered, err = d.renderTemplate(string(fileContent))

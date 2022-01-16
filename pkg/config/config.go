@@ -11,8 +11,8 @@ const (
 	// DefaultOutputDir is where the files will be instantiated.
 	DefaultOutputDir = ".summoned"
 
-	// ConfigFile is the name of the summon config file.
-	ConfigFile = "summon.config.yaml"
+	// ConfigFileName is the name of the summon config file.
+	ConfigFileName = "summon.config.yaml"
 )
 
 // Alias gives a shortcut to a name in data.
@@ -55,7 +55,7 @@ type ArgSliceSpec []interface{}
 
 // CmdSpec describes a complex command
 type CmdSpec struct {
-	// ExecEnvironment is the caller environment
+	// ExecEnvironment is the caller environment (docker, bash, python)
 	ExecEnvironment string
 	// Cmd is the command and args that get executed in the ExecEnvironment
 	Cmd ArgSliceSpec `yaml:"cmd"`
@@ -74,11 +74,13 @@ type FlagDesc struct {
 	Value interface{}
 }
 
-// FlagSpec is uses when you want more control on flag creation
+// FlagSpec is used when you want more control on flag creation
 type FlagSpec struct {
 	Effect    string `yaml:"effect"`
 	Shorthand string `yaml:"shorthand"`
+	Default   string `yaml:"default"`
 	Help      string `yaml:"help"`
+	Explicit  bool   `yaml:"explicit"`
 }
 
 // UnmarshalYAML the FlagSpec. It can be a String or a Flag
