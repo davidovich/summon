@@ -240,14 +240,14 @@ func FlattenStrings(args ...interface{}) []string {
 	return s
 }
 
-func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdDisabled bool) (*cobra.Command, error) {
+func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (*cobra.Command, error) {
 
 	globalFlags, handles, err := d.execContext()
 	if err != nil {
 		return nil, err
 	}
 
-	if !runCmdDisabled {
+	if runCmdEnabled {
 		newRoot := &cobra.Command{
 			Use:   "run [handle]",
 			Short: "Launch executable from summonables",

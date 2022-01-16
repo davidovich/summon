@@ -78,7 +78,7 @@ func TestRunCmd(t *testing.T) {
 			}
 			injectOsArgs := append([]string{"summon", "run"}, tC.args...)
 			tC.main.osArgs = &injectOsArgs
-			cmd, _ := newRunCmd(false, nil, s, tC.main)
+			cmd, _ := newRunCmd(true, nil, s, tC.main)
 			cmd.SetArgs(tC.args)
 
 			err = cmd.Execute()

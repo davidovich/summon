@@ -163,7 +163,7 @@ func TestRun(t *testing.T) {
 			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(tt.args...))
 
 			rootCmd := &cobra.Command{Use: "root"}
-			s.ConstructCommandTree(rootCmd, !tt.enableRun)
+			s.ConstructCommandTree(rootCmd, tt.enableRun)
 
 			args := append(tt.cmd, tt.args...)
 
@@ -392,7 +392,7 @@ func TestConstructCommandTree(t *testing.T) {
 			assert.NoError(t, err)
 
 			rootCmd := cobra.Command{Use: "root"}
-			cmd, err := s.ConstructCommandTree(&rootCmd, !tt.withRunCmd)
+			cmd, err := s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
 			if !tt.withRunCmd {
 				assert.Equal(t, cmd.Use, rootCmd.Use)
@@ -473,7 +473,7 @@ func TestFlagUsages(t *testing.T) {
 	assert.NoError(t, err)
 
 	rootCmd := cobra.Command{Use: "root"}
-	cmd, err := s.ConstructCommandTree(&rootCmd, true)
+	cmd, err := s.ConstructCommandTree(&rootCmd, false)
 	assert.NoError(t, err)
 
 	_, err = executeCommand(cmd, "a-command", "--user-flag", "user-value")

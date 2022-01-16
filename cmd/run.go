@@ -9,7 +9,7 @@ import (
 	"github.com/davidovich/summon/pkg/summon"
 )
 
-func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) (*cobra.Command, error) {
+func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) (*cobra.Command, error) {
 	osArgs := os.Args
 	if main.osArgs != nil {
 		osArgs = *main.osArgs
@@ -22,9 +22,9 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 	// see https://github.com/spf13/pflag/pull/160
 	// https://github.com/spf13/cobra/issues/739
 	// and https://github.com/spf13/pflag/pull/199
-	firstUnknownArgPos := 3
-	if runCmdDisabled {
-		firstUnknownArgPos = 2
+	firstUnknownArgPos := 2
+	if runCmdEnabled {
+		firstUnknownArgPos = 3
 	}
 	if strings.Contains(strings.Join(osArgs, " "), "-test.run") {
 		firstUnknownArgPos++
@@ -42,5 +42,5 @@ func newRunCmd(runCmdDisabled bool, root *cobra.Command, driver summon.Configura
 		summon.JSON(main.json),
 	)
 
-	return driver.ConstructCommandTree(root, runCmdDisabled)
+	return driver.ConstructCommandTree(root, runCmdEnabled)
 }

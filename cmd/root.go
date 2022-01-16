@@ -125,7 +125,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 	main.listOptions = newListCmd(options.WithoutRunSubcmd, rootCmd, driver)
 
 	// add run cmd, or root subcommands
-	_, err := newRunCmd(options.WithoutRunSubcmd, rootCmd, driver, main)
+	_, err := newRunCmd(!options.WithoutRunSubcmd, rootCmd, driver, main)
 
 	// add completion
 	rootCmd.AddCommand(newCompletionCmd(driver))
