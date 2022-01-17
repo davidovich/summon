@@ -581,6 +581,27 @@ func TestFlagUsages(t *testing.T) {
 			userInvocation: []string{"a-arg", "--one", "1"},
 			expected:       []string{"a-arg", "subcmd", "one=1", "anotherSubCmd"},
 		},
+		{
+			name: "default-values-for-flags",
+			Flags: config.Flags{
+				"number": &config.FlagSpec{
+					Effect:  "number={{.flag}}",
+					Default: "1234",
+				},
+			},
+			userInvocation: []string{"--number"},
+			expected:       []string{"number=1234"},
+		},
+		{
+			name:     "non-existing-reference-should-not-consume-arg-pos",
+			cmd:      []string{`{{flagValue "inexistant"}}`, "arg"},
+			expected: []string{"arg"},
+		},
+		{
+			name:     "empty-array-used-to-insert-empty-arg-pos",
+			cmd:      []string{`[{{flagValue "inexistant"}}]`, "arg"},
+			expected: []string{"", "arg"},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, test.run)

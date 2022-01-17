@@ -124,12 +124,19 @@ func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
+		if rt == "" {
+			continue
+		}
 
 		renderedTargets := []string{rt}
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			renderedTargets, err = shlex.Split(strings.Trim(rt, "[]"))
+			inner := strings.Trim(rt, "[]")
+			renderedTargets, err = shlex.Split(inner)
 			if err != nil {
 				return nil, err
+			}
+			if inner == "" {
+				renderedTargets = []string{""}
 			}
 		}
 
@@ -296,13 +303,14 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (
 func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags) {
 	for f, flagSpec := range flags {
 		v := &flagValue{
-			name:      f,
-			d:         d,
-			effect:    flagSpec.Effect,
-			userValue: flagSpec.Default,
-			explicit:  flagSpec.Explicit,
+			name:   f,
+			d:      d,
+			effect: flagSpec.Effect,
+			// userValue: flagSpec.Default,
+			explicit: flagSpec.Explicit,
 		}
-		cmd.PersistentFlags().VarP(v, f, flagSpec.Shorthand, flagSpec.Help)
+		flag := cmd.PersistentFlags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
+		flag.NoOptDefVal = flagSpec.Default
 	}
 }
 
