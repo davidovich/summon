@@ -174,9 +174,11 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},
 		"flagValue": func(flag string) (string, error) {
-			if f, ok := d.flagsToRender[flag]; ok {
-				f.explicit = true
-				return f.renderTemplate()
+			for _, toRender := range d.flagsToRender {
+				if toRender.name == flag {
+					toRender.explicit = true
+					return toRender.renderTemplate()
+				}
 			}
 			return "", nil
 		},

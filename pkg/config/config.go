@@ -76,11 +76,20 @@ type FlagDesc struct {
 
 // FlagSpec is used when you want more control on flag creation
 type FlagSpec struct {
-	Effect    string `yaml:"effect"`
+	// Effect contains the value that will be assigned to the flag, after
+	// template rendering, if needed
+	Effect string `yaml:"effect"`
+	// Shorthand (one letter) for the flag
 	Shorthand string `yaml:"shorthand"`
-	Default   string `yaml:"default"`
-	Help      string `yaml:"help"`
-	Explicit  bool   `yaml:"explicit"`
+	// Default value if the value is not provided by the user
+	Default string `yaml:"default"`
+	// Help for the flag
+	Help string `yaml:"help"`
+	// Explicit is used to control if the flag is added automatically or not to
+	// the command-line. If Explicit is true, the flag will not be automatically
+	// added (it can be positionned in the command-line with the flagValue template
+	// function). The default is to add the rendered flag on the command line (implicit).  Note that using the {{ flagValue "my-flag" }} in a template makes the Flag Explicit.
+	Explicit bool `yaml:"explicit"`
 }
 
 // UnmarshalYAML the FlagSpec. It can be a String or a Flag
@@ -107,11 +116,21 @@ func (e *ExecDesc) UnmarshalYAML(value *yaml.Node) error {
 	switch value.Kind {
 	case yaml.SequenceNode:
 		args := ArgSliceSpec{}
-		value.Decode(&args)
+		err := value.Decode(&args)
+		if err != nil {
+			return &yaml.TypeError{
+				Errors: []string{fmt.Sprintf("cannot unmarshal %v, content: %+v", value.Tag, value.Content)},
+			}
+		}
 		e.Value = args
 	case yaml.MappingNode:
 		cmdSpec := CmdSpec{}
-		value.Decode(&cmdSpec)
+		err := value.Decode(&cmdSpec)
+		if err != nil {
+			return &yaml.TypeError{
+				Errors: []string{fmt.Sprintf("cannot unmarshal %v on line: %d, colunm: %d, content: %+v", value.Tag, value.Line, value.Column, cmdSpec)},
+			}
+		}
 		e.Value = cmdSpec
 	default:
 		return &yaml.TypeError{

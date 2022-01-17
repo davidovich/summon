@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/davidovich/summon/internal/testutil"
 	"github.com/davidovich/summon/pkg/command"
@@ -439,7 +440,155 @@ func TestDuplicateHandles(t *testing.T) {
 	}
 }
 
+type flagTest struct {
+	name string
+	config.Flags
+	globalFlags    config.Flags
+	userInvocation []string
+	expected       []string
+	cmd            []string
+}
+
+func (ft flagTest) run(t *testing.T) {
+	d := Driver{}
+	cmdSpec := config.CmdSpec{
+		Cmd: []interface{}{ft.cmd},
+	}
+	cmdSpec.Flags = map[string]config.FlagDesc{}
+	for f, spec := range ft.Flags {
+		cmdSpec.Flags[f] = config.FlagDesc{
+			Value: *spec,
+		}
+	}
+	d.config.Exec.GlobalFlags = map[string]config.FlagDesc{}
+	for f, spec := range ft.globalFlags {
+		cmdSpec.Flags[f] = config.FlagDesc{
+			Value: *spec,
+		}
+	}
+	d.config.Exec.Invokers = map[string]config.HandlesDesc{
+		"bash": {"a-command": config.ExecDesc{
+			Value: cmdSpec,
+		}},
+	}
+	d.configRead = true
+	d.Configure(ExecCmd(func(cmd string, args ...string) *command.Cmd {
+		return &command.Cmd{
+			Cmd: &exec.Cmd{},
+			Run: func() error {
+				assert.Equal(t,
+					append([]string{"bash"}, ft.expected...),
+					append([]string{cmd}, args...))
+				return nil
+			},
+		}
+	}), Args(ft.userInvocation...))
+
+	rootCmd := cobra.Command{Use: "root"}
+	cmd, err := d.ConstructCommandTree(&rootCmd, false)
+	assert.NoError(t, err)
+
+	_, err = executeCommand(cmd, append([]string{"a-command"}, ft.userInvocation...)...)
+	assert.NoError(t, err)
+}
+
 func TestFlagUsages(t *testing.T) {
+	tests := []flagTest{
+		{
+			name: "happy",
+			Flags: config.Flags{
+				"a-flag": &config.FlagSpec{
+					Effect: "TEMPLATE={{.flag}}",
+				},
+			},
+			userInvocation: []string{"--a-flag", "user-value"},
+			expected:       []string{"TEMPLATE=user-value"},
+		},
+		{
+			name: "global",
+			globalFlags: config.Flags{
+				"global": &config.FlagSpec{
+					Effect: "GLOBALFLAGVALUE={{.flag}}",
+				},
+			},
+			userInvocation: []string{"--global", "global-value"},
+			expected:       []string{"GLOBALFLAGVALUE=global-value"},
+		},
+		{
+			name: "multiple-flags-in-order",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect: "one={{.flag}}",
+				},
+				"two": &config.FlagSpec{
+					Effect: "two={{.flag}}",
+				},
+				"three": &config.FlagSpec{
+					Effect: "three={{.flag}}",
+				},
+			},
+			userInvocation: []string{"--one", "1", "--two", "2", "--three", "3"},
+			expected:       []string{"one=1", "two=2", "three=3"},
+		},
+		{
+			name: "global-and-local",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect: "one={{.flag}}",
+				},
+			},
+			globalFlags: config.Flags{
+				"global": &config.FlagSpec{
+					Effect: "GLOBALFLAGVALUE={{.flag}}",
+				},
+			},
+			userInvocation: []string{"--one", "1", "--global", "global"},
+			expected:       []string{"one=1", "GLOBALFLAGVALUE=global"},
+		},
+		{
+			name: "interspersed",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect: "one={{.flag}}",
+				},
+			},
+			globalFlags: config.Flags{
+				"global": &config.FlagSpec{
+					Effect: "GLOBALFLAGVALUE={{.flag}}",
+				},
+			},
+			userInvocation: []string{"--one", "1", "another", "--global", "global"},
+			expected:       []string{"one=1", "GLOBALFLAGVALUE=global", "another"},
+		},
+		{
+			name: "non-used-flags",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect: "one={{.flag}}",
+				},
+			},
+			userInvocation: []string{"a-arg"},
+			expected:       []string{"a-arg"},
+		},
+		{
+			name: "flags-not-duplicated-not-reordered",
+			cmd:  []string{"{{ arg 0 }}", "subcmd", `{{ flagValue "one" }}`, "anotherSubCmd"},
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect: "one={{.flag}}",
+				},
+			},
+			userInvocation: []string{"a-arg", "--one", "1"},
+			expected:       []string{"a-arg", "subcmd", "one=1", "anotherSubCmd"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, test.run)
+	}
+}
+
+func TestFlagUsages2(t *testing.T) {
+
 	configFile := dedent.Dedent(`
 		exec:
 		  flags:
@@ -456,29 +605,46 @@ func TestFlagUsages(t *testing.T) {
 		            help: user-flag allows user to flag something to the callee
 		            shorthand: u
 		      b-cmd:
-		        cmd: [b-cmd, {{flagValue "global-flag"}}]
+		        cmd: [b-cmd, '{{flagValue "global-flag"}}']
 		`)
 	testFs := fstest.MapFS{}
 	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
 
-	s, err := New(testFs, ExecCmd(func(s1 string, s2 ...string) *command.Cmd {
-		return &command.Cmd{
-			Cmd: &exec.Cmd{},
-			Run: func() error {
-				assert.Equal(t, []string{"bash", "-c", "CONVERTED=user-value"}, append([]string{s1}, s2...))
-				return nil
-			},
-		}
-	}))
-	assert.NoError(t, err)
+	makeDriver := func(expected ...string) *Driver {
+		s, err := New(testFs, ExecCmd(func(s1 string, s2 ...string) *command.Cmd {
+			return &command.Cmd{
+				Cmd: &exec.Cmd{},
+				Run: func() error {
+					assert.Equal(t, expected, append([]string{s1}, s2...))
+					return nil
+				},
+			}
+		}))
+		assert.NoError(t, err)
+		return s
+	}
 
-	rootCmd := cobra.Command{Use: "root"}
-	cmd, err := s.ConstructCommandTree(&rootCmd, false)
-	assert.NoError(t, err)
+	t.Run("simple", func(t *testing.T) {
+		s := makeDriver("bash", "-c", "CONVERTED=user-value")
 
-	_, err = executeCommand(cmd, "a-command", "--user-flag", "user-value")
-	assert.NoError(t, err)
+		rootCmd := cobra.Command{Use: "root"}
+		cmd, err := s.ConstructCommandTree(&rootCmd, false)
+		assert.NoError(t, err)
 
-	_, err = executeCommand(cmd, "a-command", "--global-flag", "a")
-	assert.NoError(t, err)
+		_, err = executeCommand(cmd, "a-command", "--user-flag", "user-value")
+		assert.NoError(t, err)
+	})
+
+	t.Run("argSliceSpec", func(t *testing.T) {
+		s := makeDriver("bash", "b-cmd", "global-flag-set", "arg1", "arg2")
+		require.NotNil(t, s)
+
+		rootCmd := cobra.Command{Use: "root"}
+		cmd, err := s.ConstructCommandTree(&rootCmd, false)
+		assert.NoError(t, err)
+
+		s.Configure(Args("arg1", "arg2"))
+		_, err = executeCommand(cmd, "b-cmd", "arg1", "arg2", "--global-flag", "user-value")
+		assert.NoError(t, err)
+	})
 }

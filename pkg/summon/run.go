@@ -176,6 +176,10 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 				case config.CmdSpec:
 					descType.ExecEnvironment = invoker
 					handles[handle] = &descType
+				default:
+					return config.Flags{}, config.Handles{},
+						fmt.Errorf("config error for 'exec:invokers:%s in config %s: unhandled type: %T",
+							invoker, config.ConfigFileName, descType)
 				}
 			}
 		}
@@ -313,16 +317,16 @@ type flagValue struct {
 
 func (f *flagValue) Set(s string) error {
 	if f.d.flagsToRender == nil {
-		f.d.flagsToRender = map[string]*flagValue{}
+		f.d.flagsToRender = []*flagValue{}
 	}
-	f.d.flagsToRender[f.name] = f
+	f.d.flagsToRender = append(f.d.flagsToRender, f)
 	f.userValue = s
 	return nil
 }
 
 // String returns the current value
 func (f *flagValue) String() string {
-	return f.rendered
+	return f.userValue
 }
 
 func (f *flagValue) Type() string {

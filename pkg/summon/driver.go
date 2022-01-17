@@ -31,7 +31,7 @@ type Driver struct {
 	templateCtx   *template.Template
 	execCommand   command.ExecCommandFn
 	configRead    bool
-	flagsToRender map[string]*flagValue
+	flagsToRender []*flagValue
 }
 
 // New creates the Driver.
