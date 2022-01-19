@@ -160,6 +160,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				opts:        d.opts,
 				config:      d.config,
 				fs:          d.fs,
+				baseDataDir: d.baseDataDir,
 				templateCtx: d.templateCtx,
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
