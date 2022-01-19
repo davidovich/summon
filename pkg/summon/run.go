@@ -27,7 +27,6 @@ func (d *Driver) Run(opts ...Option) error {
 	}
 
 	cmd := d.execCommand(cmdArgs[0], cmdArgs[1:]...)
-
 	if d.opts.debug || d.opts.dryrun {
 		msg := "Executing"
 		if d.opts.dryrun {
@@ -131,10 +130,7 @@ func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
 		renderedTargets := []string{rt}
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
 			inner := strings.Trim(rt, "[]")
-			renderedTargets, err = shlex.Split(inner)
-			if err != nil {
-				return nil, err
-			}
+			renderedTargets = strings.Split(inner, "\n")
 			if inner == "" {
 				renderedTargets = []string{""}
 			}
@@ -366,13 +362,18 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 	if cmdSpec.Completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-			args, err := d.RenderArgs(cmdSpec.Completion)
+			inlineArgs, err := d.RenderArgs(cmdSpec.Completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
 			}
 
-			candidates := []string{}
+			var candidates, args []string
+			for _, a := range inlineArgs {
+				a = strings.TrimRight(a, "\n")
+				args = append(args, strings.Split(a, "\n")...)
+			}
+
 			for _, a := range args {
 				if strings.Contains(a, toComplete) {
 					candidates = append(candidates, a)
