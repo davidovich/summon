@@ -163,7 +163,7 @@ func TestRun(t *testing.T) {
 			}
 			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(tt.args...))
 
-			rootCmd := &cobra.Command{Use: "root"}
+			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
 			s.ConstructCommandTree(rootCmd, tt.enableRun)
 
 			args := append(tt.cmd, tt.args...)
@@ -371,7 +371,6 @@ func TestConstructCommandTree(t *testing.T) {
 		{
 			name:          "arg-not-found",
 			cmd:           []string{"man"},
-			expectError:   true,
 			expectSubArgs: []string{"man"},
 		},
 		{
@@ -392,7 +391,7 @@ func TestConstructCommandTree(t *testing.T) {
 			s, err := New(testFs)
 			assert.NoError(t, err)
 
-			rootCmd := cobra.Command{Use: "root"}
+			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
 			cmd, err := s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
 			if !tt.withRunCmd {
