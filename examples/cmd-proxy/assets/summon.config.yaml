@@ -5,53 +5,71 @@ aliases: {}
 outputdir: ".summoned"
 
 .base: &baseargs
-  - echo make -f /opsverseer/bootstrap/Makefile
+- echo
 
 exec:
   flags:
-    --config-root: 'CONFIG_ROOT=.'
+    config-root: 'CONFIG_ROOT={{.flag}}'
 
   invokers:
     bash --norc --noprofile -c:
       fake-make:
-        cmdArgs: ['echo -e "{{- args | join " " -}}"']
-        help: simulate make call echo params
+        cmd: ['echo -e "{{- args | join " " -}}"']
+        help: simulate make call echo param
+        hidden: true
+      bash-c:
+        hidden: true
+
+    kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
+      kubectl:
+        completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
+        help: call kubectl directly
+
+    bash:
+      hello-bash: ['{{ summon "hello.sh" }}']
 
     bash -c:
-      make: *baseargs
-
       tk:
-        cmdArgs: [tk]
+        cmd: [tk]
         help: call tanka directly
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
-        completion: '{{ run (printf "COMP_LINE=''%s'' PATH=''%s'' tk" (join " " args) (env "PATH"))}}'
+        #completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args))}}'
+        completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
 
-      kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
-        cmdArgs: [kubectl]
-        completion: '{{ join " " args | run "kubectl" "__complete" "" }}'
-
-      hello-bash: ['{{ summon "hello.sh" }}']
-
-      manifest:
+      manifest [env]:
         help: 'render kubernetes manifests in build dir'
-        cmdArgs: [*baseargs, 'manifests/{{arg 0 "manifest"}}','{{ template "parseArgs" 1 }}']
+        cmd: ['echo manifests/{{arg 0 "manifest"}} {{flagValue "config-root" }}']
         completion: '{{ run "fake-make" "a-env\nb-env\n" }}'
 
       build:
         help: 'build components'
-        cmdArgs: [*baseargs, 'build/{{arg 0}}'] #,'{{ flag "--config-root" }}']
+        cmd: ['echo build/{{arg 0}} {{ flagValue "config-root" }}']
         args:
-          image:
-              cmdArgs: [*baseargs, 'build/image/{{- arg 0 "build image" -}}']
-              help: "build images in this repo"
-              completion: '{{ run "fake-make" "a-image b-image" }}'
+          image [path to Dockerfile]:
+            cmd: ['echo would build build/image/{{- arg 0 "build image" -}}']
+            help: "build images in this repo"
+            completion: '{{ run "fake-make" "a-image\nb-image" }}'
 
           gitlab-ci.yaml:
-              flags:
-                --one-pipeline: '{{ if eq . "true"}} PARENT_CHILD=0 {{ else }} PARENT_CHILD=1 {{ end }}'
-              cmdArgs: ['{{ flag "--one-pipeline" }}']
-              help: "Initialize or merge gitlab-ci.yaml"
+            flags:
+              one-pipeline:
+                effect: '{{ if eq .flag "true" }}PARENT_CHILD=0{{ else }}PARENT_CHILD=1{{ end }}'
+                default: "true"
+                help: should the pipeline be added directly or with a parent-child style
+
+            cmd: ['echo would run {{ flagValue "one-pipeline" }}']
+            help: "Initialize or merge gitlab-ci.yaml"
+            args:
+              sub:
+                cmd: ['echo gitlab-ci.yaml sub {{ args }}']
 
     docker run -v {{ env "PWD" }}:/mounted-app alpine:
-      list: [ls, /mounted-app]
+      list:
+        cmd: [ls, /mounted-app]
+        help: list files of mount a seen from inside container
+
+    docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
+      echo-alpine:
+        cmd: [echo]
+        help: use alpine to echo a string
