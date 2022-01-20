@@ -386,6 +386,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 	d.AddFlags(subCmd, normalizeFlags(cmdSpec.Flags))
 
 	subCmd.Short = cmdSpec.Help
+	subCmd.Hidden = cmdSpec.Hidden
 
 	root.AddCommand(subCmd)
 }

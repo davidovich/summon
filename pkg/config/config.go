@@ -67,6 +67,8 @@ type CmdSpec struct {
 	Help string `yaml:"help"`
 	// Command to invoke to have a completion of this command
 	Completion string `yaml:"completion"`
+	// Hidden hides the command from help
+	Hidden bool `yaml:"hidden"`
 }
 
 // FlagDesc describes a simple string flag or complex FlagSpec
