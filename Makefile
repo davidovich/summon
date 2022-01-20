@@ -19,11 +19,11 @@ all: test $(SCAFFOLD_BIN)
 .PHONY: bin
 bin: $(SCAFFOLD_BIN)
 
-.PHONY: build
-build: bin/new-cmd-args
+.PHONY: examples
+examples: bin/cmd-proxy
 
-bin/new-cmd-args: $(call SRCS,github.com/davidovich/summon/examples/new-cmd-args) $(shell find examples/new-cmd-args/assets)
-	go build -o $@ github.com/davidovich/summon/examples/new-cmd-args
+bin/cmd-proxy: $(call SRCS,github.com/davidovich/summon/examples/cmd-proxy) $(shell find examples/cmd-proxy/assets)
+	go build -o $@ github.com/davidovich/summon/examples/$(@F)
 
 
 .PHONY: $(SCAFFOLD_BIN)
