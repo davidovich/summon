@@ -386,7 +386,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 			}
 
 			for _, a := range args {
-				if strings.Contains(a, toComplete) {
+				if strings.HasPrefix(a, toComplete) {
 					candidates = append(candidates, a)
 				}
 			}
