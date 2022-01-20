@@ -12,6 +12,20 @@ exec:
     config-root: 'CONFIG_ROOT={{.flag}}'
 
   environments:
+    go run:
+      gohack [command]:
+        cmd: &rog [github.com/rogpeppe/gohack@latest]
+        completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
+        args:
+          get:
+            cmd: [*rog, get,'{{ flagValue "vcs" }}']
+            flags:
+              vcs:
+                effect: '{{.flag}}'
+                default: '-vcs'
+          undo: [*rog, undo]
+
+
     bash --norc --noprofile -c:
       fake-make:
         cmd: ['echo -e "{{- args | join " " -}}"']
