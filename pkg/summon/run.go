@@ -155,7 +155,7 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-// execContext lists the invokers in the config file under the exec:
+// execContext lists the execEnvironments in the config file under the exec:
 // key.
 func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 	if d.globalFlags == nil {
@@ -164,11 +164,11 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 
 	if d.handles == nil {
 		handles := config.Handles{}
-		for invoker, handleDescs := range d.config.Exec.Invokers {
+		for invoker, handleDescs := range d.config.Exec.ExecEnv {
 			for handle, desc := range handleDescs {
 				if _, present := handles[handle]; present {
 					return config.Flags{}, config.Handles{},
-						fmt.Errorf("config error for 'exec.invokers:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
+						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
 				}
 				switch descType := desc.Value.(type) {
 				case config.ArgSliceSpec:
@@ -181,7 +181,7 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 					handles[handle] = &descType
 				default:
 					return config.Flags{}, config.Handles{},
-						fmt.Errorf("config error for 'exec:invokers:%s in config %s: unhandled type: %T",
+						fmt.Errorf("config error for 'exec:environments:%s in config %s: unhandled type: %T",
 							invoker, config.ConfigFileName, descType)
 				}
 			}

@@ -11,7 +11,7 @@ exec:
   flags:
     config-root: 'CONFIG_ROOT={{.flag}}'
 
-  invokers:
+  environments:
     bash --norc --noprofile -c:
       fake-make:
         cmd: ['echo -e "{{- args | join " " -}}"']

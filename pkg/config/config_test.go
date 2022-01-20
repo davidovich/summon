@@ -12,7 +12,7 @@ func TestConfigReader(t *testing.T) {
 	config := dedent.Dedent(`
     version: 1
     exec:
-      invokers:
+      environments:
         python -c:
           hello: [print("hello")]
         bash:
@@ -35,14 +35,14 @@ func TestConfigReader(t *testing.T) {
 	err := c.Unmarshal([]byte(config))
 
 	require.Nil(t, err)
-	args := c.Exec.Invokers["python -c"]["hello"].Value.(ArgSliceSpec)
+	args := c.Exec.ExecEnv["python -c"]["hello"].Value.(ArgSliceSpec)
 	assert.Equal(t, "print(\"hello\")", args[0])
 
-	cmdSpec := c.Exec.Invokers["bash"]["echo"].Value.(CmdSpec)
+	cmdSpec := c.Exec.ExecEnv["bash"]["echo"].Value.(CmdSpec)
 	assert.Equal(t, "{{ flag \"--special-wrapper\" }}", cmdSpec.Cmd[0])
 
 	assert.IsType(t, "", cmdSpec.Flags["special-wrapper"].Value)
 
-	cmdSpecWithFlags := c.Exec.Invokers["bash"]["with-flag"].Value.(CmdSpec)
+	cmdSpecWithFlags := c.Exec.ExecEnv["bash"]["with-flag"].Value.(CmdSpec)
 	assert.IsType(t, FlagSpec{}, cmdSpecWithFlags.Flags["flag-desc"].Value)
 }

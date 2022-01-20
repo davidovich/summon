@@ -28,9 +28,9 @@ type Config struct {
 	Help            string      `yaml:"help"`
 }
 
-// ExecContext houses invokers and global flags
+// ExecContext houses execution environments and global flags
 type ExecContext struct {
-	Invokers    map[string]HandlesDesc `yaml:"invokers"`
+	ExecEnv     map[string]HandlesDesc `yaml:"environments"`
 	GlobalFlags map[string]FlagDesc    `yaml:"flags"`
 }
 

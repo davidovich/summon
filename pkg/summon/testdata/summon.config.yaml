@@ -6,7 +6,7 @@ outputdir: "overridden_dir"
 templates: >-
   {{ define "version" }}1.2.3{{ end }}
 exec:
-  invokers:
+  environments:
     bash:
       hello-bash: [ hello.sh ]
       bash-self-ref: ['{{ summon "hello.sh" }}']

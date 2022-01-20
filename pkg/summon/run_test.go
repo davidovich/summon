@@ -218,7 +218,7 @@ exec:
   flags:
     config-root: 'CONFIG_ROOT=.'
 
-  invokers:
+  environments:
     echo:
       echo-pwd: ['pwd:', '{{ env "PWD" | base }}']
 
@@ -322,7 +322,7 @@ func TestConstructCommandTree(t *testing.T) {
 		  flags:
 		    config-root: 'CONFIG_ROOT=.'
 
-		  invokers:
+		  environments:
 		    docker:
 		      manifest:
 		        help: 'render kubernetes manifests in build dir'
@@ -423,7 +423,7 @@ func TestConstructCommandTree(t *testing.T) {
 func TestDuplicateHandles(t *testing.T) {
 	configFile := dedent.Dedent(`
 		exec:
-		  invokers:
+		  environments:
 		    docker:
 		      manifest: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
 		    bash:
@@ -465,7 +465,7 @@ func (ft flagTest) run(t *testing.T) {
 			Value: *spec,
 		}
 	}
-	d.config.Exec.Invokers = map[string]config.HandlesDesc{
+	d.config.Exec.ExecEnv = map[string]config.HandlesDesc{
 		"bash": {"a-command": config.ExecDesc{
 			Value: cmdSpec,
 		}},
@@ -615,7 +615,7 @@ func TestFlagUsages2(t *testing.T) {
 		    global-flag:
 		      effect: 'global-flag-set'
 		      explicit: true
-		  invokers:
+		  environments:
 		    bash:
 		      a-command:
 		        cmd: [-c]
