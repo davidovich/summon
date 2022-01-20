@@ -15,11 +15,14 @@
     - [Templating](#templating)
     - [Running A Binary](#running-a-binary)
       - [Templated Invokables](#templated-invokables)
+        - [Enhanced command description](#enhanced-command-description)
       - [Keeping DRY](#keeping-dry)
       - [Template Functions Available in Summon](#template-functions-available-in-summon)
         - [Summon Function](#summon-function)
         - [Arg and Args Function](#arg-and-args-function)
         - [Run Function](#run-function)
+        - [FlagValue Function](#flagvalue-function)
+        - [.flag field](#flag-field)
       - [Removing the run subcommand](#removing-the-run-subcommand)
     - [Dump the Data at a Location](#dump-the-data-at-a-location)
     - [Output a File to stdout](#output-a-file-to-stdout)
@@ -151,20 +154,32 @@ templates: |
   {{- end -}}
 
 # exec section declares invokables with their handle
-# a same handle name cannot be in two invokers at the same time
+# a same handle name cannot be in two execEnvironments at the same time
 # they are grouped by invoker.
 exec:
+  environments:
     bash -c:
-    # ^ invoker
-        # (script can be inlined with | yaml operator)
-        hello: [echo, hello]
-                 # ^ optional params that will be passed to invoker
-                 # these can contain templates (starting at v0.10.0)
-        # ^ handle to script (must be unique). This is what you use
-        # to invoke the script: `summon run hello`.
+    # ^ execution environment
+    #   (script can be inlined with | yaml operator)
+        hello: [echo hello]
+    #     ^        ^ params that will be appended to the environment
+    #     |          these can contain templates (starting at v0.10.0)
+    #     |- handle to script (must be unique). This is what you use
+    #        to invoke the script: `summon run hello`.
 
-    go run: # go gettable executables
-        gohack: [github.com/rogppepe/gohack@latest]
+  # new in v0.14.0 complex command and sub-command specification
+  go run:
+    gohack [command]:
+      cmd: &rog [github.com/rogpeppe/gohack@latest]
+      completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
+      args:
+        get:
+          cmd: [*rog, get,'{{ flagValue "vcs" }}']
+          flags:
+            vcs:
+              effect: '{{.flag}}'
+              default: '-vcs'
+        undo: [*rog, undo]
 
     python -c:
         hello-python: [print("hello from python!")]
@@ -290,13 +305,14 @@ will yield:
 #### Templated Invokables
 
 Suppose you want to make a wrapper around a docker utility. The specific
-docker invocation can be quite cryptic. Help your team by adding an invocable
-in the config file:
+docker invocation can be quite cryptic and long. Help your team by adding an
+exec environment in the config file:
 
 ```yaml
 ...
 exec:
-  docker run -v {{ env "PWD" }}:/mounted-app alpine:
+  environments:
+    docker run -v {{ env "PWD" }}:/mounted-app alpine:
       ls: [ls, /mounted-app]
 ```
 
@@ -305,6 +321,17 @@ Calling `summon run ls` would render the
 current directory, resulting in this call:
 
 `docker run -v [working-dir]:/mounted-app alpine ls /mounted-app`
+
+In effect, this feature allows creating your own cli that can wrap complex
+containers. The cli is a kind of trampoline to the container.
+
+Note that the whole enviroment line can be templated.
+
+##### Enhanced command description
+
+> New in v0.14.0
+
+TODO
 
 #### Keeping DRY
 
@@ -322,7 +349,8 @@ can use YAML anchors to define the static (but required) params in
     - c
 
 exec:
-    bash -c:
+  environments:
+    docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
       echo: [*baseargs, d]
 ```
 
@@ -341,15 +369,16 @@ invocable (new in v.0.10.0). You would use the `summon` template function bundle
 
 ```yaml
 exec:
-  bash -c:
-    hello: ['{{ summon "hello.sh" }}']
+  environments:
+    bash:
+      hello: ['{{ summon "hello.sh" }}']
 ```
 
 Assuming you have a `hello.sh` file in the assets repo, this would result in
 sommoning the file in a temp dir and calling the invoker:
 
 ```shell
-bash -c /tmp/hello.sh
+bash /tmp/hello.sh
 ```
 
 > Note that `hello.sh` could also contain templates that will be
@@ -377,14 +406,15 @@ these in a template of the params array.
     ```yaml
     ...
     exec:
-       bash -c:
+      environments:
+        bash:
           ls: [ls, '{{ arg 0 "error msg" }}']
     ```
 
 When used, summon will remove the consumed args, as this would
-surprisingly double the args. In other words, when accessing `{{ args }}`,
-summon will not append the resulting args, and using `{{ arg 0 "error" }}`,
-summon would only append the unconsumed args (after index 0).
+surprisingly double the args in the resulting invocation. In other words, when
+accessing `{{ args }}`, summon will not append the resulting args, and using
+`{{ arg 0 "error" }}`, summon would only append the unconsumed args (after index 0).
 
 * `.osArgs` contains the whole command-line slice
 
@@ -406,10 +436,13 @@ We want to mount volumes of a docker container, conditionally.
 
 ```yaml
 exec:
-  docker run -it --rm {{ run "eval-mounts" }} alpine:
-    ls: ['ls']
-  bash -c:
-    eval-mounts: ["echo -v {{ env PWD }}:/app"]
+  environments:
+    # here, "eval-mounts" is a reference to the corresponding handle
+    docker run -it --rm {{ run "eval-mounts" }} alpine:
+      ls: ['ls']
+    bash -c:
+      eval-mounts: ["echo -v {{ env PWD }}:/app"]
+    #    ^ used to compute the volumes.
 ```
 
 When inovking `summon run ls`, summon will first invoke:
@@ -419,10 +452,17 @@ then call the `ls` handle to produce:
 
 `docker run -it --rm -v current_dir:/app alpine`
 
-> Warning: `run` must not start a recursive process as `summon` does not currently
+> WARNING: `run` must not start a recursive process as `summon` does not currently
 > protect from this type of call. The consequence of doing this will probably
 > result in a fork bomb.
 
+##### FlagValue Function
+
+TODO
+
+##### .flag field
+
+TODO
 #### Removing the run subcommand
 
 > New in v0.12.0

@@ -15,7 +15,7 @@ This library needs a command entrypoint in a data repository. See https://github
 It can be bootstrapped in an empty directory by using:
 
   cd [empty data repo dir]
-  go run github.com/davidovich/summon/scaffold init [module name]
+  go run github.com/davidovich/summon/scaffold@latest init [module name]
 */
 package summon
 
