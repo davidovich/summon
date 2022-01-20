@@ -247,6 +247,11 @@ func FlattenStrings(args ...interface{}) []string {
 	return s
 }
 
+const (
+	global bool = true
+	local  bool = false
+)
+
 func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (*cobra.Command, error) {
 
 	globalFlags, handles, err := d.execContext()
@@ -279,7 +284,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (
 	}
 	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
 
-	d.AddFlags(root, globalFlags)
+	d.AddFlags(root, globalFlags, global)
 
 	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
 		return func(cmd *cobra.Command, args []string) error {
@@ -296,7 +301,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (
 	return root, nil
 }
 
-func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags) {
+func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags, global bool) {
 	for f, flagSpec := range flags {
 		v := &flagValue{
 			name:   f,
@@ -305,7 +310,12 @@ func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags) {
 			// userValue: flagSpec.Default,
 			explicit: flagSpec.Explicit,
 		}
-		flag := cmd.PersistentFlags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
+		var flag *pflag.Flag
+		if global {
+			flag = cmd.PersistentFlags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
+		} else {
+			flag = cmd.Flags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
+		}
 		flag.NoOptDefVal = flagSpec.Default
 	}
 }
@@ -383,7 +393,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 		}
 	}
 
-	d.AddFlags(subCmd, normalizeFlags(cmdSpec.Flags))
+	d.AddFlags(subCmd, normalizeFlags(cmdSpec.Flags), local)
 
 	subCmd.Short = cmdSpec.Help
 	subCmd.Hidden = cmdSpec.Hidden
