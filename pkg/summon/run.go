@@ -66,12 +66,18 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	if cmdSpec.Args != nil {
 		newArgs := []string{}
 		for _, a := range d.opts.args {
-			newCmdSpec, ok := cmdSpec.Args[a]
-			if ok {
-				// we have an override for this arg, try going deeper
-				newCmdSpec.ExecEnvironment = cmdSpec.ExecEnvironment
-				cmdSpec = newCmdSpec
-			} else {
+			var hasOverride bool
+			// range over Args as user might have specified expected arg
+			// annotation: [arg]
+			for arg, spec := range cmdSpec.Args {
+				if hasOverride = strings.HasPrefix(arg, a); hasOverride {
+					// we have an override for this arg, try going deeper
+					spec.ExecEnvironment = cmdSpec.ExecEnvironment
+					cmdSpec = spec
+					break
+				}
+			}
+			if !hasOverride {
 				// no override, keep the user provided arg
 				newArgs = append(newArgs, a)
 			}

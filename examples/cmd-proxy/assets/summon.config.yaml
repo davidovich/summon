@@ -17,13 +17,17 @@ exec:
         cmd: &rog [github.com/rogpeppe/gohack@latest]
         completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
         args:
-          get:
+          get [module]:
             cmd: [*rog, get,'{{ flagValue "vcs" }}']
             flags:
-              vcs:
-                effect: '{{.flag}}'
-                default: '-vcs'
-          undo: [*rog, undo]
+              vcs: { effect: '{{.flag}}', default: '-vcs'}
+          undo:
+            cmd: [*rog, undo]
+          status:
+            cmd: [*rog, status]
+          help [command]:
+            cmd: [*rog, help]
+            completion: '{{ printf "get\nundo\nstatus" }}'
 
 
     bash --norc --noprofile -c:
