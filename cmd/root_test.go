@@ -247,5 +247,15 @@ func Test_mainCmd_run(t *testing.T) {
 }
 
 func TestAssetsAreAlsoCommands(t *testing.T) {
+	_, rootCmd := makeRootCmd(false)
 
+	commands := []string{}
+
+	lsCmd, _, err := rootCmd.Find([]string{"ls"})
+	assert.NoError(t, err)
+	for _, c := range lsCmd.Commands() {
+		commands = append(commands, c.Name())
+	}
+
+	assert.ElementsMatch(t, []string{"a.txt", "b.txt", "json-for-template.json", "summon.config.yaml"}, commands)
 }

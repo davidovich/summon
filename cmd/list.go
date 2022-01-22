@@ -18,14 +18,16 @@ type listCmdOpts struct {
 	cmd      *cobra.Command
 }
 
-func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLister) *listCmdOpts {
+func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLister, main *mainCmd) *cobra.Command {
 	listCmd := &listCmdOpts{
 		driver: driver,
 	}
+	main.listOptions = listCmd
 
-	lcmd := root
-	if !asOption {
-		lcmd = &cobra.Command{
+	if asOption {
+		root.Flags().BoolVarP(&listCmd.asOption, "ls", "", false, "list embedded summonables")
+	} else {
+		lcmd := &cobra.Command{
 			Use:   "ls",
 			Short: "List all summonables",
 			RunE: func(cmd *cobra.Command, args []string) error {
@@ -34,18 +36,14 @@ func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLi
 			},
 		}
 		listCmd.cmd = lcmd
-	} else {
-		lcmd.Flags().BoolVar(&listCmd.asOption, "ls", false, "list embedded summonables")
-	}
-	listCmd.out = lcmd.OutOrStdout()
-
-	lcmd.Flags().BoolVar(&listCmd.tree, "tree", false, "Print pretty tree of data")
-
-	if !asOption && root != nil {
 		root.AddCommand(lcmd)
+		root = lcmd
 	}
 
-	return listCmd
+	listCmd.out = root.OutOrStdout()
+	root.Flags().BoolVar(&listCmd.tree, "tree", false, "Print pretty tree of data")
+
+	return root
 }
 
 func (l *listCmdOpts) run() error {
