@@ -252,11 +252,10 @@ const (
 	local  bool = false
 )
 
-func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (*cobra.Command, error) {
-
+func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) error {
 	globalFlags, handles, err := d.execContext()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if runCmdEnabled {
@@ -267,9 +266,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (
 			Run:                func(cmd *cobra.Command, args []string) {},
 		}
 
-		if root != nil {
-			root.AddCommand(newRoot)
-		}
+		root.AddCommand(newRoot)
 		root = newRoot
 	}
 	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
@@ -299,7 +296,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (
 	for h, spec := range handles {
 		d.addCmdSpec(root, h, spec, makerun(h))
 	}
-	return root, nil
+	return nil
 }
 
 func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags, global bool) {

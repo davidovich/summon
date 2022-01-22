@@ -2,14 +2,13 @@ package cmd
 
 import (
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/davidovich/summon/pkg/summon"
 )
 
-func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) (*cobra.Command, error) {
+func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) error {
 	osArgs := os.Args
 	if main.osArgs != nil {
 		osArgs = *main.osArgs
@@ -25,9 +24,6 @@ func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.Configurab
 	firstUnknownArgPos := 2
 	if runCmdEnabled {
 		firstUnknownArgPos = 3
-	}
-	if strings.Contains(strings.Join(osArgs, " "), "-test.run") {
-		firstUnknownArgPos++
 	}
 	if firstUnknownArgPos > len(osArgs) {
 		firstUnknownArgPos = len(osArgs)

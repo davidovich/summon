@@ -392,9 +392,11 @@ func TestConstructCommandTree(t *testing.T) {
 			assert.NoError(t, err)
 
 			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
-			cmd, err := s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
+			err = s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
 			if !tt.withRunCmd {
+				cmd, _, err := rootCmd.Find([]string{"run"})
+				assert.NoError(t, err)
 				assert.Equal(t, cmd.Use, rootCmd.Use)
 			}
 
@@ -483,11 +485,11 @@ func (ft flagTest) run(t *testing.T) {
 		}
 	}), Args(ft.userInvocation...))
 
-	rootCmd := cobra.Command{Use: "root"}
-	cmd, err := d.ConstructCommandTree(&rootCmd, false)
+	rootCmd := &cobra.Command{Use: "root"}
+	err := d.ConstructCommandTree(rootCmd, false)
 	assert.NoError(t, err)
 
-	_, err = executeCommand(cmd, append([]string{"a-command"}, ft.userInvocation...)...)
+	_, err = executeCommand(rootCmd, append([]string{"a-command"}, ft.userInvocation...)...)
 	assert.NoError(t, err)
 }
 
@@ -647,11 +649,11 @@ func TestFlagUsages2(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
 		s := makeDriver("bash", "-c", "CONVERTED=user-value")
 
-		rootCmd := cobra.Command{Use: "root"}
-		cmd, err := s.ConstructCommandTree(&rootCmd, false)
+		rootCmd := &cobra.Command{Use: "root"}
+		err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
-		_, err = executeCommand(cmd, "a-command", "--user-flag", "user-value")
+		_, err = executeCommand(rootCmd, "a-command", "--user-flag", "user-value")
 		assert.NoError(t, err)
 	})
 
@@ -659,12 +661,12 @@ func TestFlagUsages2(t *testing.T) {
 		s := makeDriver("bash", "b-cmd", "global-flag-set", "arg1", "arg2")
 		require.NotNil(t, s)
 
-		rootCmd := cobra.Command{Use: "root"}
-		cmd, err := s.ConstructCommandTree(&rootCmd, false)
+		rootCmd := &cobra.Command{Use: "root"}
+		err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
 		s.Configure(Args("arg1", "arg2"))
-		_, err = executeCommand(cmd, "b-cmd", "arg1", "arg2", "--global-flag", "user-value")
+		_, err = executeCommand(rootCmd, "b-cmd", "arg1", "arg2", "--global-flag", "user-value")
 		assert.NoError(t, err)
 	})
 }
