@@ -34,7 +34,7 @@ func TestListCmd(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
-			s, _ := summon.New(runCmdTestFS)
+			s, _ := summon.New(cmdTestFS)
 
 			cmd := newListCmd(false, nil, s)
 			cmd.cmd.SetArgs(tt.args)

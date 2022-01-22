@@ -15,7 +15,7 @@ import (
 )
 
 func makeRootCmd(withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
-	s, _ := summon.New(runCmdTestFS)
+	s, _ := summon.New(cmdTestFS)
 	rootCmd, _ := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
 	rootCmd.SetArgs(args)
 	return s, rootCmd
@@ -196,7 +196,7 @@ func Test_mainCmd_run(t *testing.T) {
 			fields: fields{
 				dest:     ".s",
 				filename: "a.txt",
-				driver:   func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
+				driver:   func() *summon.Driver { s, _ := summon.New(cmdTestFS); return s }(),
 			},
 			out: ".s/a.txt\n",
 		},
@@ -204,7 +204,7 @@ func Test_mainCmd_run(t *testing.T) {
 			name:       "ls-option",
 			lsAsOption: true,
 			fields: fields{
-				driver: func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
+				driver: func() *summon.Driver { s, _ := summon.New(cmdTestFS); return s }(),
 			},
 			out: "a.txt\nb.txt\njson-for-template.json\nsummon.config.yaml\n",
 		},
@@ -213,7 +213,7 @@ func Test_mainCmd_run(t *testing.T) {
 			fields: fields{
 				copyAll: true,
 				dest:    ".s",
-				driver:  func() *summon.Driver { s, _ := summon.New(runCmdTestFS); return s }(),
+				driver:  func() *summon.Driver { s, _ := summon.New(cmdTestFS); return s }(),
 			},
 			out: ".s\n", // note dest dir
 		},
@@ -244,4 +244,8 @@ func Test_mainCmd_run(t *testing.T) {
 			assert.Equal(t, tt.out, b.String())
 		})
 	}
+}
+
+func TestAssetsAreAlsoCommands(t *testing.T) {
+
 }
