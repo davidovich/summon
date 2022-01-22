@@ -20,17 +20,17 @@ var runCmdTestFS embed.FS
 func TestRunCmd(t *testing.T) {
 
 	testCases := []struct {
-		desc      string
-		out       string
-		args      []string
-		main      *mainCmd
-		wantError bool
-		noCalls   bool
+		desc             string
+		callArgsFragment string
+		args             []string
+		main             *mainCmd
+		wantError        bool
+		noCalls          bool
 	}{
 		{
-			desc: "sub-command",
-			args: []string{"run", "echo"},
-			out:  "bash echo hello",
+			desc:             "sub-command",
+			args:             []string{"run", "echo"},
+			callArgsFragment: "bash echo hello",
 		},
 		{
 			desc:      "no-sub-command",
@@ -49,20 +49,17 @@ func TestRunCmd(t *testing.T) {
 			},
 			// this relies on the v0.10.0 version of templated exec
 			// see the echo command in testdata/summon.config.yaml
-			out:       "bash echo hello david --unknown-arg last params",
-			wantError: false,
+			callArgsFragment: "bash echo hello david --unknown-arg last params",
 		},
 		{
-			desc:      "dry-run",
-			args:      []string{"run", "echo", "-n"},
-			wantError: false,
-			noCalls:   true,
+			desc:    "dry-run",
+			args:    []string{"run", "echo", "-n"},
+			noCalls: true,
 		},
 		{
-			desc:      "run-completion",
-			args:      []string{"__complete", "run", "tk", ""},
-			wantError: false,
-			out:       "a\nb\n",
+			desc:             "run-completion",
+			args:             []string{"__complete", "run", "tk", ""},
+			callArgsFragment: "a\nb\n",
 		},
 	}
 
@@ -88,7 +85,7 @@ func TestRunCmd(t *testing.T) {
 			// zero value. Cobra uses os.Args if args are nil.
 			// https://stackoverflow.com/a/44305910/28275
 			if tC.args == nil {
-				tC.args = make([]string, 0, 1)
+				tC.args = make([]string, 0)
 			}
 			cobraCmd.SetArgs(tC.args)
 			err = newRunCmd(true, cobraCmd, s, tC.main)
@@ -107,7 +104,7 @@ func TestRunCmd(t *testing.T) {
 				assert.Len(t, c.Calls, 0)
 			} else {
 				require.Greater(t, len(c.Calls), 0, "should have made call")
-				assert.Contains(t, c.Calls[0].Args, tC.out)
+				assert.Contains(t, c.Calls[0].Args, tC.callArgsFragment)
 			}
 		})
 	}
