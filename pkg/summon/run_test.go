@@ -226,7 +226,7 @@ exec:
       manifest:
         help: 'render kubernetes manifests in build dir'
         # popArg is used to remove the arg from user input
-        cmd: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
+        args: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
         completion: '{{ summon "make list-environments" }}'
 `
 
@@ -243,10 +243,10 @@ exec:
 
 	assert.Equal(t,
 		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
-		FlattenStrings(handles["echo-pwd"].Cmd...))
+		FlattenStrings(handles["echo-pwd"].Args...))
 	assert.Equal(t,
 		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
-		FlattenStrings(handles["manifest"].Cmd))
+		FlattenStrings(handles["manifest"].Args))
 
 	assert.Contains(t, flags, "config-root")
 }
@@ -326,10 +326,10 @@ func TestConstructCommandTree(t *testing.T) {
 		    docker:
 		      manifest:
 		        help: 'render kubernetes manifests in build dir'
-		        args:
+		        subCmd:
 		          all:
-		            cmd: [all subcmd]
-		        cmd: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
+		            args: [all subcmd]
+		        args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
 		        completion: 'a-completion'
 		      simple: [hello]
 		`)
@@ -453,7 +453,7 @@ type flagTest struct {
 func (ft flagTest) run(t *testing.T) {
 	d := Driver{}
 	cmdSpec := config.CmdSpec{
-		Cmd: []interface{}{ft.cmd},
+		Args: []interface{}{ft.cmd},
 	}
 	cmdSpec.Flags = map[string]config.FlagDesc{}
 	for f, spec := range ft.Flags {
@@ -620,14 +620,14 @@ func TestFlagUsages2(t *testing.T) {
 		  environments:
 		    bash:
 		      a-command:
-		        cmd: [-c]
+		        args: [-c]
 		        flags:
 		          user-flag:
 		            effect: 'CONVERTED={{.flag}}'
 		            help: user-flag allows user to flag something to the callee
 		            shorthand: u
 		      b-cmd:
-		        cmd: [b-cmd, '{{flagValue "global-flag"}}']
+		        args: [b-cmd, '{{flagValue "global-flag"}}']
 		`)
 	testFs := fstest.MapFS{}
 	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}

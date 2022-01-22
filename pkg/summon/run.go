@@ -63,13 +63,13 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	// to describe command trees in the config and the user will invoke
 	// a cobra based command string, which already has the correct parsing
 	// and parenting from the command line.
-	if cmdSpec.Args != nil {
+	if cmdSpec.SubCmd != nil {
 		newArgs := []string{}
 		for _, a := range d.opts.args {
 			var hasOverride bool
-			// range over Args as user might have specified expected arg
+			// range over SubCmd as user might have specified expected cmd
 			// annotation: [arg]
-			for arg, spec := range cmdSpec.Args {
+			for arg, spec := range cmdSpec.SubCmd {
 				if hasOverride = strings.HasPrefix(arg, a); hasOverride {
 					// we have an override for this arg, try going deeper
 					spec.ExecEnvironment = cmdSpec.ExecEnvironment
@@ -94,7 +94,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, err
 	}
 	// Render and flatten arguments array of arrays to simple array
-	arguments, err := d.RenderArgs(cmdSpec.Cmd...)
+	arguments, err := d.RenderArgs(cmdSpec.Args...)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 				switch descType := desc.Value.(type) {
 				case config.ArgSliceSpec:
 					c := &config.CmdSpec{}
-					c.Cmd = descType
+					c.Args = descType
 					c.ExecEnvironment = invoker
 					handles[handle] = c
 				case config.CmdSpec:
@@ -368,8 +368,8 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 		RunE:               run,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
-	if cmdSpec.Args != nil {
-		for cName, cmdSpec := range cmdSpec.Args {
+	if cmdSpec.SubCmd != nil {
+		for cName, cmdSpec := range cmdSpec.SubCmd {
 			d.addCmdSpec(subCmd, cName, cmdSpec, run)
 		}
 	}

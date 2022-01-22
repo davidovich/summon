@@ -14,25 +14,25 @@ exec:
   environments:
     go run:
       gohack [command]:
-        cmd: &rog [github.com/rogpeppe/gohack@latest]
+        args: &rog [github.com/rogpeppe/gohack@latest]
         completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
-        args:
+        subCmd:
           get [module]:
-            cmd: [*rog, get,'{{ flagValue "vcs" }}']
+            args: [*rog, get,'{{ flagValue "vcs" }}']
             flags:
               vcs: { effect: '{{.flag}}', default: '-vcs'}
           undo:
-            cmd: [*rog, undo]
+            args: [*rog, undo]
           status:
-            cmd: [*rog, status]
+            args: [*rog, status]
           help [command]:
-            cmd: [*rog, help]
+            args: [*rog, help]
             completion: '{{ printf "get\nundo\nstatus" }}'
 
 
     bash --norc --noprofile -c:
       fake-make:
-        cmd: ['echo -e "{{- args | join " " -}}"']
+        args: ['echo -e "{{- args | join " " -}}"']
         help: simulate make call echo param
         hidden: true
       bash-c:
@@ -48,7 +48,7 @@ exec:
 
     bash -c:
       tk:
-        cmd: [tk]
+        args: [tk]
         help: call tanka directly
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
@@ -57,15 +57,15 @@ exec:
 
       manifest [env]:
         help: 'render kubernetes manifests in build dir'
-        cmd: ['echo manifests/{{arg 0 "manifest"}} {{flagValue "config-root" }}']
+        args: ['echo manifests/{{arg 0 "manifest"}} {{flagValue "config-root" }}']
         completion: '{{ run "fake-make" "a-env\nb-env\n" }}'
 
       build:
         help: 'build components'
-        cmd: ['echo build/{{arg 0}} {{ flagValue "config-root" }}']
-        args:
+        args: ['echo build/{{arg 0}} {{ flagValue "config-root" }}']
+        subCmd:
           image [path to Dockerfile]:
-            cmd: ['echo would build build/image/{{- arg 0 "build image" -}}']
+            args: ['echo would build build/image/{{- arg 0 "build image" -}}']
             help: "build images in this repo"
             completion: '{{ run "fake-make" "a-image\nb-image" }}'
 
@@ -76,18 +76,18 @@ exec:
                 default: "true"
                 help: should the pipeline be added directly or with a parent-child style
 
-            cmd: ['echo would run {{ flagValue "one-pipeline" }}']
+            args: ['echo would run {{ flagValue "one-pipeline" }}']
             help: "Initialize or merge gitlab-ci.yaml"
-            args:
+            subCmd:
               sub:
-                cmd: ['echo gitlab-ci.yaml sub {{ args }}']
+                args: ['echo gitlab-ci.yaml sub {{ args }}']
 
     docker run -v {{ env "PWD" }}:/mounted-app alpine:
       list:
-        cmd: [ls, /mounted-app]
+        args: [ls, /mounted-app]
         help: list files of mount a seen from inside container
 
     docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
       echo-alpine:
-        cmd: [echo]
+        args: [echo]
         help: use alpine to echo a string

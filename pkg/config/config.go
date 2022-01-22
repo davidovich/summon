@@ -57,10 +57,10 @@ type ArgSliceSpec []interface{}
 type CmdSpec struct {
 	// ExecEnvironment is the caller environment (docker, bash, python)
 	ExecEnvironment string
-	// Cmd is the command and args that get executed in the ExecEnvironment
-	Cmd ArgSliceSpec `yaml:"cmd"`
-	// Args sub-arguments of current command
-	Args map[string]*CmdSpec `yaml:"args,omitempty"`
+	// Args is the command and args that get appended to the ExecEnvironment
+	Args ArgSliceSpec `yaml:"args"`
+	// SubCmd sub-command of current command
+	SubCmd map[string]*CmdSpec `yaml:"subCmd,omitempty"`
 	// Flags of this command
 	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
 	// Help of this command

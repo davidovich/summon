@@ -160,9 +160,9 @@ exec:
   environments:
     bash -c:
     # ^ execution environment
-    #   (script can be inlined with | yaml operator)
+    #   (script can be inlined with the | (pipe) yaml operator)
         hello: [echo hello]
-    #     ^        ^ params that will be appended to the environment
+    #     ^        ^ args that will be appended to the environment
     #     |          these can contain templates (starting at v0.10.0)
     #     |- handle to script (must be unique). This is what you use
     #        to invoke the script: `summon run hello`.
@@ -170,11 +170,11 @@ exec:
   # new in v0.14.0 complex command and sub-command specification
   go run:
     gohack [command]:
-      cmd: &rog [github.com/rogpeppe/gohack@latest]
+      args: &rog [github.com/rogpeppe/gohack@latest]
       completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
-      args:
+      subCmd:
         get:
-          cmd: [*rog, get,'{{ flagValue "vcs" }}']
+          args: [*rog, get,'{{ flagValue "vcs" }}']
           flags:
             vcs:
               effect: '{{.flag}}'

@@ -12,12 +12,12 @@ exec:
       hello-bash: [hello.sh]
 
       tk:
-        cmd: [tk]
+        args: [tk]
         completion: '{{ run "fake-make" "a\nb\n" }}'
 
     bash --norc --noprofile -c:
       fake-make:
-        cmd: ['echo -e "{{- args | join " " -}}"']
+        args: ['echo -e "{{- args | join " " -}}"']
         help: simulate make call echo params
 
     go run:
