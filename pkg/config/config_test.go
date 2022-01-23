@@ -38,11 +38,11 @@ func TestConfigReader(t *testing.T) {
 	args := c.Exec.ExecEnv["python -c"]["hello"].Value.(ArgSliceSpec)
 	assert.Equal(t, "print(\"hello\")", args[0])
 
-	cmdSpec := c.Exec.ExecEnv["bash"]["echo"].Value.(CmdSpec)
+	cmdSpec := c.Exec.ExecEnv["bash"]["echo"].Value.(CmdDesc)
 	assert.Equal(t, `{{ flagValue "--special-wrapper" }}`, cmdSpec.Args[0])
 
 	assert.IsType(t, "", cmdSpec.Flags["special-wrapper"].Value)
 
-	cmdSpecWithFlags := c.Exec.ExecEnv["bash"]["with-flag"].Value.(CmdSpec)
+	cmdSpecWithFlags := c.Exec.ExecEnv["bash"]["with-flag"].Value.(CmdDesc)
 	assert.IsType(t, FlagSpec{}, cmdSpecWithFlags.Flags["flag-desc"].Value)
 }

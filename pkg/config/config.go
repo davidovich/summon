@@ -40,7 +40,7 @@ type ExecDesc struct {
 }
 
 // HandlesDesc describes a handle name and invocable target.
-// The ExecDesc target can be an ArgSliceSpec, or a CmdSpec
+// The ExecDesc target can be an ArgSliceSpec, or a CmdDesc
 type HandlesDesc map[string]ExecDesc
 
 // Handles are the normalized version of the configs HandleDesc
@@ -53,22 +53,34 @@ type Flags map[string]*FlagSpec
 // invoker. It can be a slice of string, or slices of strings.
 type ArgSliceSpec []interface{}
 
-// CmdSpec describes a complex command
+// CmdDesc describes a polymorphic Cmd in the config file.
+// Its SubCmd is an ExecDesc so it can be an ArgsSliceSpec or a CmdSpec
+// Its Flags can be a one line string flag or a FlagSpec
+type CmdDesc struct {
+	Args       ArgSliceSpec        `yaml:"args"`
+	SubCmd     map[string]ExecDesc `yaml:"subCmd,omitempty"`
+	Flags      map[string]FlagDesc `yaml:"flags,omitempty"`
+	Help       string              `yaml:"help,omitempty"`
+	Completion string              `yaml:"completion,omitempty"`
+	Hidden     bool                `yaml:"hidden,omitempty"`
+}
+
+// CmdSpec describes a normalized command
 type CmdSpec struct {
 	// ExecEnvironment is the caller environment (docker, bash, python)
 	ExecEnvironment string
 	// Args is the command and args that get appended to the ExecEnvironment
-	Args ArgSliceSpec `yaml:"args"`
+	Args ArgSliceSpec
 	// SubCmd sub-command of current command
-	SubCmd map[string]*CmdSpec `yaml:"subCmd,omitempty"`
+	SubCmd map[string]*CmdSpec
 	// Flags of this command
-	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
+	Flags Flags
 	// Help of this command
-	Help string `yaml:"help"`
+	Help string
 	// Command to invoke to have a completion of this command
-	Completion string `yaml:"completion"`
+	Completion string
 	// Hidden hides the command from help
-	Hidden bool `yaml:"hidden"`
+	Hidden bool
 }
 
 // FlagDesc describes a simple string flag or complex FlagSpec
@@ -126,14 +138,14 @@ func (e *ExecDesc) UnmarshalYAML(value *yaml.Node) error {
 		}
 		e.Value = args
 	case yaml.MappingNode:
-		cmdSpec := CmdSpec{}
-		err := value.Decode(&cmdSpec)
+		cmdDesc := CmdDesc{}
+		err := value.Decode(&cmdDesc)
 		if err != nil {
 			return &yaml.TypeError{
-				Errors: []string{fmt.Sprintf("cannot unmarshal %v on line: %d, colunm: %d, content: %+v", value.Tag, value.Line, value.Column, cmdSpec)},
+				Errors: []string{fmt.Sprintf("cannot unmarshal %v on line: %d, colunm: %d, content: %+v", value.Tag, value.Line, value.Column, cmdDesc)},
 			}
 		}
-		e.Value = cmdSpec
+		e.Value = cmdDesc
 	default:
 		return &yaml.TypeError{
 			Errors: []string{fmt.Sprintf("cannot unmarshal %v, content: %v", value.Tag, value.Content)},

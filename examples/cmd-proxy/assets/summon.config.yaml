@@ -21,10 +21,8 @@ exec:
             args: [*rog, get,'{{ flagValue "vcs" }}']
             flags:
               vcs: { effect: '{{.flag}}', default: '-vcs'}
-          undo:
-            args: [*rog, undo]
-          status:
-            args: [*rog, status]
+          undo: [*rog, undo]
+          status: [*rog, status]
           help [command]:
             args: [*rog, help]
             completion: '{{ printf "get\nundo\nstatus" }}'
@@ -52,7 +50,6 @@ exec:
         help: call tanka directly
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
-        #completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args))}}'
         completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
 
       manifest [env]:
@@ -75,7 +72,6 @@ exec:
                 effect: '{{ if eq .flag "true" }}PARENT_CHILD=0{{ else }}PARENT_CHILD=1{{ end }}'
                 default: "true"
                 help: should the pipeline be added directly or with a parent-child style
-
             args: ['echo would run {{ flagValue "one-pipeline" }}']
             help: "Initialize or merge gitlab-ci.yaml"
             subCmd:

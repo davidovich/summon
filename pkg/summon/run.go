@@ -161,6 +161,39 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
+func normalizeExecDesc(argsDesc interface{}) (*config.CmdSpec, error) {
+	switch descType := argsDesc.(type) {
+	case config.ArgSliceSpec:
+		c := &config.CmdSpec{}
+		c.Args = descType
+		return c, nil
+	case config.CmdDesc:
+		c := &config.CmdSpec{
+			Args:       descType.Args,
+			Help:       descType.Help,
+			Completion: descType.Completion,
+			Hidden:     descType.Hidden,
+		}
+		if descType.SubCmd != nil {
+			c.SubCmd = make(map[string]*config.CmdSpec)
+			for subCmdName, execDesc := range descType.SubCmd {
+				subCmd, err := normalizeExecDesc(execDesc.Value)
+				if err != nil {
+					return nil, err
+				}
+				c.SubCmd[subCmdName] = subCmd
+			}
+		}
+		c.Flags = normalizeFlags(descType.Flags)
+		return c, nil
+	case config.CmdSpec:
+		return &descType, nil
+	default:
+		return nil, fmt.Errorf("in config %s: unhandled type: %T",
+			config.ConfigFileName, descType)
+	}
+}
+
 // execContext lists the execEnvironments in the config file under the exec:
 // key.
 func (d *Driver) execContext() (config.Flags, config.Handles, error) {
@@ -176,20 +209,12 @@ func (d *Driver) execContext() (config.Flags, config.Handles, error) {
 					return config.Flags{}, config.Handles{},
 						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
 				}
-				switch descType := desc.Value.(type) {
-				case config.ArgSliceSpec:
-					c := &config.CmdSpec{}
-					c.Args = descType
-					c.ExecEnvironment = invoker
-					handles[handle] = c
-				case config.CmdSpec:
-					descType.ExecEnvironment = invoker
-					handles[handle] = &descType
-				default:
-					return config.Flags{}, config.Handles{},
-						fmt.Errorf("config error for 'exec:environments:%s in config %s: unhandled type: %T",
-							invoker, config.ConfigFileName, descType)
+				cmdSpec, err := normalizeExecDesc(desc.Value)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error in exec:environments:%s %s", invoker, err.Error())
 				}
+				cmdSpec.ExecEnvironment = invoker
+				handles[handle] = cmdSpec
 			}
 		}
 		d.handles = handles
@@ -376,28 +401,36 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 	if cmdSpec.Completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-			inlineArgs, err := d.RenderArgs(cmdSpec.Completion)
+			inlineComp, err := d.RenderArgs(cmdSpec.Completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
 			}
 
-			var candidates, args []string
-			for _, a := range inlineArgs {
-				a = strings.TrimRight(a, "\n")
-				args = append(args, strings.Split(a, "\n")...)
+			var completions, candidates []string
+			for _, comp := range inlineComp {
+				comp = strings.TrimRight(comp, "\n")
+				candidates = append(candidates, strings.Split(comp, "\n")...)
 			}
 
-			for _, a := range args {
-				if strings.HasPrefix(a, toComplete) {
-					candidates = append(candidates, a)
+			for _, candidate := range candidates {
+				// check that this argument was not completed before, if it
+				// is, it will appear as a cobraArg of this command, and should
+				// not be repeated (neither others in the candidates)
+				for _, userArg := range cobraArgs {
+					if userArg == candidate {
+						return nil, cobra.ShellCompDirectiveDefault
+					}
+				}
+				if strings.HasPrefix(candidate, toComplete) {
+					completions = append(completions, candidate)
 				}
 			}
-			return candidates, cobra.ShellCompDirectiveDefault
+			return completions, cobra.ShellCompDirectiveDefault
 		}
 	}
 
-	d.AddFlags(subCmd, normalizeFlags(cmdSpec.Flags), local)
+	d.AddFlags(subCmd, cmdSpec.Flags, local)
 
 	subCmd.Short = cmdSpec.Help
 	subCmd.Hidden = cmdSpec.Hidden

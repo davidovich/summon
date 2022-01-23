@@ -452,24 +452,24 @@ type flagTest struct {
 
 func (ft flagTest) run(t *testing.T) {
 	d := Driver{}
-	cmdSpec := config.CmdSpec{
+	cmdDesc := config.CmdDesc{
 		Args: []interface{}{ft.cmd},
 	}
-	cmdSpec.Flags = map[string]config.FlagDesc{}
+	cmdDesc.Flags = map[string]config.FlagDesc{}
 	for f, spec := range ft.Flags {
-		cmdSpec.Flags[f] = config.FlagDesc{
+		cmdDesc.Flags[f] = config.FlagDesc{
 			Value: *spec,
 		}
 	}
 	d.config.Exec.GlobalFlags = map[string]config.FlagDesc{}
 	for f, spec := range ft.globalFlags {
-		cmdSpec.Flags[f] = config.FlagDesc{
+		cmdDesc.Flags[f] = config.FlagDesc{
 			Value: *spec,
 		}
 	}
 	d.config.Exec.ExecEnv = map[string]config.HandlesDesc{
 		"bash": {"a-command": config.ExecDesc{
-			Value: cmdSpec,
+			Value: cmdDesc,
 		}},
 	}
 	d.configRead = true
