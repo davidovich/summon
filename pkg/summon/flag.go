@@ -7,13 +7,14 @@ import (
 )
 
 type flagValue struct {
-	d            *Driver
-	name         string
-	effect       string
-	userValue    string
-	rendered     string
-	explicit     bool
-	initializing bool
+	d             *Driver
+	name          string
+	effect        string
+	userValue     string
+	rendered      string
+	explicit      bool
+	initializing  bool
+	wasRenderedFn func()
 }
 
 func (f *flagValue) Set(s string) error {
@@ -57,22 +58,26 @@ func (f *flagValue) renderTemplate() (string, error) {
 	var err error
 	f.d.opts.data["flag"] = f.userValue
 	f.rendered, err = f.d.renderTemplate(f.effect)
+	if f.wasRenderedFn != nil {
+		f.wasRenderedFn()
+	}
 	delete(f.d.opts.data, "flag")
 	return f.rendered, err
 }
 
 func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags, global bool) {
 	for f, flagSpec := range flags {
-		d.AddFlag(cmd, f, flagSpec, global)
+		d.AddFlag(cmd, f, flagSpec, global, nil)
 	}
 }
 
-func (d *Driver) AddFlag(cmd *cobra.Command, name string, flagSpec *config.FlagSpec, global bool) *flagValue {
+func (d *Driver) AddFlag(cmd *cobra.Command, name string, flagSpec *config.FlagSpec, global bool, callback func()) *flagValue {
 	v := &flagValue{
-		name:     name,
-		d:        d,
-		effect:   flagSpec.Effect,
-		explicit: flagSpec.Explicit,
+		name:          name,
+		d:             d,
+		effect:        flagSpec.Effect,
+		explicit:      flagSpec.Explicit,
+		wasRenderedFn: callback,
 	}
 	var flag *pflag.Flag
 	if global {

@@ -121,6 +121,24 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
 	finalCmd = append(finalCmd, unusedArgs...)
 
+	// intersperse help if it was wanted
+	if d.opts.helpWanted.helpFlag != "" {
+		// find where to put help, we have a hint
+		var helpPos int
+		for afterHelp, a := range finalCmd {
+			if a == d.opts.helpWanted.nextToHelp {
+				helpPos = afterHelp
+				break
+			}
+		}
+		if helpPos != 0 {
+			finalCmd = append(finalCmd[:helpPos+1], finalCmd[helpPos:]...)
+			finalCmd[helpPos] = d.opts.helpWanted.helpFlag
+		} else {
+			finalCmd = append(finalCmd, d.opts.helpWanted.helpFlag)
+		}
+	}
+
 	return finalCmd, nil
 }
 
@@ -303,7 +321,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 		d.addCmdSpec(root, h, spec)
 	}
 
-	d.setupArgs(root, runCmdEnabled)
+	d.setupArgs(root)
 
 	return nil
 }
@@ -365,19 +383,61 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 	root.AddCommand(subCmd)
 }
 
-func (d *Driver) setupArgs(root *cobra.Command, withRunCmd bool) {
+func (d *Driver) setupArgs(root *cobra.Command) {
 	// all args after arg[0] which is the main program name
 	if len(d.opts.args) == 0 {
 		panic("missing Args call to Configure")
 	}
 	allArgs := d.opts.args[1:]
 
-	root.ParseFlags(allArgs)
-	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		_, d.opts.args, _ = cmd.Root().Find(allArgs)
+	// check if we have help and remove it. Keep it's position
+	managedHelp := []string{}
+	var helpPos int
+	var helpFlag string
+	for pos, a := range allArgs {
+		if a == "--help" || a == "-h" {
+			helpPos = pos
+			helpFlag = a
+			continue
+		}
+		managedHelp = append(managedHelp, a)
 	}
 
-	root.Root().SetArgs(allArgs)
+	var distanceFromRoot int = 1
+	root.VisitParents(func(c *cobra.Command) {
+		distanceFromRoot++
+	})
+
+	var fl *flagValue
+	if helpPos > distanceFromRoot {
+		// if --help is anywhere but near the summon root, help should go to
+		// the proxied command
+		d.opts.helpWanted.helpFlag = helpFlag
+		if helpPos+1 < len(allArgs) {
+			d.opts.helpWanted.nextToHelp = allArgs[helpPos+1]
+		}
+		fl = d.AddFlag(root, "help", &config.FlagSpec{Effect: "--help", Explicit: true}, global, func() {
+			// we were called in by rendering, disable implicit add effect
+			d.opts.helpWanted.helpFlag = ""
+		})
+		d.flagsToRender = append(d.flagsToRender, fl)
+		fl.initializing = true
+	} else {
+		// let cobra manage help
+		managedHelp = allArgs
+	}
+
+	root.ParseFlags(managedHelp)
+
+	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		_, d.opts.args, _ = cmd.Root().Find(managedHelp)
+
+		if fl != nil {
+			fl.initializing = false
+		}
+	}
+
+	root.Root().SetArgs(managedHelp)
 }
 
 func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {

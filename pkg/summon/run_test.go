@@ -448,13 +448,14 @@ type flagTest struct {
 	globalFlags    config.Flags
 	userInvocation []string
 	expected       []string
-	cmd            []string
+	args           []string
+	withRun        bool
 }
 
 func (ft flagTest) run(t *testing.T) {
 	d := Driver{}
 	cmdDesc := config.CmdDesc{
-		Args: []interface{}{ft.cmd},
+		Args: []interface{}{ft.args},
 	}
 	cmdDesc.Flags = map[string]config.FlagDesc{}
 	for f, spec := range ft.Flags {
@@ -469,27 +470,33 @@ func (ft flagTest) run(t *testing.T) {
 		}
 	}
 	d.config.Exec.ExecEnv = map[string]config.HandlesDesc{
-		"bash": {"a-command": config.ExecDesc{
+		"program": {"a-handle": config.ExecDesc{
 			Value: cmdDesc,
 		}},
 	}
 	d.configRead = true
 	d.cmdToSpec = map[*cobra.Command]*commandSpec{}
+
+	programArgs := []string{"program"}
+	if ft.withRun {
+		programArgs = append(programArgs, "run")
+	}
+	programArgs = append(programArgs, "a-handle")
 	d.Configure(ExecCmd(func(cmd string, args ...string) *command.Cmd {
 		return &command.Cmd{
 			Cmd: &exec.Cmd{},
 			Run: func() error {
 				assert.Equal(t,
-					append([]string{"bash"}, ft.expected...),
+					append([]string{"program"}, ft.expected...),
 					append([]string{cmd}, args...))
 				return nil
 			},
 		}
-	}), Args(append([]string{"program", "a-command"}, ft.userInvocation...)...))
+	}), Args(append(programArgs, ft.userInvocation...)...))
 
 	rootCmd := &cobra.Command{Use: "root"}
 
-	err := d.ConstructCommandTree(rootCmd, false)
+	err := d.ConstructCommandTree(rootCmd, ft.withRun)
 	assert.NoError(t, err)
 
 	_, err = executeCommand(rootCmd)
@@ -576,7 +583,7 @@ func TestFlagUsages(t *testing.T) {
 		},
 		{
 			name: "flags-not-duplicated-not-reordered",
-			cmd:  []string{"{{ arg 0 }}", "subcmd", `{{ flagValue "one" }}`, "anotherSubCmd"},
+			args: []string{"{{ arg 0 }}", "subcmd", `{{ flagValue "one" }}`, "anotherSubCmd"},
 			Flags: config.Flags{
 				"one": &config.FlagSpec{
 					Effect: "one={{.flag}}",
@@ -598,12 +605,12 @@ func TestFlagUsages(t *testing.T) {
 		},
 		{
 			name:     "non-existing-reference-should-not-consume-arg-pos",
-			cmd:      []string{`{{flagValue "inexistant"}}`, "arg"},
+			args:     []string{`{{flagValue "inexistant"}}`, "arg"},
 			expected: []string{"arg"},
 		},
 		{
 			name:     "empty-array-used-to-insert-empty-arg-pos",
-			cmd:      []string{`[{{flagValue "inexistant"}}]`, "arg"},
+			args:     []string{`[{{flagValue "inexistant"}}]`, "arg"},
 			expected: []string{"", "arg"},
 		},
 	}
@@ -621,7 +628,7 @@ func TestFlagUsages2(t *testing.T) {
 		      effect: 'global-flag-set'
 		      explicit: true
 		  environments:
-		    bash:
+		    program:
 		      a-command:
 		        args: [-c]
 		        flags:
@@ -650,7 +657,7 @@ func TestFlagUsages2(t *testing.T) {
 	}
 
 	t.Run("simple", func(t *testing.T) {
-		s := makeDriver("bash", "-c", "CONVERTED=user-value")
+		s := makeDriver("program", "-c", "CONVERTED=user-value")
 
 		rootCmd := &cobra.Command{Use: "root"}
 		s.Configure(Args("prog", "a-command", "--user-flag", "user-value"))
@@ -662,7 +669,7 @@ func TestFlagUsages2(t *testing.T) {
 	})
 
 	t.Run("argSliceSpec", func(t *testing.T) {
-		s := makeDriver("bash", "b-cmd", "global-flag-set", "arg1", "arg2")
+		s := makeDriver("program", "b-cmd", "global-flag-set", "arg1", "arg2")
 		require.NotNil(t, s)
 
 		rootCmd := &cobra.Command{Use: "root"}
@@ -674,4 +681,56 @@ func TestFlagUsages2(t *testing.T) {
 		_, err = executeCommand(rootCmd)
 		assert.NoError(t, err)
 	})
+}
+
+func TestHelpManagement(t *testing.T) {
+	tests := []flagTest{
+		{
+			name:           "cobra-managed-help",
+			userInvocation: []string{"--help", "user-value"},
+			expected:       []string{""},
+			withRun:        true,
+		},
+		{
+			name:           "proxy-managed-help",
+			userInvocation: []string{"proxy-sub-command", "--help"},
+			expected:       []string{"proxy-sub-command", "--help"},
+			withRun:        true,
+		},
+		{
+			name:           "proxy-interspersed-help",
+			userInvocation: []string{"proxy-command", "subcommand", "--help", "arg"},
+			expected:       []string{"proxy-command", "subcommand", "--help", "arg"},
+			withRun:        true,
+		},
+		{
+			name: "help-used-in-flagValue",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect:  "{{.flag}}",
+					Default: "--one",
+				},
+			},
+			args:           []string{"proxy-command", `{{ flagValue "help"}}`, `{{ flagValue "one" }}{{ $swallowargs := args }}`},
+			userInvocation: []string{"proxy-command", "--one", "subcommand", "--help", "arg"},
+			expected:       []string{"proxy-command", "--help", "--one"},
+			withRun:        true,
+		},
+		{
+			name: "help-used-in-flagValue-arg-consumed",
+			Flags: config.Flags{
+				"one": &config.FlagSpec{
+					Effect:  "{{.flag}}",
+					Default: "--one",
+				},
+			},
+			args:           []string{"{{ arg 0 }}", `{{ flagValue "help"}}`, `{{ flagValue "one" }}`},
+			userInvocation: []string{"proxy-command", "--one", "subcommand", "--help", "arg"},
+			expected:       []string{"proxy-command", "--help", "--one", "subcommand", "arg"},
+			withRun:        true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, test.run)
+	}
 }

@@ -31,6 +31,8 @@ type options struct {
 	cobraCmd *cobra.Command
 	// args to exec entry
 	args []string
+	// help wanted is the position of --help or -h request
+	helpWanted helpInfo
 	// keep track of arg indexes that were used
 	argsConsumed map[int]struct{}
 	// template rendering data
@@ -45,6 +47,11 @@ type options struct {
 	dryrun bool
 	// execCommand overrides the command used to run external processes
 	execCommand command.ExecCommandFn
+}
+
+type helpInfo struct {
+	nextToHelp string
+	helpFlag   string
 }
 
 // Option allows specifying configuration settings
