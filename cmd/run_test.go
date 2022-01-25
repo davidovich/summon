@@ -87,7 +87,6 @@ func TestRunCmd(t *testing.T) {
 			if tC.args == nil {
 				tC.args = make([]string, 0)
 			}
-			cobraCmd.SetArgs(tC.args)
 			err = newRunCmd(true, cobraCmd, s, tC.main)
 			assert.NoError(t, err)
 

@@ -22,7 +22,7 @@ exec:
         subCmd:
           subcmd:
             help: "override subcmd help"
-            args: [hello.sh subcmd]
+            args: [hello.sh, subcmd]
 
     docker {{ lower "INFO" }}: # template example
       docker: []

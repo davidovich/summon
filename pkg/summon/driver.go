@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/spf13/cobra"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
@@ -26,12 +27,13 @@ type Driver struct {
 	config        config.Config
 	fs            fs.FS
 	globalFlags   config.Flags
-	handles       config.Handles
+	handles       Handles
 	baseDataDir   string
 	templateCtx   *template.Template
 	execCommand   command.ExecCommandFn
 	configRead    bool
 	flagsToRender []*flagValue
+	cmdToSpec     map[*cobra.Command]*CmdSpec
 }
 
 // New creates the Driver.
@@ -39,6 +41,7 @@ func New(filesystem fs.FS, opts ...Option) (*Driver, error) {
 	d := &Driver{
 		fs:          filesystem,
 		execCommand: command.New,
+		cmdToSpec:   map[*cobra.Command]*CmdSpec{},
 	}
 
 	err := fs.WalkDir(d.fs, ".", func(path string, de fs.DirEntry, err error) error {

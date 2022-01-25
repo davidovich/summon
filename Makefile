@@ -60,7 +60,7 @@ $(HTML_COVERAGE): $(MERGED_COVERAGE)
 
 $(COVERAGE):
 	@mkdir -p $(@D)
-	go test ./... --cover -coverprofile $@ -v
+	go test ./... -timeout 30s --cover -coverprofile $@ -v
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)

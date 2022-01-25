@@ -13,6 +13,27 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
+// CmdSpec describes a normalized command
+type CmdSpec struct {
+	// ExecEnvironment is the caller environment (docker, bash, python)
+	ExecEnvironment string
+	// Args is the command and args that get appended to the ExecEnvironment
+	Args config.ArgSliceSpec
+	// SubCmd sub-command of current command
+	SubCmd map[string]*CmdSpec
+	// Flags of this command
+	Flags config.Flags
+	// Help of this command
+	Help string
+	// Command to invoke to have a completion of this command
+	Completion string
+	// Hidden hides the command from help
+	Hidden bool
+}
+
+// Handles are the normalized version of the configs HandleDesc
+type Handles map[string]*CmdSpec
+
 // Run will run executable scripts described in the summon.config.yaml file
 // of the data repository module.
 func (d *Driver) Run(opts ...Option) error {
@@ -47,42 +68,23 @@ func (d *Driver) Run(opts ...Option) error {
 }
 
 func (d *Driver) buildCmdArgs() ([]string, error) {
-	cmdSpec, err := d.findExecutor(d.opts.ref)
-	if err != nil {
-		return nil, err
-	}
-
-	// See if we have an overridden command in the config.
-	// Each user-supplied args is tried in order to see if we have
-	// an override. If there is an override, this arg is consumed, Otherwize
-	// it is kept for the downstream commmand construction.
-	//
-	// TODO: might be interesting to use the cobra command tree directly here.
-	// Historically, there was only one entry point to select the command
-	// configuration (the unique execution handle). Now there is a possibility
-	// to describe command trees in the config and the user will invoke
-	// a cobra based command string, which already has the correct parsing
-	// and parenting from the command line.
-	if cmdSpec.SubCmd != nil {
-		newArgs := []string{}
-		for _, a := range d.opts.args {
-			var hasOverride bool
-			// range over SubCmd as user might have specified expected cmd
-			// annotation: [arg]
-			for arg, spec := range cmdSpec.SubCmd {
-				if hasOverride = strings.HasPrefix(arg, a); hasOverride {
-					// we have an override for this arg, try going deeper
-					spec.ExecEnvironment = cmdSpec.ExecEnvironment
-					cmdSpec = spec
-					break
-				}
-			}
-			if !hasOverride {
-				// no override, keep the user provided arg
-				newArgs = append(newArgs, a)
+	var cmdSpec *CmdSpec
+	var ref string
+	if d.opts.cobraCmd != nil {
+		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
+		ref = d.opts.cobraCmd.Name()
+	} else {
+		// find the corresponding command
+		for cmd, spec := range d.cmdToSpec {
+			if cmd.Name() == d.opts.ref {
+				cmdSpec = spec
+				ref = d.opts.ref
+				break
 			}
 		}
-		d.opts.args = newArgs
+	}
+	if cmdSpec == nil {
+		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
 	renderedExecEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
@@ -161,23 +163,20 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-func normalizeExecDesc(argsDesc interface{}) (*config.CmdSpec, error) {
+func normalizeExecDesc(argsDesc interface{}, invoker string) (*CmdSpec, error) {
+	c := &CmdSpec{}
 	switch descType := argsDesc.(type) {
 	case config.ArgSliceSpec:
-		c := &config.CmdSpec{}
 		c.Args = descType
-		return c, nil
 	case config.CmdDesc:
-		c := &config.CmdSpec{
-			Args:       descType.Args,
-			Help:       descType.Help,
-			Completion: descType.Completion,
-			Hidden:     descType.Hidden,
-		}
+		c.Args = descType.Args
+		c.Help = descType.Help
+		c.Completion = descType.Completion
+		c.Hidden = descType.Hidden
 		if descType.SubCmd != nil {
-			c.SubCmd = make(map[string]*config.CmdSpec)
+			c.SubCmd = make(map[string]*CmdSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
-				subCmd, err := normalizeExecDesc(execDesc.Value)
+				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
 				if err != nil {
 					return nil, err
 				}
@@ -185,35 +184,34 @@ func normalizeExecDesc(argsDesc interface{}) (*config.CmdSpec, error) {
 			}
 		}
 		c.Flags = normalizeFlags(descType.Flags)
-		return c, nil
-	case config.CmdSpec:
-		return &descType, nil
 	default:
 		return nil, fmt.Errorf("in config %s: unhandled type: %T",
 			config.ConfigFileName, descType)
 	}
+
+	c.ExecEnvironment = invoker
+	return c, nil
 }
 
 // execContext lists the execEnvironments in the config file under the exec:
 // key.
-func (d *Driver) execContext() (config.Flags, config.Handles, error) {
+func (d *Driver) execContext() (config.Flags, Handles, error) {
 	if d.globalFlags == nil {
 		d.globalFlags = normalizeFlags(d.config.Exec.GlobalFlags)
 	}
 
 	if d.handles == nil {
-		handles := config.Handles{}
+		handles := Handles{}
 		for invoker, handleDescs := range d.config.Exec.ExecEnv {
 			for handle, desc := range handleDescs {
 				if _, present := handles[handle]; present {
-					return config.Flags{}, config.Handles{},
+					return nil, nil,
 						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
 				}
-				cmdSpec, err := normalizeExecDesc(desc.Value)
+				cmdSpec, err := normalizeExecDesc(desc.Value, invoker)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error in exec:environments:%s %s", invoker, err.Error())
 				}
-				cmdSpec.ExecEnvironment = invoker
 				handles[handle] = cmdSpec
 			}
 		}
@@ -236,19 +234,6 @@ func normalizeFlags(flagsDesc map[string]config.FlagDesc) config.Flags {
 		}
 	}
 	return normalizedFlags
-}
-
-func (d *Driver) findExecutor(ref string) (*config.CmdSpec, error) {
-	_, handles, err := d.execContext()
-	if err != nil {
-		return nil, err
-	}
-
-	if spec, ok := handles[ref]; ok {
-		return spec, nil
-	}
-
-	return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 }
 
 func flatten(args []interface{}, v reflect.Value) []interface{} {
@@ -314,87 +299,29 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 
 	d.AddFlags(root, globalFlags, global)
 
-	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
-		return func(cmd *cobra.Command, args []string) error {
+	for h, spec := range handles {
+		d.addCmdSpec(root, h, spec)
+	}
+
+	d.setupArgs(root, runCmdEnabled)
+
+	return nil
+}
+
+func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *CmdSpec) {
+	subCmd := &cobra.Command{
+		Use: arg,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 
-			return d.Run(Ref(summonRef),
+			return d.Run(CobraCmd(cmd),
 				Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-		}
-	}
-
-	for h, spec := range handles {
-		d.addCmdSpec(root, h, spec, makerun(h))
-	}
-	return nil
-}
-
-func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags, global bool) {
-	for f, flagSpec := range flags {
-		v := &flagValue{
-			name:   f,
-			d:      d,
-			effect: flagSpec.Effect,
-			// userValue: flagSpec.Default,
-			explicit: flagSpec.Explicit,
-		}
-		var flag *pflag.Flag
-		if global {
-			flag = cmd.PersistentFlags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
-		} else {
-			flag = cmd.Flags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
-		}
-		flag.NoOptDefVal = flagSpec.Default
-	}
-}
-
-type flagValue struct {
-	d         *Driver
-	name      string
-	effect    string
-	userValue string
-	rendered  string
-	explicit  bool
-}
-
-func (f *flagValue) Set(s string) error {
-	if f.d.flagsToRender == nil {
-		f.d.flagsToRender = []*flagValue{}
-	}
-	f.d.flagsToRender = append(f.d.flagsToRender, f)
-	f.userValue = s
-	return nil
-}
-
-// String returns the current value
-func (f *flagValue) String() string {
-	return f.userValue
-}
-
-func (f *flagValue) Type() string {
-	return "string"
-}
-
-func (f *flagValue) renderTemplate() (string, error) {
-	if f.rendered != "" {
-		return f.rendered, nil
-	}
-	var err error
-	f.d.opts.data["flag"] = f.userValue
-	f.rendered, err = f.d.renderTemplate(f.effect)
-	delete(f.d.opts.data, "flag")
-	return f.rendered, err
-}
-
-func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.CmdSpec, run func(*cobra.Command, []string) error) {
-	subCmd := &cobra.Command{
-		Use:                arg,
-		RunE:               run,
+		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
 	if cmdSpec.SubCmd != nil {
 		for cName, cmdSpec := range cmdSpec.SubCmd {
-			d.addCmdSpec(subCmd, cName, cmdSpec, run)
+			d.addCmdSpec(subCmd, cName, cmdSpec)
 		}
 	}
 	if cmdSpec.Completion != "" {
@@ -430,11 +357,27 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 	}
 
 	d.AddFlags(subCmd, cmdSpec.Flags, local)
+	d.cmdToSpec[subCmd] = cmdSpec
 
 	subCmd.Short = cmdSpec.Help
 	subCmd.Hidden = cmdSpec.Hidden
 
 	root.AddCommand(subCmd)
+}
+
+func (d *Driver) setupArgs(root *cobra.Command, withRunCmd bool) {
+	// all args after arg[0] which is the main program name
+	if len(d.opts.args) == 0 {
+		panic("missing Args call to Configure")
+	}
+	allArgs := d.opts.args[1:]
+
+	root.ParseFlags(allArgs)
+	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		_, d.opts.args, _ = cmd.Root().Find(allArgs)
+	}
+
+	root.Root().SetArgs(allArgs)
 }
 
 func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {

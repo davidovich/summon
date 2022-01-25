@@ -161,14 +161,15 @@ func TestRun(t *testing.T) {
 			if tt.helper == "" {
 				tt.helper = "TestSummonRunHelper"
 			}
-			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(tt.args...))
+
+			program := append([]string{"summon"}, tt.cmd...)
+			args := append(program, tt.args...)
+			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(args...))
 
 			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
 			s.ConstructCommandTree(rootCmd, tt.enableRun)
 
-			args := append(tt.cmd, tt.args...)
-
-			if _, err := executeCommand(rootCmd, args...); (err != nil) != tt.wantErr {
+			if _, err := executeCommand(rootCmd); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -303,11 +304,10 @@ type noopWriter struct{}
 
 func (*noopWriter) Write(p []byte) (int, error) { return len(p), nil }
 
-func executeCommand(root *cobra.Command, args ...string) (output string, err error) {
+func executeCommand(root *cobra.Command) (output string, err error) {
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(&noopWriter{})
-	root.SetArgs(args)
 
 	_, err = root.ExecuteC()
 
@@ -327,8 +327,7 @@ func TestConstructCommandTree(t *testing.T) {
 		      manifest:
 		        help: 'render kubernetes manifests in build dir'
 		        subCmd:
-		          all:
-		            args: [all subcmd]
+		          all: [all subcmd]
 		        args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
 		        completion: 'a-completion'
 		      simple: [hello]
@@ -389,7 +388,7 @@ func TestConstructCommandTree(t *testing.T) {
 			if tt.expectSubArgs == nil {
 				tt.expectSubArgs = []string{}
 			}
-			s, err := New(testFs)
+			s, err := New(testFs, DryRun(true), Args(append([]string{"prog"}, tt.cmd...)...))
 			assert.NoError(t, err)
 
 			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
@@ -412,7 +411,8 @@ func TestConstructCommandTree(t *testing.T) {
 
 			// check completion
 			completeArgs := []string{cobra.ShellCompNoDescRequestCmd}
-			out, err := executeCommand(&rootCmd, append(completeArgs, append(tt.cmd, "")...)...)
+			rootCmd.SetArgs(append(completeArgs, append(tt.cmd, "")...))
+			out, err := executeCommand(&rootCmd)
 			assert.NoError(t, err)
 			completeSlice := strings.Split(out, "\n")
 
@@ -474,6 +474,7 @@ func (ft flagTest) run(t *testing.T) {
 		}},
 	}
 	d.configRead = true
+	d.cmdToSpec = map[*cobra.Command]*CmdSpec{}
 	d.Configure(ExecCmd(func(cmd string, args ...string) *command.Cmd {
 		return &command.Cmd{
 			Cmd: &exec.Cmd{},
@@ -484,13 +485,14 @@ func (ft flagTest) run(t *testing.T) {
 				return nil
 			},
 		}
-	}), Args(ft.userInvocation...))
+	}), Args(append([]string{"program", "a-command"}, ft.userInvocation...)...))
 
 	rootCmd := &cobra.Command{Use: "root"}
+
 	err := d.ConstructCommandTree(rootCmd, false)
 	assert.NoError(t, err)
 
-	_, err = executeCommand(rootCmd, append([]string{"a-command"}, ft.userInvocation...)...)
+	_, err = executeCommand(rootCmd)
 	assert.NoError(t, err)
 }
 
@@ -651,10 +653,11 @@ func TestFlagUsages2(t *testing.T) {
 		s := makeDriver("bash", "-c", "CONVERTED=user-value")
 
 		rootCmd := &cobra.Command{Use: "root"}
+		s.Configure(Args("prog", "a-command", "--user-flag", "user-value"))
 		err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
-		_, err = executeCommand(rootCmd, "a-command", "--user-flag", "user-value")
+		_, err = executeCommand(rootCmd)
 		assert.NoError(t, err)
 	})
 
@@ -663,11 +666,12 @@ func TestFlagUsages2(t *testing.T) {
 		require.NotNil(t, s)
 
 		rootCmd := &cobra.Command{Use: "root"}
+		s.Configure(Args("prog", "b-cmd", "arg1", "arg2", "--global-flag", "user-value"))
 		err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
-		s.Configure(Args("arg1", "arg2"))
-		_, err = executeCommand(rootCmd, "b-cmd", "arg1", "arg2", "--global-flag", "user-value")
+		s.Configure(Args("prog", "arg1", "arg2"))
+		_, err = executeCommand(rootCmd)
 		assert.NoError(t, err)
 	})
 }

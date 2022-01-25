@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/spf13/cobra"
+
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -25,6 +27,8 @@ type options struct {
 	tree bool
 	// reference to an exec config entry
 	ref string
+	// reference to cobra command
+	cobraCmd *cobra.Command
 	// args to exec entry
 	args []string
 	// keep track of arg indexes that were used
@@ -51,6 +55,14 @@ type Option func(*options) error
 func Args(args ...string) Option {
 	return func(opts *options) error {
 		opts.args = args
+		return nil
+	}
+}
+
+// CobraCmd captures the cobra command that is executing
+func CobraCmd(cmd *cobra.Command) Option {
+	return func(opts *options) error {
+		opts.cobraCmd = cmd
 		return nil
 	}
 }

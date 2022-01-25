@@ -43,9 +43,6 @@ type ExecDesc struct {
 // The ExecDesc target can be an ArgSliceSpec, or a CmdDesc
 type HandlesDesc map[string]ExecDesc
 
-// Handles are the normalized version of the configs HandleDesc
-type Handles map[string]*CmdSpec
-
 // Flags are the normalized FlagDesc
 type Flags map[string]*FlagSpec
 
@@ -63,24 +60,6 @@ type CmdDesc struct {
 	Help       string              `yaml:"help,omitempty"`
 	Completion string              `yaml:"completion,omitempty"`
 	Hidden     bool                `yaml:"hidden,omitempty"`
-}
-
-// CmdSpec describes a normalized command
-type CmdSpec struct {
-	// ExecEnvironment is the caller environment (docker, bash, python)
-	ExecEnvironment string
-	// Args is the command and args that get appended to the ExecEnvironment
-	Args ArgSliceSpec
-	// SubCmd sub-command of current command
-	SubCmd map[string]*CmdSpec
-	// Flags of this command
-	Flags Flags
-	// Help of this command
-	Help string
-	// Command to invoke to have a completion of this command
-	Completion string
-	// Hidden hides the command from help
-	Hidden bool
 }
 
 // FlagDesc describes a simple string flag or complex FlagSpec
@@ -102,7 +81,8 @@ type FlagSpec struct {
 	// Explicit is used to control if the flag is added automatically or not to
 	// the command-line. If Explicit is true, the flag will not be automatically
 	// added (it can be positionned in the command-line with the flagValue template
-	// function). The default is to add the rendered flag on the command line (implicit).  Note that using the {{ flagValue "my-flag" }} in a template makes the Flag Explicit.
+	// function). The default is to add the rendered flag on the command line (implicit).
+	// Note that using the {{ flagValue "my-flag" }} in a template makes the Flag Explicit.
 	Explicit bool `yaml:"explicit"`
 }
 
