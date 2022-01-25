@@ -244,10 +244,10 @@ exec:
 
 	assert.Equal(t,
 		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
-		FlattenStrings(handles["echo-pwd"].Args...))
+		FlattenStrings(handles["echo-pwd"].args...))
 	assert.Equal(t,
 		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
-		FlattenStrings(handles["manifest"].Args))
+		FlattenStrings(handles["manifest"].args))
 
 	assert.Contains(t, flags, "config-root")
 }
@@ -474,7 +474,7 @@ func (ft flagTest) run(t *testing.T) {
 		}},
 	}
 	d.configRead = true
-	d.cmdToSpec = map[*cobra.Command]*CmdSpec{}
+	d.cmdToSpec = map[*cobra.Command]*commandSpec{}
 	d.Configure(ExecCmd(func(cmd string, args ...string) *command.Cmd {
 		return &command.Cmd{
 			Cmd: &exec.Cmd{},

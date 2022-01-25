@@ -13,26 +13,26 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
-// CmdSpec describes a normalized command
-type CmdSpec struct {
-	// ExecEnvironment is the caller environment (docker, bash, python)
-	ExecEnvironment string
-	// Args is the command and args that get appended to the ExecEnvironment
-	Args config.ArgSliceSpec
-	// SubCmd sub-command of current command
-	SubCmd map[string]*CmdSpec
-	// Flags of this command
-	Flags config.Flags
-	// Help of this command
-	Help string
+// commandSpec describes a normalized command
+type commandSpec struct {
+	// execEnvironment is the caller environment (docker, bash, python)
+	execEnvironment string
+	// args is the command and args that get appended to the ExecEnvironment
+	args config.ArgSliceSpec
+	// subCmd sub-command of current command
+	subCmd map[string]*commandSpec
+	// flags of this command
+	flags config.Flags
+	// help of this command
+	help string
 	// Command to invoke to have a completion of this command
-	Completion string
-	// Hidden hides the command from help
-	Hidden bool
+	completion string
+	// hidden hides the command from help
+	hidden bool
 }
 
-// Handles are the normalized version of the configs HandleDesc
-type Handles map[string]*CmdSpec
+// handles are the normalized version of the configs HandleDesc
+type handles map[string]*commandSpec
 
 // Run will run executable scripts described in the summon.config.yaml file
 // of the data repository module.
@@ -68,7 +68,7 @@ func (d *Driver) Run(opts ...Option) error {
 }
 
 func (d *Driver) buildCmdArgs() ([]string, error) {
-	var cmdSpec *CmdSpec
+	var cmdSpec *commandSpec
 	var ref string
 	if d.opts.cobraCmd != nil {
 		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
@@ -87,7 +87,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
-	renderedExecEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
+	renderedExecEnv, err := d.renderTemplate(cmdSpec.execEnvironment)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, err
 	}
 	// Render and flatten arguments array of arrays to simple array
-	arguments, err := d.RenderArgs(cmdSpec.Args...)
+	arguments, err := d.RenderArgs(cmdSpec.args...)
 	if err != nil {
 		return nil, err
 	}
@@ -163,45 +163,45 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-func normalizeExecDesc(argsDesc interface{}, invoker string) (*CmdSpec, error) {
-	c := &CmdSpec{}
+func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, error) {
+	c := &commandSpec{}
 	switch descType := argsDesc.(type) {
 	case config.ArgSliceSpec:
-		c.Args = descType
+		c.args = descType
 	case config.CmdDesc:
-		c.Args = descType.Args
-		c.Help = descType.Help
-		c.Completion = descType.Completion
-		c.Hidden = descType.Hidden
+		c.args = descType.Args
+		c.help = descType.Help
+		c.completion = descType.Completion
+		c.hidden = descType.Hidden
 		if descType.SubCmd != nil {
-			c.SubCmd = make(map[string]*CmdSpec)
+			c.subCmd = make(map[string]*commandSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
 				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
 				if err != nil {
 					return nil, err
 				}
-				c.SubCmd[subCmdName] = subCmd
+				c.subCmd[subCmdName] = subCmd
 			}
 		}
-		c.Flags = normalizeFlags(descType.Flags)
+		c.flags = normalizeFlags(descType.Flags)
 	default:
 		return nil, fmt.Errorf("in config %s: unhandled type: %T",
 			config.ConfigFileName, descType)
 	}
 
-	c.ExecEnvironment = invoker
+	c.execEnvironment = invoker
 	return c, nil
 }
 
 // execContext lists the execEnvironments in the config file under the exec:
 // key.
-func (d *Driver) execContext() (config.Flags, Handles, error) {
+func (d *Driver) execContext() (config.Flags, handles, error) {
 	if d.globalFlags == nil {
 		d.globalFlags = normalizeFlags(d.config.Exec.GlobalFlags)
 	}
 
 	if d.handles == nil {
-		handles := Handles{}
+		handles := handles{}
 		for invoker, handleDescs := range d.config.Exec.ExecEnv {
 			for handle, desc := range handleDescs {
 				if _, present := handles[handle]; present {
@@ -308,7 +308,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 	return nil
 }
 
-func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *CmdSpec) {
+func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpec) {
 	subCmd := &cobra.Command{
 		Use: arg,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -319,15 +319,15 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *CmdSpec) {
 		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
-	if cmdSpec.SubCmd != nil {
-		for cName, cmdSpec := range cmdSpec.SubCmd {
+	if cmdSpec.subCmd != nil {
+		for cName, cmdSpec := range cmdSpec.subCmd {
 			d.addCmdSpec(subCmd, cName, cmdSpec)
 		}
 	}
-	if cmdSpec.Completion != "" {
+	if cmdSpec.completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-			inlineComp, err := d.RenderArgs(cmdSpec.Completion)
+			inlineComp, err := d.RenderArgs(cmdSpec.completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
@@ -356,11 +356,11 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *CmdSpec) {
 		}
 	}
 
-	d.AddFlags(subCmd, cmdSpec.Flags, local)
+	d.AddFlags(subCmd, cmdSpec.flags, local)
 	d.cmdToSpec[subCmd] = cmdSpec
 
-	subCmd.Short = cmdSpec.Help
-	subCmd.Hidden = cmdSpec.Hidden
+	subCmd.Short = cmdSpec.help
+	subCmd.Hidden = cmdSpec.hidden
 
 	root.AddCommand(subCmd)
 }
