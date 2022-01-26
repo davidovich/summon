@@ -169,7 +169,7 @@ func (m *mainCmd) run() error {
 		summon.All(m.copyAll),
 		summon.Dest(m.dest),
 		summon.Filename(m.filename),
-		summon.JSON(m.json),
+		summon.JSON(&m.json),
 		summon.Raw(m.raw),
 	)
 

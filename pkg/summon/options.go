@@ -2,6 +2,7 @@ package summon
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -150,15 +151,18 @@ func ShowTree(tree bool) Option {
 }
 
 // JSON configures the dictionary to use to render a templated asset.
-func JSON(j string) Option {
+func JSON(j *string) Option {
 	return func(opts *options) error {
-		if j == "" {
+		if j == nil {
+			return fmt.Errorf("json string config cannot be nil")
+		}
+		if *j == "" {
 			opts.data = map[string]interface{}{}
 			return nil
 		}
 
 		var data map[string]interface{}
-		err := json.Unmarshal([]byte(j), &data)
+		err := json.Unmarshal([]byte(*j), &data)
 
 		if err != nil {
 			return err

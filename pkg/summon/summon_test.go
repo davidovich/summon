@@ -76,7 +76,8 @@ func TestSubfolderHierarchy(t *testing.T) {
 	a := assert.New(t)
 
 	// create a summoner to summon a complete hierarchy
-	s, err := New(summonTestFS, Filename("subdir/"), Dest("o"), JSON(`{"TemplatedName":"b", "Content":"b content"}`))
+	jsonInput := `{"TemplatedName":"b", "Content":"b content"}`
+	s, err := New(summonTestFS, Filename("subdir/"), Dest("o"), JSON(&jsonInput))
 	a.NoError(err)
 
 	path, err := s.Summon()
@@ -164,7 +165,7 @@ func TestSummonScenarios(t *testing.T) {
 
 	for _, tC := range testCases[len(testCases)-1:] {
 		t.Run(tC.desc, func(t *testing.T) {
-			args := []Option{Filename(tC.filename), JSON(tC.json), Dest(tC.dest), Raw(tC.raw)}
+			args := []Option{Filename(tC.filename), JSON(&tC.json), Dest(tC.dest), Raw(tC.raw)}
 			output := &bytes.Buffer{}
 			if tC.dest == "-" {
 				args = append(args, Out(output))

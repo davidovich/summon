@@ -39,4 +39,20 @@ func TestOptions(t *testing.T) {
 		configure(&config, Dest(""))
 		assert.Equal(t, "already-set", config.destination)
 	})
+
+	t.Run("json", func(t *testing.T) {
+		o := &options{}
+		err := JSON(nil)(o)
+		assert.Error(t, err)
+
+		str := ""
+		err = JSON(&str)(o)
+		assert.NoError(t, err)
+		assert.NotNil(t, o.data)
+
+		// invalid json
+		str = `f{k`
+		err = JSON(&str)(o)
+		assert.Error(t, err)
+	})
 }
