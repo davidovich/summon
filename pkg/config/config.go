@@ -60,6 +60,7 @@ type CmdDesc struct {
 	Help       string              `yaml:"help,omitempty"`
 	Completion string              `yaml:"completion,omitempty"`
 	Hidden     bool                `yaml:"hidden,omitempty"`
+	Inline     *bool               `yaml:"join,omitempty"`
 }
 
 // FlagDesc describes a simple string flag or complex FlagSpec

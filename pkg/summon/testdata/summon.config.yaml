@@ -30,3 +30,12 @@ exec:
       gohack: [github.com/rogpeppe/gohack@latest]
     python -c:
       hello: ['print("hello from python!")']
+      hello-join:
+        args: ['print("', 'these', 'params', 'will', 'be', 'joined', '")']
+        join: true
+        subCmd:
+          non-inlined:
+            args: ['print("hello")', '#', 'these', 'are', 'separate', 'args', '-']
+            join: false
+
+
