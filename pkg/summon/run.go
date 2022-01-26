@@ -124,14 +124,14 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	// intersperse help if it was wanted
 	if d.opts.helpWanted.helpFlag != "" {
 		// find where to put help, we have a hint
-		var helpPos int
+		var helpPos int = len(finalCmd) // default to appending
 		for afterHelp, a := range finalCmd {
 			if a == d.opts.helpWanted.nextToHelp {
 				helpPos = afterHelp
 				break
 			}
 		}
-		if helpPos != 0 {
+		if helpPos < len(finalCmd) {
 			finalCmd = append(finalCmd[:helpPos+1], finalCmd[helpPos:]...)
 			finalCmd[helpPos] = d.opts.helpWanted.helpFlag
 		} else {
@@ -383,7 +383,19 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 	root.AddCommand(subCmd)
 }
 
+// setupArgs ensures that the cobra command receives correct arguments when
+// help is requested.
 func (d *Driver) setupArgs(root *cobra.Command) {
+	// Summon needs to pass the help flag down to the proxied
+	// command, but cobra is very agressive in wanting to manage the help.
+	// To workaround this, remove the help, but reintroduce it only if the user
+	// defined a help for his command in the config file. If the help is removed,
+	// it can be positionned explicitely by the user with flagValue "help".
+	// Otherwize the help is reintroduced when calling the proxied command. It
+	// is reinserted at the same position (before a recorded arg), if this arg
+	// was not manipulated by a template rendering. In the latter case, help
+	// is appended to the proxied command.
+
 	// all args after arg[0] which is the main program name
 	if len(d.opts.args) == 0 {
 		panic("missing Args call to Configure")
@@ -403,13 +415,17 @@ func (d *Driver) setupArgs(root *cobra.Command) {
 		managedHelp = append(managedHelp, a)
 	}
 
-	var distanceFromRoot int = 1
-	root.VisitParents(func(c *cobra.Command) {
-		distanceFromRoot++
-	})
+	// if help is requested on a managed command, let cobra manage the help flag
+	var ownHelp bool
+	if helpFlag != "" {
+		cmd, _, _ := root.Root().Find(allArgs[:helpPos])
+		if cmd != root && cmd.Short != "" {
+			ownHelp = true
+		}
+	}
 
 	var fl *flagValue
-	if helpPos > distanceFromRoot {
+	if !ownHelp {
 		// if --help is anywhere but near the summon root, help should go to
 		// the proxied command
 		d.opts.helpWanted.helpFlag = helpFlag
@@ -428,7 +444,6 @@ func (d *Driver) setupArgs(root *cobra.Command) {
 	}
 
 	root.ParseFlags(managedHelp)
-
 	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		_, d.opts.args, _ = cmd.Root().Find(managedHelp)
 

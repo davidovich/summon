@@ -445,39 +445,34 @@ func TestDuplicateHandles(t *testing.T) {
 type flagTest struct {
 	name string
 	config.Flags
-	globalFlags    config.Flags
-	userInvocation []string
-	expected       []string
-	args           []string
-	withRun        bool
+	globalFlags           config.Flags
+	cmdSpec               *commandSpec
+	userInvocation        []string
+	expected              []string
+	args                  []string
+	withRun               bool
+	ensureCobraHelpCalled bool
 }
 
 func (ft flagTest) run(t *testing.T) {
-	d := Driver{}
-	cmdDesc := config.CmdDesc{
-		Args: []interface{}{ft.args},
+	d := Driver{
+		configRead: true, // disable config read
+		cmdToSpec:  map[*cobra.Command]*commandSpec{},
 	}
-	cmdDesc.Flags = map[string]config.FlagDesc{}
-	for f, spec := range ft.Flags {
-		cmdDesc.Flags[f] = config.FlagDesc{
-			Value: *spec,
-		}
-	}
-	d.config.Exec.GlobalFlags = map[string]config.FlagDesc{}
-	for f, spec := range ft.globalFlags {
-		cmdDesc.Flags[f] = config.FlagDesc{
-			Value: *spec,
-		}
-	}
-	d.config.Exec.ExecEnv = map[string]config.HandlesDesc{
-		"program": {"a-handle": config.ExecDesc{
-			Value: cmdDesc,
-		}},
-	}
-	d.configRead = true
-	d.cmdToSpec = map[*cobra.Command]*commandSpec{}
 
-	programArgs := []string{"program"}
+	cmdSpec := ft.cmdSpec
+	if cmdSpec == nil {
+		cmdSpec = &commandSpec{
+			args:  []interface{}{ft.args},
+			flags: ft.Flags,
+		}
+	}
+	cmdSpec.execEnvironment = "program"
+
+	d.globalFlags = ft.globalFlags
+	d.handles = handles{"a-handle": cmdSpec}
+
+	programArgs := []string{cmdSpec.execEnvironment}
 	if ft.withRun {
 		programArgs = append(programArgs, "run")
 	}
@@ -486,21 +481,25 @@ func (ft flagTest) run(t *testing.T) {
 		return &command.Cmd{
 			Cmd: &exec.Cmd{},
 			Run: func() error {
-				assert.Equal(t,
-					append([]string{"program"}, ft.expected...),
-					append([]string{cmd}, args...))
+				assert.Equal(t, ft.expected, args)
 				return nil
 			},
 		}
 	}), Args(append(programArgs, ft.userInvocation...)...))
 
 	rootCmd := &cobra.Command{Use: "root"}
+	helpCalled := false
+	rootCmd.SetHelpFunc(func(c *cobra.Command, s []string) {
+		helpCalled = true
+	})
 
 	err := d.ConstructCommandTree(rootCmd, ft.withRun)
 	assert.NoError(t, err)
 
 	_, err = executeCommand(rootCmd)
 	assert.NoError(t, err)
+
+	assert.Equal(t, ft.ensureCobraHelpCalled, helpCalled, "cobra help was not called")
 }
 
 func TestFlagUsages(t *testing.T) {
@@ -686,10 +685,18 @@ func TestFlagUsages2(t *testing.T) {
 func TestHelpManagement(t *testing.T) {
 	tests := []flagTest{
 		{
-			name:           "cobra-managed-help",
+			name:           "no-defined-help-no-cobra-managed-help",
 			userInvocation: []string{"--help", "user-value"},
-			expected:       []string{""},
+			expected:       []string{"--help", "user-value"},
 			withRun:        true,
+		},
+		{
+			name:                  "cobra-managed-help-on-handle-command",
+			userInvocation:        []string{"--help", "user-value"},
+			cmdSpec:               &commandSpec{help: "user defined help"},
+			expected:              []string{""},
+			withRun:               true,
+			ensureCobraHelpCalled: true,
 		},
 		{
 			name:           "proxy-managed-help",
@@ -698,10 +705,11 @@ func TestHelpManagement(t *testing.T) {
 			withRun:        true,
 		},
 		{
-			name:           "proxy-interspersed-help",
-			userInvocation: []string{"proxy-command", "subcommand", "--help", "arg"},
-			expected:       []string{"proxy-command", "subcommand", "--help", "arg"},
-			withRun:        true,
+			name:                  "proxy-interspersed-help",
+			userInvocation:        []string{"proxy-command", "subcommand", "--help", "arg"},
+			expected:              []string{"proxy-command", "subcommand", "--help", "arg"},
+			withRun:               true,
+			ensureCobraHelpCalled: false,
 		},
 		{
 			name: "help-used-in-flagValue",
@@ -727,7 +735,42 @@ func TestHelpManagement(t *testing.T) {
 			args:           []string{"{{ arg 0 }}", `{{ flagValue "help"}}`, `{{ flagValue "one" }}`},
 			userInvocation: []string{"proxy-command", "--one", "subcommand", "--help", "arg"},
 			expected:       []string{"proxy-command", "--help", "--one", "subcommand", "arg"},
-			withRun:        true,
+			withRun:        false,
+		},
+		{
+			name: "help-on-user-defined-help-is-cobra-managed",
+			cmdSpec: &commandSpec{
+				subCmd: map[string]*commandSpec{"sub-command": {
+					execEnvironment: "program",
+					help:            "sub command help",
+				}},
+			},
+			userInvocation:        []string{"sub-command", "--help"},
+			ensureCobraHelpCalled: true,
+		},
+		{
+			name: "help-on-non-user-defined-help-is-passed",
+			cmdSpec: &commandSpec{
+				subCmd: map[string]*commandSpec{"sub-command": {
+					execEnvironment: "program",
+				}},
+			},
+			userInvocation: []string{"sub-command", "--help"},
+			expected:       []string{"--help"},
+		},
+		{
+			name: "no-cobra-help-on-user-defined-cmd-with-no-help",
+			cmdSpec: &commandSpec{
+				subCmd: map[string]*commandSpec{"sub-command": {
+					execEnvironment: "program",
+					subCmd: map[string]*commandSpec{"sub-sub-cmd": {
+						args:            config.ArgSliceSpec{[]string{"sub-command", "sub-sub-cmd"}},
+						execEnvironment: "program",
+					}},
+				}},
+			},
+			userInvocation: []string{"sub-command", "sub-sub-cmd", "--help"},
+			expected:       []string{"sub-command", "sub-sub-cmd", "--help"},
 		},
 	}
 	for _, test := range tests {
