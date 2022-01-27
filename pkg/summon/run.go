@@ -433,11 +433,13 @@ func (d *Driver) setupArgs(root *cobra.Command) {
 		managedHelp = append(managedHelp, a)
 	}
 
-	// if help is requested on a managed command, let cobra manage the help flag
+	// if help is requested on:
+	//   * a managed command that has a help line
+	//   * on the root (no parameters)
 	var ownHelp bool
 	if helpFlag != "" {
 		cmd, _, _ := root.Root().Find(allArgs[:helpPos])
-		if cmd != root && cmd.Short != "" {
+		if cmd != root && cmd.Short != "" || len(managedHelp) == 0 {
 			ownHelp = true
 		}
 	}
