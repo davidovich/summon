@@ -66,9 +66,8 @@ func New(filesystem fs.FS, opts ...Option) (*Driver, error) {
 	return d, nil
 }
 
-func (d Driver) OutputDir() string {
-	return d.config.OutputDir
-}
+func (d Driver) OutputDir() string      { return d.config.OutputDir }
+func (d Driver) HideAssetsInHelp() bool { return d.config.HideAssetsInHelp }
 
 // Configure is used to extract options and customize the summon.Driver.
 func (d *Driver) Configure(opts ...Option) error {

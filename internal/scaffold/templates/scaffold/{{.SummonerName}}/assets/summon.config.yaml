@@ -3,4 +3,7 @@
 version: 1
 aliases: {}
 outputdir: ".summoned"
-exec: {}
+hideAssetsInHelp: false
+exec:
+  flags: {}
+  environments: {}

@@ -202,8 +202,8 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 		c.help = descType.Help
 		c.completion = descType.Completion
 		c.hidden = descType.Hidden
-		if descType.Inline != nil {
-			c.join = descType.Inline
+		if descType.Join != nil {
+			c.join = descType.Join
 		}
 		if descType.SubCmd != nil {
 			c.subCmd = make(map[string]*commandSpec)

@@ -20,12 +20,12 @@ type Alias map[string]string
 
 // Config is the summon config
 type Config struct {
-	Version         int
-	Aliases         Alias       `yaml:"aliases"`
-	OutputDir       string      `yaml:"outputdir"`
-	TemplateContext string      `yaml:"templates"`
-	Exec            ExecContext `yaml:"exec"`
-	Help            string      `yaml:"help"`
+	Version          int
+	Aliases          Alias       `yaml:"aliases"`
+	OutputDir        string      `yaml:"outputdir"`
+	TemplateContext  string      `yaml:"templates"`
+	Exec             ExecContext `yaml:"exec"`
+	HideAssetsInHelp bool        `yaml:"hideAssetsInHelp"`
 }
 
 // ExecContext houses execution environments and global flags
@@ -54,13 +54,21 @@ type ArgSliceSpec []interface{}
 // Its SubCmd is an ExecDesc so it can be an ArgsSliceSpec or a CmdSpec
 // Its Flags can be a one line string flag or a FlagSpec
 type CmdDesc struct {
-	Args       ArgSliceSpec        `yaml:"args"`
-	SubCmd     map[string]ExecDesc `yaml:"subCmd,omitempty"`
-	Flags      map[string]FlagDesc `yaml:"flags,omitempty"`
-	Help       string              `yaml:"help,omitempty"`
-	Completion string              `yaml:"completion,omitempty"`
-	Hidden     bool                `yaml:"hidden,omitempty"`
-	Inline     *bool               `yaml:"join,omitempty"`
+	// Args contain the args that get appended to the ExecEnvironment
+	Args ArgSliceSpec `yaml:"args"`
+	// SubCmd describes a sub-command of current command
+	SubCmd map[string]ExecDesc `yaml:"subCmd,omitempty"`
+	// Flags of this command
+	Flags map[string]FlagDesc `yaml:"flags,omitempty"`
+	// Help line of this command
+	Help string `yaml:"help,omitempty"`
+	// Completion holds the command to invoke to have a completion of
+	// this command. It can contain templates.
+	Completion string `yaml:"completion,omitempty"`
+	// Hidden hides the command from help
+	Hidden bool `yaml:"hidden,omitempty"`
+	// Join joins arguments to form one argument of one line of text
+	Join *bool `yaml:"join,omitempty"`
 }
 
 // FlagDesc describes a simple string flag or complex FlagSpec

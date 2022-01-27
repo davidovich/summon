@@ -6,11 +6,13 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/config"
 	"github.com/davidovich/summon/pkg/summon"
 )
 
@@ -45,14 +47,16 @@ func Test_createRootCmd(t *testing.T) {
 		}
 	}
 
-	makeRootCmd := func(args ...string) *cobra.Command {
-		_, c := makeRootCmd(false, args...)
-		return c
+	makeRootCmd := func(args ...string) func(args ...string) *cobra.Command {
+		return func(a ...string) *cobra.Command {
+			_, c := makeRootCmd(false, args...)
+			return c
+		}
 	}
 
 	tests := []struct {
 		name     string
-		rootCmd  *cobra.Command
+		rootCmd  func(args ...string) *cobra.Command
 		expected string
 		in       string
 		wantErr  bool
@@ -117,11 +121,12 @@ func Test_createRootCmd(t *testing.T) {
 				defer tt.defered()()
 			}
 			b := &bytes.Buffer{}
-			tt.rootCmd.SetOut(b)
+			rootCmd := tt.rootCmd()
+			rootCmd.SetOut(b)
 			if tt.in != "" {
-				tt.rootCmd.SetIn(strings.NewReader(tt.in))
+				rootCmd.SetIn(strings.NewReader(tt.in))
 			}
-			if err := tt.rootCmd.Execute(); (err != nil) != tt.wantErr {
+			if err := rootCmd.Execute(); (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -245,16 +250,99 @@ func Test_mainCmd_run(t *testing.T) {
 	}
 }
 
-func TestAssetsAreAlsoCommands(t *testing.T) {
-	_, rootCmd := makeRootCmd(false)
-
-	commands := []string{}
-
-	lsCmd, _, err := rootCmd.Find([]string{"ls"})
-	assert.NoError(t, err)
-	for _, c := range lsCmd.Commands() {
+func extractCommands(root *cobra.Command) (commands []string) {
+	for _, c := range root.Commands() {
 		commands = append(commands, c.Name())
 	}
+	return commands
+}
 
-	assert.ElementsMatch(t, []string{"a.txt", "b.txt", "json-for-template.json", "summon.config.yaml"}, commands)
+func TestAssetsAreAlsoCommands(t *testing.T) {
+	d, err := summon.New(cmdTestFS)
+	assert.NoError(t, err)
+
+	t.Run("assets-are-commands-with-run-cmd", func(t *testing.T) {
+		root, err := CreateRootCmd(d, []string{"program"}, summon.MainOptions{})
+		assert.NoError(t, err)
+
+		commands := extractCommands(root)
+		assert.Subset(t, commands, []string{"a.txt", "b.txt",
+			"json-for-template.json", "summon.config.yaml"})
+	})
+
+	t.Run("assets-are-commands-without-run-cmd", func(t *testing.T) {
+		root, err := CreateRootCmd(d, []string{"program"}, summon.MainOptions{WithoutRunSubcmd: true})
+		assert.NoError(t, err)
+
+		commands := extractCommands(root)
+		assert.Subset(t, commands, []string{"a.txt", "b.txt",
+			"json-for-template.json", "summon.config.yaml"})
+	})
+}
+
+func TestThatAssetsAreNotCommandsIfConfiguredSo(t *testing.T) {
+	configFile := `hideAssetsInHelp: true`
+
+	testFs := fstest.MapFS{}
+	testFs["assets/"+config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
+
+	d, err := summon.New(testFs)
+	assert.NoError(t, err)
+
+	t.Run("no-config-file-on-root", func(t *testing.T) {
+		root, err := CreateRootCmd(d, []string{"program"}, summon.MainOptions{WithoutRunSubcmd: true})
+		assert.NoError(t, err)
+
+		commands := extractCommands(root)
+		assert.ElementsMatch(t, []string{"completion"}, commands)
+		assert.NotContains(t, commands, config.ConfigFileName)
+	})
+}
+
+func TestThatAssetsAreNotCommandsAndPassedToRun(t *testing.T) {
+	configFile := `hideAssetsInHelp: true
+outputdir: "a"`
+
+	testFs := fstest.MapFS{}
+	testFs["assets/"+config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
+	testFs["assets/b.txt"] = &fstest.MapFile{Data: []byte("b content")}
+
+	d, err := summon.New(testFs)
+	assert.NoError(t, err)
+
+	t.Run("test-json-exclusivity", func(t *testing.T) {
+		root, err := CreateRootCmd(d, []string{"program", "--json", "{}", "--json-file", "-", "summon.config.yaml"}, summon.MainOptions{WithoutRunSubcmd: true})
+		assert.NoError(t, err)
+
+		err = root.Execute()
+		assert.Error(t, err)
+	})
+
+	t.Run("file-as-arg", func(t *testing.T) {
+		defer testutil.ReplaceFs()()
+
+		root, err := CreateRootCmd(d, []string{"program", "b.txt"}, summon.MainOptions{WithoutRunSubcmd: true})
+		assert.NoError(t, err)
+
+		b := &bytes.Buffer{}
+		root.SetOut(b)
+
+		err = root.Execute()
+		assert.NoError(t, err)
+
+		assert.Contains(t, b.String(), "a/b.txt")
+	})
+
+	t.Run("completion", func(t *testing.T) {
+		root, err := CreateRootCmd(d, []string{"program", cobra.ShellCompNoDescRequestCmd, ""}, summon.MainOptions{WithoutRunSubcmd: true})
+		assert.NoError(t, err)
+
+		b := &bytes.Buffer{}
+		root.SetOut(b)
+
+		err = root.Execute()
+		assert.NoError(t, err)
+
+		assert.Contains(t, b.String(), "b.txt")
+	})
 }

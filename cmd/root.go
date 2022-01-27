@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -111,18 +112,41 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 	rootCmd.Flags().StringVarP(&main.dest, "out", "o", driver.OutputDir(), "destination directory, or '-' for stdout")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "output data version info and exit")
 
+	// we have a --help flag, hide the help sub-command
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+
 	// add ls cmd or --ls flag
-	listRootCmd := newListCmd(options.WithoutRunSubcmd, rootCmd, driver, main)
-	// configure summonables completion
-	list, _ := driver.List()
-	for _, summonable := range list {
-		listRootCmd.AddCommand(&cobra.Command{
-			Use:   summonable,
-			Short: "summon file to " + main.dest + "/ dir",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				main.filename = cmd.Use
-				return main.run()
-			}})
+	newListCmd(options.WithoutRunSubcmd, rootCmd, driver, main)
+
+	if !driver.HideAssetsInHelp() {
+		// configure summonables completion
+		list, _ := driver.List()
+		for _, summonable := range list {
+			rootCmd.AddCommand(&cobra.Command{
+				Use:   summonable,
+				Short: "summon " + summonable + " file to " + main.dest + "/ dir",
+				Args: func(cmd *cobra.Command, args []string) error {
+					if main.json != "" && main.jsonFile != "" {
+						return fmt.Errorf("--json and --json-file are mutually exclusive")
+					}
+					return nil
+				},
+				RunE: func(cmd *cobra.Command, args []string) error {
+					main.filename = cmd.Use
+					return main.run()
+				}})
+		}
+	} else {
+		rootCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var candidates []string
+			list, _ := driver.List()
+			for _, summonable := range list {
+				if strings.HasPrefix(summonable, toComplete) {
+					candidates = append(candidates, summonable)
+				}
+			}
+			return candidates, cobra.ShellCompDirectiveNoFileComp
+		}
 	}
 
 	// add run cmd, or root subcommands

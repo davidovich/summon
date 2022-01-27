@@ -38,14 +38,14 @@ func TestListCmd(t *testing.T) {
 			s, _ := summon.New(cmdTestFS)
 
 			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
-			newRoot := newListCmd(false, rootCmd, s, &mainCmd{})
+			newListCmd(false, rootCmd, s, &mainCmd{})
 			if tt.args == nil {
 				tt.args = make([]string, 0)
 			}
 			rootCmd.SetArgs(tt.args)
 
 			b := &bytes.Buffer{}
-			newRoot.SetOut(b)
+			rootCmd.SetOut(b)
 			rootCmd.Execute()
 
 			assert.Contains(t, b.String(), tt.expected)

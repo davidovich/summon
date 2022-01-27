@@ -18,7 +18,7 @@ type listCmdOpts struct {
 	cmd      *cobra.Command
 }
 
-func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLister, main *mainCmd) *cobra.Command {
+func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLister, main *mainCmd) {
 	listCmd := &listCmdOpts{
 		driver: driver,
 	}
@@ -42,8 +42,6 @@ func newListCmd(asOption bool, root *cobra.Command, driver summon.ConfigurableLi
 
 	listCmd.out = root.OutOrStdout()
 	root.Flags().BoolVar(&listCmd.tree, "tree", false, "Print pretty tree of data")
-
-	return root
 }
 
 func (l *listCmdOpts) run() error {
