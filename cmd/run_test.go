@@ -15,7 +15,7 @@ import (
 )
 
 //go:embed testdata/*
-var runCmdTestFS embed.FS
+var cmdTestFS embed.FS
 
 func TestRunCmd(t *testing.T) {
 
@@ -65,7 +65,7 @@ func TestRunCmd(t *testing.T) {
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			s, _ := summon.New(runCmdTestFS)
+			s, _ := summon.New(cmdTestFS)
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
 			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)

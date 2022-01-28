@@ -9,7 +9,7 @@ import (
 )
 
 func TestCompletionCommand(t *testing.T) {
-	s, _ := summon.New(runCmdTestFS)
+	s, _ := summon.New(cmdTestFS)
 
 	cmd := newCompletionCmd(s)
 

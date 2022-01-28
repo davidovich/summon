@@ -371,6 +371,7 @@ func TestConstructCommandTree(t *testing.T) {
 		{
 			name:          "arg-not-found",
 			cmd:           []string{"man"},
+			expectError:   true,
 			expectSubArgs: []string{"man"},
 		},
 		{
@@ -394,10 +395,10 @@ func TestConstructCommandTree(t *testing.T) {
 			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
 			err = s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
-			if !tt.withRunCmd {
+			if tt.withRunCmd {
 				cmd, _, err := rootCmd.Find([]string{"run"})
 				assert.NoError(t, err)
-				assert.Equal(t, cmd.Use, rootCmd.Use)
+				assert.Equal(t, cmd.Use, "run [handle]")
 			}
 
 			foundCmd, subArgs, err := rootCmd.Find(tt.cmd)

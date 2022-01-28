@@ -51,20 +51,25 @@ type mainCmd struct {
 	out         io.Writer
 	osArgs      *[]string
 	listOptions *listCmdOpts
+	cmd         *cobra.Command
 }
 
 // CreateRootCmd creates the root command
 func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOptions) (*cobra.Command, error) {
-	cmdName := filepath.Base(args[0])
+	exeName := filepath.Base(args[0])
 	var showVersion bool
 
 	main := &mainCmd{
 		driver: driver,
 	}
 
+	cmdHint := " [file to summon]"
+	if options.WithoutRunSubcmd {
+		cmdHint = " [handle | file to summon]"
+	}
 	rootCmd := &cobra.Command{
-		Use:   cmdName + " [file to summon]",
-		Short: cmdName + " main command",
+		Use:   exeName + cmdHint,
+		Short: exeName + " main command",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if main.copyAll || showVersion || main.listOptions.asOption {
 				return nil
@@ -78,41 +83,25 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			main.out = cmd.OutOrStdout()
 			if showVersion {
 				v, ok := makeVersion()
 				if !ok {
-					return fmt.Errorf("Missing build info")
+					return fmt.Errorf("missing build info")
 				}
-				enc := json.NewEncoder(main.out)
+				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				enc.Encode(v)
 				return nil
 			}
-			if !main.copyAll && !main.listOptions.asOption {
-				filename := args[0]
-				main.filename = filename
+			if len(args) != 0 {
+				main.filename = args[0]
 			}
-			if main.jsonFile != "" {
-				var j []byte
-				var err error
-				if main.jsonFile == "-" {
-					j, err = ioutil.ReadAll(cmd.InOrStdin())
-				} else {
-					j, err = ioutil.ReadFile(main.jsonFile)
-				}
-				if err != nil {
-					return err
-				}
-
-				main.json = string(j)
-			}
-
 			return main.run()
 		},
 	}
 
-	// TODO These should probably be simple flags (not persistent)
+	main.cmd = rootCmd
+
 	rootCmd.PersistentFlags().StringVar(&main.json, "json", "", "json to use to render template")
 	rootCmd.PersistentFlags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
 	rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")
@@ -122,7 +111,18 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "output data version info and exit")
 
 	// add ls cmd or --ls flag
-	main.listOptions = newListCmd(options.WithoutRunSubcmd, rootCmd, driver)
+	listRootCmd := newListCmd(options.WithoutRunSubcmd, rootCmd, driver, main)
+	// configure summonables completion
+	list, _ := driver.List()
+	for _, summonable := range list {
+		listRootCmd.AddCommand(&cobra.Command{
+			Use:   summonable,
+			Short: "summon file to " + main.dest + "/ dir",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				main.filename = cmd.Use
+				return main.run()
+			}})
+	}
 
 	// add run cmd, or root subcommands
 	err := newRunCmd(!options.WithoutRunSubcmd, rootCmd, driver, main)
@@ -143,6 +143,25 @@ func (m *mainCmd) run() error {
 			return err
 		}
 		return nil
+	}
+
+	if m.out == nil {
+		m.out = m.cmd.OutOrStdout()
+	}
+
+	if m.jsonFile != "" {
+		var j []byte
+		var err error
+		if m.jsonFile == "-" {
+			j, err = ioutil.ReadAll(m.cmd.InOrStdin())
+		} else {
+			j, err = ioutil.ReadFile(m.jsonFile)
+		}
+		if err != nil {
+			return err
+		}
+
+		m.json = string(j)
 	}
 
 	m.driver.Configure(

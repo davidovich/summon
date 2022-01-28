@@ -295,23 +295,22 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 			Short:              "Launch executable from summonables",
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 			Run:                func(cmd *cobra.Command, args []string) {},
+			Args: func(cmd *cobra.Command, args []string) error {
+				if len(args) < 1 {
+					return fmt.Errorf("requires at least 1 command to run, received 0")
+				}
+				a := args[0]
+				if _, ok := handles[a]; !ok {
+					return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
+				}
+				return nil
+			},
 		}
 
 		root.AddCommand(newRoot)
 		root = newRoot
 	}
 	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
-
-	root.Args = func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires at least 1 command to run, received 0")
-		}
-		a := args[0]
-		if _, ok := handles[a]; !ok {
-			return fmt.Errorf("invalid argument %q for %q", a, cmd.CommandPath())
-		}
-		return nil
-	}
 
 	d.AddFlags(root, globalFlags, global)
 

@@ -6,24 +6,25 @@ import (
 	"testing"
 
 	"github.com/davidovich/summon/pkg/summon"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestListCmd(t *testing.T) {
 
 	tests := []struct {
-		name string
-		args []string
-		// roostCmd  *cobra.Command
+		name     string
+		args     []string
 		expected string
 	}{
 		{
 			name:     "no-args",
+			args:     []string{"ls"},
 			expected: "a.txt\nb.txt\njson-for-template.json\nsummon.config.yaml",
 		},
 		{
 			name: "--tree",
-			args: []string{"--tree"},
+			args: []string{"ls", "--tree"},
 			expected: `testdata
 ├── a.txt
 ├── b.txt
@@ -34,14 +35,18 @@ func TestListCmd(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
-			s, _ := summon.New(runCmdTestFS)
+			s, _ := summon.New(cmdTestFS)
 
-			cmd := newListCmd(false, nil, s)
-			cmd.cmd.SetArgs(tt.args)
+			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
+			newRoot := newListCmd(false, rootCmd, s, &mainCmd{})
+			if tt.args == nil {
+				tt.args = make([]string, 0)
+			}
+			rootCmd.SetArgs(tt.args)
 
 			b := &bytes.Buffer{}
-			cmd.cmd.SetOut(b)
-			cmd.cmd.Execute()
+			newRoot.SetOut(b)
+			rootCmd.Execute()
 
 			assert.Contains(t, b.String(), tt.expected)
 		})

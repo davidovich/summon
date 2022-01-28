@@ -31,6 +31,7 @@ func TestMultifileInstanciation(t *testing.T) {
 	testFs := fstest.MapFS{}
 	testFs["assets/text.txt"] = &fstest.MapFile{Data: []byte("this is a text")}
 	testFs["assets/another.txt"] = &fstest.MapFile{Data: []byte("another text")}
+	testFs["assets/subdir/subfile.txt"] = &fstest.MapFile{Data: []byte("another text in subfile")}
 
 	s, _ := New(testFs, All(true))
 
@@ -38,11 +39,14 @@ func TestMultifileInstanciation(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, ".summoned", path)
 
-	_, err = appFs.Stat(".summoned/text.txt")
-	assert.Nil(t, err)
+	for _, fileToTest := range []string{
+		"text.txt",
+		"another.txt",
+		"subdir/subfile.txt"} {
+		_, err = appFs.Stat(".summoned/" + fileToTest)
+		assert.Nil(t, err)
+	}
 
-	_, err = appFs.Stat(".summoned/another.txt")
-	assert.Nil(t, err)
 }
 
 func TestOneFileInstanciation(t *testing.T) {
