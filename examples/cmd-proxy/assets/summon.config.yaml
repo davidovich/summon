@@ -2,7 +2,8 @@
 # see https://github.com/davidovich/summon#configuration
 version: 1
 aliases: {}
-outputdir: ".summoned"
+outputdir: ".summoned" # where summoned files are placed
+hideAssetsInHelp: true # should the assets be shown in the help ?
 
 .base: &baseargs
 - echo
