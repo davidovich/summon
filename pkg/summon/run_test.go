@@ -54,10 +54,12 @@ func TestRun(t *testing.T) {
 		{
 			name:   "self-reference-run", // bash
 			helper: "TestSubCommandTemplateRunCall",
-			cmd:    []string{"run-example"},
+			cmd:    []string{"run-example", "--help"},
 			expect: []string{
-				"bash hello.sh",          // run first call (returns "hello from subcmd")
-				"bash hello from subcmd", // actual run-example call with args
+				// run first call (returns "hello from subcmd")
+				// should not have help active
+				"bash hello.sh",
+				"bash hello from subcmd --help", // actual run-example call with args
 			},
 			wantErr: false,
 		},

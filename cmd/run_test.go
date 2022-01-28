@@ -42,6 +42,12 @@ func TestRunCmd(t *testing.T) {
 			wantError: true,
 		},
 		{
+			desc:      "help-flag-on-root-works",
+			args:      []string{"--help"},
+			wantError: false,
+			noCalls:   true,
+		},
+		{
 			desc: "sub-param-passed",
 			args: []string{"run", "echo", "--unknown-arg", "last", "params"},
 			main: &mainCmd{
