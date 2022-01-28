@@ -13,6 +13,27 @@ import (
 	"github.com/davidovich/summon/pkg/config"
 )
 
+// commandSpec describes a normalized command
+type commandSpec struct {
+	// execEnvironment is the caller environment (docker, bash, python)
+	execEnvironment string
+	// args is the command and args that get appended to the ExecEnvironment
+	args config.ArgSliceSpec
+	// subCmd sub-command of current command
+	subCmd map[string]*commandSpec
+	// flags of this command
+	flags config.Flags
+	// help of this command
+	help string
+	// Command to invoke to have a completion of this command
+	completion string
+	// hidden hides the command from help
+	hidden bool
+}
+
+// handles are the normalized version of the configs HandleDesc
+type handles map[string]*commandSpec
+
 // Run will run executable scripts described in the summon.config.yaml file
 // of the data repository module.
 func (d *Driver) Run(opts ...Option) error {
@@ -47,45 +68,26 @@ func (d *Driver) Run(opts ...Option) error {
 }
 
 func (d *Driver) buildCmdArgs() ([]string, error) {
-	cmdSpec, err := d.findExecutor(d.opts.ref)
-	if err != nil {
-		return nil, err
-	}
-
-	// See if we have an overridden command in the config.
-	// Each user-supplied args is tried in order to see if we have
-	// an override. If there is an override, this arg is consumed, Otherwize
-	// it is kept for the downstream commmand construction.
-	//
-	// TODO: might be interesting to use the cobra command tree directly here.
-	// Historically, there was only one entry point to select the command
-	// configuration (the unique execution handle). Now there is a possibility
-	// to describe command trees in the config and the user will invoke
-	// a cobra based command string, which already has the correct parsing
-	// and parenting from the command line.
-	if cmdSpec.SubCmd != nil {
-		newArgs := []string{}
-		for _, a := range d.opts.args {
-			var hasOverride bool
-			// range over SubCmd as user might have specified expected cmd
-			// annotation: [arg]
-			for arg, spec := range cmdSpec.SubCmd {
-				if hasOverride = strings.HasPrefix(arg, a); hasOverride {
-					// we have an override for this arg, try going deeper
-					spec.ExecEnvironment = cmdSpec.ExecEnvironment
-					cmdSpec = spec
-					break
-				}
-			}
-			if !hasOverride {
-				// no override, keep the user provided arg
-				newArgs = append(newArgs, a)
+	var cmdSpec *commandSpec
+	var ref string
+	if d.opts.cobraCmd != nil {
+		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
+		ref = d.opts.cobraCmd.Name()
+	} else {
+		// find the corresponding command
+		for cmd, spec := range d.cmdToSpec {
+			if cmd.Name() == d.opts.ref {
+				cmdSpec = spec
+				ref = d.opts.ref
+				break
 			}
 		}
-		d.opts.args = newArgs
+	}
+	if cmdSpec == nil {
+		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
-	renderedExecEnv, err := d.renderTemplate(cmdSpec.ExecEnvironment)
+	renderedExecEnv, err := d.renderTemplate(cmdSpec.execEnvironment)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +96,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, err
 	}
 	// Render and flatten arguments array of arrays to simple array
-	arguments, err := d.RenderArgs(cmdSpec.Args...)
+	arguments, err := d.RenderArgs(cmdSpec.args...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +120,24 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	// add user args that were not consumed by a template render
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
 	finalCmd = append(finalCmd, unusedArgs...)
+
+	// intersperse help if it was wanted
+	if d.opts.helpWanted.helpFlag != "" {
+		// find where to put help, we have a hint
+		var helpPos int = len(finalCmd) // default to appending
+		for afterHelp, a := range finalCmd {
+			if a == d.opts.helpWanted.nextToHelp {
+				helpPos = afterHelp
+				break
+			}
+		}
+		if helpPos < len(finalCmd) {
+			finalCmd = append(finalCmd[:helpPos+1], finalCmd[helpPos:]...)
+			finalCmd[helpPos] = d.opts.helpWanted.helpFlag
+		} else {
+			finalCmd = append(finalCmd, d.opts.helpWanted.helpFlag)
+		}
+	}
 
 	return finalCmd, nil
 }
@@ -161,59 +181,55 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-func normalizeExecDesc(argsDesc interface{}) (*config.CmdSpec, error) {
+func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, error) {
+	c := &commandSpec{}
 	switch descType := argsDesc.(type) {
 	case config.ArgSliceSpec:
-		c := &config.CmdSpec{}
-		c.Args = descType
-		return c, nil
+		c.args = descType
 	case config.CmdDesc:
-		c := &config.CmdSpec{
-			Args:       descType.Args,
-			Help:       descType.Help,
-			Completion: descType.Completion,
-			Hidden:     descType.Hidden,
-		}
+		c.args = descType.Args
+		c.help = descType.Help
+		c.completion = descType.Completion
+		c.hidden = descType.Hidden
 		if descType.SubCmd != nil {
-			c.SubCmd = make(map[string]*config.CmdSpec)
+			c.subCmd = make(map[string]*commandSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
-				subCmd, err := normalizeExecDesc(execDesc.Value)
+				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
 				if err != nil {
 					return nil, err
 				}
-				c.SubCmd[subCmdName] = subCmd
+				c.subCmd[subCmdName] = subCmd
 			}
 		}
-		c.Flags = normalizeFlags(descType.Flags)
-		return c, nil
-	case config.CmdSpec:
-		return &descType, nil
+		c.flags = normalizeFlags(descType.Flags)
 	default:
 		return nil, fmt.Errorf("in config %s: unhandled type: %T",
 			config.ConfigFileName, descType)
 	}
+
+	c.execEnvironment = invoker
+	return c, nil
 }
 
 // execContext lists the execEnvironments in the config file under the exec:
 // key.
-func (d *Driver) execContext() (config.Flags, config.Handles, error) {
+func (d *Driver) execContext() (config.Flags, handles, error) {
 	if d.globalFlags == nil {
 		d.globalFlags = normalizeFlags(d.config.Exec.GlobalFlags)
 	}
 
 	if d.handles == nil {
-		handles := config.Handles{}
+		handles := handles{}
 		for invoker, handleDescs := range d.config.Exec.ExecEnv {
 			for handle, desc := range handleDescs {
 				if _, present := handles[handle]; present {
-					return config.Flags{}, config.Handles{},
+					return nil, nil,
 						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
 				}
-				cmdSpec, err := normalizeExecDesc(desc.Value)
+				cmdSpec, err := normalizeExecDesc(desc.Value, invoker)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error in exec:environments:%s %s", invoker, err.Error())
 				}
-				cmdSpec.ExecEnvironment = invoker
 				handles[handle] = cmdSpec
 			}
 		}
@@ -236,19 +252,6 @@ func normalizeFlags(flagsDesc map[string]config.FlagDesc) config.Flags {
 		}
 	}
 	return normalizedFlags
-}
-
-func (d *Driver) findExecutor(ref string) (*config.CmdSpec, error) {
-	_, handles, err := d.execContext()
-	if err != nil {
-		return nil, err
-	}
-
-	if spec, ok := handles[ref]; ok {
-		return spec, nil
-	}
-
-	return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 }
 
 func flatten(args []interface{}, v reflect.Value) []interface{} {
@@ -314,93 +317,35 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 
 	d.AddFlags(root, globalFlags, global)
 
-	makerun := func(summonRef string) func(cmd *cobra.Command, args []string) error {
-		return func(cmd *cobra.Command, args []string) error {
+	for h, spec := range handles {
+		d.addCmdSpec(root, h, spec)
+	}
+
+	d.setupArgs(root)
+
+	return nil
+}
+
+func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpec) {
+	subCmd := &cobra.Command{
+		Use: arg,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 
-			return d.Run(Ref(summonRef),
+			return d.Run(CobraCmd(cmd),
 				Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-		}
-	}
-
-	for h, spec := range handles {
-		d.addCmdSpec(root, h, spec, makerun(h))
-	}
-	return nil
-}
-
-func (d *Driver) AddFlags(cmd *cobra.Command, flags config.Flags, global bool) {
-	for f, flagSpec := range flags {
-		v := &flagValue{
-			name:   f,
-			d:      d,
-			effect: flagSpec.Effect,
-			// userValue: flagSpec.Default,
-			explicit: flagSpec.Explicit,
-		}
-		var flag *pflag.Flag
-		if global {
-			flag = cmd.PersistentFlags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
-		} else {
-			flag = cmd.Flags().VarPF(v, f, flagSpec.Shorthand, flagSpec.Help)
-		}
-		flag.NoOptDefVal = flagSpec.Default
-	}
-}
-
-type flagValue struct {
-	d         *Driver
-	name      string
-	effect    string
-	userValue string
-	rendered  string
-	explicit  bool
-}
-
-func (f *flagValue) Set(s string) error {
-	if f.d.flagsToRender == nil {
-		f.d.flagsToRender = []*flagValue{}
-	}
-	f.d.flagsToRender = append(f.d.flagsToRender, f)
-	f.userValue = s
-	return nil
-}
-
-// String returns the current value
-func (f *flagValue) String() string {
-	return f.userValue
-}
-
-func (f *flagValue) Type() string {
-	return "string"
-}
-
-func (f *flagValue) renderTemplate() (string, error) {
-	if f.rendered != "" {
-		return f.rendered, nil
-	}
-	var err error
-	f.d.opts.data["flag"] = f.userValue
-	f.rendered, err = f.d.renderTemplate(f.effect)
-	delete(f.d.opts.data, "flag")
-	return f.rendered, err
-}
-
-func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.CmdSpec, run func(*cobra.Command, []string) error) {
-	subCmd := &cobra.Command{
-		Use:                arg,
-		RunE:               run,
+		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
-	if cmdSpec.SubCmd != nil {
-		for cName, cmdSpec := range cmdSpec.SubCmd {
-			d.addCmdSpec(subCmd, cName, cmdSpec, run)
+	if cmdSpec.subCmd != nil {
+		for cName, cmdSpec := range cmdSpec.subCmd {
+			d.addCmdSpec(subCmd, cName, cmdSpec)
 		}
 	}
-	if cmdSpec.Completion != "" {
+	if cmdSpec.completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
-			inlineComp, err := d.RenderArgs(cmdSpec.Completion)
+			inlineComp, err := d.RenderArgs(cmdSpec.completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
 				return nil, cobra.ShellCompDirectiveError
@@ -429,12 +374,85 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *config.Cmd
 		}
 	}
 
-	d.AddFlags(subCmd, cmdSpec.Flags, local)
+	d.AddFlags(subCmd, cmdSpec.flags, local)
+	d.cmdToSpec[subCmd] = cmdSpec
 
-	subCmd.Short = cmdSpec.Help
-	subCmd.Hidden = cmdSpec.Hidden
+	subCmd.Short = cmdSpec.help
+	subCmd.Hidden = cmdSpec.hidden
 
 	root.AddCommand(subCmd)
+}
+
+// setupArgs ensures that the cobra command receives correct arguments when
+// help is requested.
+func (d *Driver) setupArgs(root *cobra.Command) {
+	// Summon needs to pass the help flag down to the proxied
+	// command, but cobra is very agressive in wanting to manage the help.
+	// To workaround this, remove the help, but reintroduce it only if the user
+	// defined a help for his command in the config file. If the help is removed,
+	// it can be positionned explicitely by the user with flagValue "help".
+	// Otherwize the help is reintroduced when calling the proxied command. It
+	// is reinserted at the same position (before a recorded arg), if this arg
+	// was not manipulated by a template rendering. In the latter case, help
+	// is appended to the proxied command.
+
+	// all args after arg[0] which is the main program name
+	if len(d.opts.args) == 0 {
+		panic("missing Args call to Configure")
+	}
+	allArgs := d.opts.args[1:]
+
+	// check if we have help and remove it. Keep it's position
+	managedHelp := []string{}
+	var helpPos int
+	var helpFlag string
+	for pos, a := range allArgs {
+		if a == "--help" || a == "-h" {
+			helpPos = pos
+			helpFlag = a
+			continue
+		}
+		managedHelp = append(managedHelp, a)
+	}
+
+	// if help is requested on a managed command, let cobra manage the help flag
+	var ownHelp bool
+	if helpFlag != "" {
+		cmd, _, _ := root.Root().Find(allArgs[:helpPos])
+		if cmd != root && cmd.Short != "" {
+			ownHelp = true
+		}
+	}
+
+	var fl *flagValue
+	if !ownHelp {
+		// if --help is anywhere but near the summon root, help should go to
+		// the proxied command
+		d.opts.helpWanted.helpFlag = helpFlag
+		if helpPos+1 < len(allArgs) {
+			d.opts.helpWanted.nextToHelp = allArgs[helpPos+1]
+		}
+		fl = d.AddFlag(root, "help", &config.FlagSpec{Effect: "--help", Explicit: true}, global, func() {
+			// we were called in by rendering, disable implicit add effect
+			d.opts.helpWanted.helpFlag = ""
+		})
+		d.flagsToRender = append(d.flagsToRender, fl)
+		fl.initializing = true
+	} else {
+		// let cobra manage help
+		managedHelp = allArgs
+	}
+
+	root.ParseFlags(managedHelp)
+	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		_, d.opts.args, _ = cmd.Root().Find(managedHelp)
+
+		if fl != nil {
+			fl.initializing = false
+		}
+	}
+
+	root.Root().SetArgs(managedHelp)
 }
 
 func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {

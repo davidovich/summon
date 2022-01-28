@@ -61,6 +61,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 
 	main := &mainCmd{
 		driver: driver,
+		osArgs: &args,
 	}
 
 	cmdHint := " [file to summon]"

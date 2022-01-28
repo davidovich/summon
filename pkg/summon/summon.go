@@ -164,8 +164,10 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				templateCtx: d.templateCtx,
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
+				cmdToSpec:   d.cmdToSpec,
 			}
 			driverCopy.opts.argsConsumed = map[int]struct{}{}
+			driverCopy.opts.cobraCmd = nil
 			b := &strings.Builder{}
 			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
 

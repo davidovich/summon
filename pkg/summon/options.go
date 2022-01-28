@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/spf13/cobra"
+
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -25,8 +27,12 @@ type options struct {
 	tree bool
 	// reference to an exec config entry
 	ref string
+	// reference to cobra command
+	cobraCmd *cobra.Command
 	// args to exec entry
 	args []string
+	// help wanted is the position of --help or -h request
+	helpWanted helpInfo
 	// keep track of arg indexes that were used
 	argsConsumed map[int]struct{}
 	// template rendering data
@@ -43,6 +49,11 @@ type options struct {
 	execCommand command.ExecCommandFn
 }
 
+type helpInfo struct {
+	nextToHelp string
+	helpFlag   string
+}
+
 // Option allows specifying configuration settings
 // from the user.
 type Option func(*options) error
@@ -51,6 +62,14 @@ type Option func(*options) error
 func Args(args ...string) Option {
 	return func(opts *options) error {
 		opts.args = args
+		return nil
+	}
+}
+
+// CobraCmd captures the cobra command that is executing
+func CobraCmd(cmd *cobra.Command) Option {
+	return func(opts *options) error {
+		opts.cobraCmd = cmd
 		return nil
 	}
 }

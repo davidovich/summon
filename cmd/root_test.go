@@ -16,8 +16,7 @@ import (
 
 func makeRootCmd(withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
 	s, _ := summon.New(cmdTestFS)
-	rootCmd, _ := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
-	rootCmd.SetArgs(args)
+	rootCmd, _ := CreateRootCmd(s, append([]string{"summon"}, args...), summon.MainOptions{WithoutRunSubcmd: withoutRun})
 	return s, rootCmd
 }
 
