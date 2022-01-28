@@ -17,9 +17,7 @@ func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.Configurab
 	// read config for exec section
 	driver.Configure(
 		summon.Args(osArgs...),
-		// TODO: JSON is set too soon because the parsing of flags might
-		// change the captured value.
-		summon.JSON(main.json),
+		summon.JSON(&main.json),
 	)
 
 	return driver.ConstructCommandTree(root, runCmdEnabled)

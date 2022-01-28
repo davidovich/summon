@@ -32,10 +32,11 @@ func Create(destDir, modName, summonerName string, force bool) error {
 		}
 	}
 
+	json := fmt.Sprintf(scaffoldParams, modName, summonerName)
 	_, err = s.Summon(
 		summon.All(true),
 		summon.Filename("templates/scaffold"),
-		summon.JSON(fmt.Sprintf(scaffoldParams, modName, summonerName)),
+		summon.JSON(&json),
 		summon.Dest(destDir),
 	)
 
