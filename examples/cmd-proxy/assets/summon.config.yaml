@@ -52,10 +52,11 @@ exec:
         # tk uses the posener/complete library. Fake a completion call by
         # setting the COMP_LINE environment var.
         completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
+        join: true
 
       manifest [env]:
         help: 'render kubernetes manifests in build dir'
-        args: ['echo manifests/{{arg 0 "manifest"}} {{flagValue "config-root" }}']
+        args: ['echo manifests/{{arg 0 "manifest"}} {{- flagValue "config-root" -}}']
         completion: '{{ run "fake-make" "a-env\nb-env\n" }}'
 
       build:

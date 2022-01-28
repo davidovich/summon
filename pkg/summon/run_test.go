@@ -149,6 +149,16 @@ func TestRun(t *testing.T) {
 			name: "with-dry-run",
 			args: []string{"hello-bash", "-n"},
 		},
+		{
+			name:   "join-arguments",
+			args:   []string{"hello-join"},
+			expect: []string{"python -c print(\" these params will be joined \")"},
+		},
+		{
+			name:   "join-then-dont-on-subarguments",
+			args:   []string{"hello-join", "non-inlined"},
+			expect: []string{"python -c print(\"hello\") # these are separate args -"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -29,6 +29,8 @@ type commandSpec struct {
 	completion string
 	// hidden hides the command from help
 	hidden bool
+	// join is used to know if the arguments form one line of text
+	join *bool
 }
 
 // handles are the normalized version of the configs HandleDesc
@@ -100,7 +102,6 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	finalCmd := append(execEnv, arguments...)
 
 	// Render flags
 	renderedFlags := []string{}
@@ -116,28 +117,38 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		renderedFlags = append(renderedFlags, renderedFlag)
 	}
 
-	finalCmd = append(finalCmd, renderedFlags...)
+	var finalArgs []string
+	finalArgs = append(finalArgs, arguments...)
+
+	finalArgs = append(finalArgs, renderedFlags...)
 	// add user args that were not consumed by a template render
 	unusedArgs := computeUnused(d.opts.args, d.opts.argsConsumed)
-	finalCmd = append(finalCmd, unusedArgs...)
+	finalArgs = append(finalArgs, unusedArgs...)
 
 	// intersperse help if it was wanted
 	if d.opts.helpWanted.helpFlag != "" {
 		// find where to put help, we have a hint
-		var helpPos int = len(finalCmd) // default to appending
-		for afterHelp, a := range finalCmd {
+		var helpPos int = len(finalArgs) // default to appending
+		for afterHelp, a := range finalArgs {
 			if a == d.opts.helpWanted.nextToHelp {
 				helpPos = afterHelp
 				break
 			}
 		}
-		if helpPos < len(finalCmd) {
-			finalCmd = append(finalCmd[:helpPos+1], finalCmd[helpPos:]...)
-			finalCmd[helpPos] = d.opts.helpWanted.helpFlag
+		if helpPos < len(finalArgs) {
+			finalArgs = append(finalArgs[:helpPos+1], finalArgs[helpPos:]...)
+			finalArgs[helpPos] = d.opts.helpWanted.helpFlag
 		} else {
-			finalCmd = append(finalCmd, d.opts.helpWanted.helpFlag)
+			finalArgs = append(finalArgs, d.opts.helpWanted.helpFlag)
 		}
 	}
+
+	if cmdSpec.join != nil && *cmdSpec.join {
+		oneLine := strings.Join(finalArgs, " ")
+		finalArgs = []string{oneLine}
+	}
+
+	finalCmd := append(execEnv, finalArgs...)
 
 	return finalCmd, nil
 }
@@ -191,12 +202,19 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 		c.help = descType.Help
 		c.completion = descType.Completion
 		c.hidden = descType.Hidden
+		if descType.Inline != nil {
+			c.join = descType.Inline
+		}
 		if descType.SubCmd != nil {
 			c.subCmd = make(map[string]*commandSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
 				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
 				if err != nil {
 					return nil, err
+				}
+				// propagate join to declared sub-commands
+				if subCmd.join == nil {
+					subCmd.join = c.join
 				}
 				c.subCmd[subCmdName] = subCmd
 			}
