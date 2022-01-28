@@ -15,7 +15,7 @@ This library needs a command entrypoint in a data repository. See https://github
 It can be bootstrapped in an empty directory by using:
 
   cd [empty data repo dir]
-  go run github.com/davidovich/summon/scaffold init [module name]
+  go run github.com/davidovich/summon/scaffold@latest init [module name]
 */
 package summon
 
@@ -35,7 +35,7 @@ import (
 // control to Summon so it can manage the command line arguments and instantiation of assets
 // located in the embed.fs data repository parameter.
 // Config opts functions are optional.
-func Main(args []string, box embed.FS, opts ...option) int {
+func Main(args []string, fs embed.FS, opts ...option) int {
 	options := &MainOptions{}
 
 	for _, o := range opts {
@@ -43,9 +43,9 @@ func Main(args []string, box embed.FS, opts ...option) int {
 	}
 
 	summon.Name = args[0]
-	s, err := summon.New(box)
+	s, err := summon.New(fs)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "unable to create initial box: %v", err)
+		fmt.Fprintf(os.Stderr, "unable to create initial filesystem: %v", err)
 		return 1
 	}
 
@@ -57,9 +57,13 @@ func Main(args []string, box embed.FS, opts ...option) int {
 		}
 	}()
 
-	rootCmd := cmd.CreateRootCmd(s, os.Args, *options)
-	err = rootCmd.Execute()
+	rootCmd, err := cmd.CreateRootCmd(s, os.Args, *options)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create command tree: %v", err)
+		return 1
+	}
 
+	err = rootCmd.Execute()
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return exitError.ExitCode()
@@ -80,5 +84,5 @@ func WithoutRunCmd() option {
 	}
 }
 
-// MainOptions hold comptile-time configurations
+// MainOptions hold compile-time configurations.
 type MainOptions = summon.MainOptions

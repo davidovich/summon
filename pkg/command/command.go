@@ -6,8 +6,8 @@ import (
 	"os/exec"
 )
 
-// ExecCommandFn defines a Run function. It takes the command to run as first
-// parameter then its arguments as a slice.
+// ExecCommandFn defines a Cmd factory function. It takes the command to run as
+// first parameter then its arguments as a slice.
 type ExecCommandFn func(string, ...string) *Cmd
 
 // Cmd is an exec.Cmd with a configurable Run function.
@@ -16,7 +16,7 @@ type Cmd struct {
 	Run func() error
 }
 
-// New creates a Cmd with a real exec.Cmd Run function.
+// New is the default factory that creates a Cmd with an os exec.Cmd Run function.
 func New(c string, args ...string) *Cmd {
 	cmd := &Cmd{
 		Cmd: exec.Command(c, args...),

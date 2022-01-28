@@ -16,7 +16,7 @@ import (
 
 func makeRootCmd(withoutRun bool, args ...string) (*summon.Driver, *cobra.Command) {
 	s, _ := summon.New(runCmdTestFS)
-	rootCmd := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
+	rootCmd, _ := CreateRootCmd(s, []string{"summon"}, summon.MainOptions{WithoutRunSubcmd: withoutRun})
 	rootCmd.SetArgs(args)
 	return s, rootCmd
 }
@@ -76,7 +76,7 @@ func Test_createRootCmd(t *testing.T) {
 		{
 			name:     "completion_run",
 			rootCmd:  makeRootCmd("completion"),
-			expected: "summon_run_hello",
+			expected: "# bash completion V2 for summon",
 		},
 		{
 			name:    "-v",

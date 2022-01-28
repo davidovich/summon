@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/davidovich/summon/internal/testutil"
+	"github.com/davidovich/summon/pkg/config"
 )
 
 var appFs = afero.NewOsFs()
@@ -30,7 +31,7 @@ func GetFs() afero.Fs {
 	return appFs
 }
 
-// Summon is the main comnand invocation
+// Summon is the main command invocation
 func (d *Driver) Summon(opts ...Option) (string, error) {
 	if d == nil {
 		return "", fmt.Errorf("Driver cannot be nil")
@@ -52,18 +53,18 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 			startdir = d.baseDataDir
 		}
 
-		return destination, fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
+		return destination, fs.WalkDir(d.fs, startdir, makeCopyFileFun(startdir, d))
 	}
 
 	filename := filepath.Clean(d.opts.filename)
 	filename = d.resolveAlias(filename)
 	filename = path.Join(d.baseDataDir, filename)
 
-	boxedFile, err := d.box.Open(filename)
+	embeddedFile, err := d.fs.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	stat, err := boxedFile.Stat()
+	stat, err := embeddedFile.Stat()
 	if err != nil {
 		return "", err
 	}
@@ -71,10 +72,10 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 		// User wants to extract a subdirectory
 		startdir := filename
 		return destination,
-			fs.WalkDir(d.box, startdir, makeCopyFileFun(startdir, d))
+			fs.WalkDir(d.fs, startdir, makeCopyFileFun(startdir, d))
 	}
 
-	return d.copyOneFile(boxedFile, filename, d.baseDataDir)
+	return d.copyOneFile(embeddedFile, filename, d.baseDataDir)
 }
 
 func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntry, _ error) error {
@@ -82,7 +83,7 @@ func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntr
 		if de.IsDir() {
 			return nil
 		}
-		file, err := d.box.Open(path)
+		file, err := d.fs.Open(path)
 		if err != nil {
 			return err
 		}
@@ -100,28 +101,28 @@ func makeCopyFileFun(startdir string, d *Driver) func(path string, de fs.DirEntr
 	}
 }
 
-func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (string, error) {
+func (d *Driver) prepareTemplate() (*template.Template, error) {
 	t := d.templateCtx
 	var err error
 	if t != nil {
 		t, err = t.Clone()
 		if err != nil {
-			return tmpl, err
+			return nil, err
 		}
 	} else {
-		t = template.New(Name).
-			Option("missingkey=zero").
-			Funcs(sprig.TxtFuncMap()).
-			Funcs(summonFuncMap(d))
+		t = template.New(Name)
 	}
 
-	t, err = t.Parse(tmpl)
-	if err != nil {
-		return tmpl, err
-	}
+	t.Option("missingkey=zero").
+		Funcs(sprig.TxtFuncMap()).
+		Funcs(summonFuncMap(d))
 
+	return t, nil
+}
+
+func executeTemplate(t *template.Template, data interface{}) (string, error) {
 	buf := &bytes.Buffer{}
-	err = t.Execute(buf, data)
+	err := t.Execute(buf, data)
 
 	// The zero value for an interface is a nil interface{} which
 	// has a string representation of <no value>. Strip this out.
@@ -129,8 +130,23 @@ func (d *Driver) renderTemplate(tmpl string, data map[string]interface{}) (strin
 	return strings.ReplaceAll(buf.String(), "<no value>", ""), err
 }
 
+func (d *Driver) renderTemplate(tmpl string) (string, error) {
+	t, err := d.prepareTemplate()
+	if err != nil {
+		return tmpl, err
+	}
+
+	t, err = t.Parse(tmpl)
+	if err != nil {
+		return tmpl, err
+	}
+
+	data := d.opts.data
+	return executeTemplate(t, data)
+}
+
 func (d *Driver) resolveAlias(alias string) string {
-	if resolved, ok := d.Config.Aliases[alias]; ok {
+	if resolved, ok := d.config.Aliases[alias]; ok {
 		return resolved
 	}
 
@@ -142,21 +158,33 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		"run": func(args ...string) (string, error) {
 			driverCopy := Driver{
 				opts:        d.opts,
-				Config:      d.Config,
-				box:         d.box,
+				config:      d.config,
+				fs:          d.fs,
+				baseDataDir: d.baseDataDir,
 				templateCtx: d.templateCtx,
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
 			}
+			driverCopy.opts.argsConsumed = map[int]struct{}{}
 			b := &strings.Builder{}
-			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), out(b))
+			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
 
 			return strings.TrimSpace(b.String()), err
 		},
 		"summon": func(path string) (string, error) {
 			return d.Summon(Filename(path), Dest(os.TempDir()))
 		},
-		"arg": func(index int, missingError string) (string, error) {
+		"flagValue": func(flag string) (string, error) {
+			for _, toRender := range d.flagsToRender {
+				if toRender.name == flag {
+					toRender.explicit = true
+					return toRender.renderTemplate()
+				}
+			}
+			return "", nil
+		},
+		"arg": func(index int, missingErrors ...string) (string, error) {
+			missingError := strings.Join(missingErrors, " ")
 			if d.opts.args == nil {
 				return "", fmt.Errorf(missingError)
 			}
@@ -184,12 +212,12 @@ func summonFuncMap(d *Driver) template.FuncMap {
 	}
 }
 
-func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, error) {
+func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (string, error) {
 	destination := d.opts.destination
 
 	if !d.opts.raw {
 		var err error
-		filename, err = d.renderTemplate(filename, d.opts.data)
+		filename, err = d.renderTemplate(filename)
 		if err != nil {
 			return "", err
 		}
@@ -219,16 +247,16 @@ func (d *Driver) copyOneFile(boxedFile fs.File, filename, root string) (string, 
 		out = outf
 	}
 
-	boxedContent, err := ioutil.ReadAll(boxedFile)
+	fileContent, err := ioutil.ReadAll(embeddedFile)
 	if err != nil {
 		return "", err
 	}
 
 	var rendered string
-	if d.opts.raw {
-		rendered = string(boxedContent)
+	if d.opts.raw || filename == config.ConfigFileName {
+		rendered = string(fileContent)
 	} else {
-		rendered, err = d.renderTemplate(string(boxedContent), d.opts.data)
+		rendered, err = d.renderTemplate(string(fileContent))
 		if err != nil {
 			return "", err
 		}

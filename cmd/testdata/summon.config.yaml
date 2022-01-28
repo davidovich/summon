@@ -4,13 +4,23 @@ aliases:
   a: "subdir/a/a.txt"
 outputdir: "overridden_dir"
 exec:
-  bash:
-    echo:
-      - echo
-      - hello {{ .Name -}}
-    hello-bash: [hello.sh]
-  gobin -run:
-    gobin: [github.com/myitcv/gobin@v0.0.8]
-    gohack: [github.com/rogpeppe/gohack]
-  python -c:
-    hello: [print("hello from python!")]
+  environments:
+    bash:
+      echo:
+        - echo
+        - hello {{ .Name -}}
+      hello-bash: [hello.sh]
+
+      tk:
+        args: [tk]
+        completion: '{{ run "fake-make" "a\nb\n" }}'
+
+    bash --norc --noprofile -c:
+      fake-make:
+        args: ['echo -e "{{- args | join " " -}}"']
+        help: simulate make call echo params
+
+    go run:
+      gohack: [github.com/rogpeppe/gohack@latest]
+    python -c:
+      hello: [print("hello from python!")]

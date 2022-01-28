@@ -18,5 +18,5 @@ func TestCompletionCommand(t *testing.T) {
 	cmd.SetOutput(b)
 	cmd.Execute()
 
-	assert.Contains(t, b.String(), "completion_summon.config.yaml")
+	assert.Contains(t, b.String(), "# bash completion V2 for completion")
 }

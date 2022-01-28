@@ -3,59 +3,46 @@ package config
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	"github.com/stretchr/testify/require"
 )
-
-func TestConfigWriter(t *testing.T) {
-	c := Config{
-		Version: 1,
-		Executables: map[string]Executable{
-			"go": {
-				"gobin":  []interface{}{"github.com/myitcv/gobin"},
-				"gohack": []interface{}{"github.com/rogppepe/gohack"},
-			},
-			"bash":      {"hello-bash": []interface{}{"hello.sh"}},
-			"python -c": {"hello": []interface{}{"print(\"hello from python!\")"}},
-		},
-	}
-
-	config, _ := yaml.Marshal(&c)
-
-	assert.Equal(t, `
-version: 1
-aliases: {}
-outputdir: ""
-templates: ""
-exec:
-  bash:
-    hello-bash:
-    - hello.sh
-  go:
-    gobin:
-    - github.com/myitcv/gobin
-    gohack:
-    - github.com/rogppepe/gohack
-  python -c:
-    hello:
-    - print("hello from python!")
-`, "\n"+string(config))
-}
 
 func TestConfigReader(t *testing.T) {
 	config := dedent.Dedent(`
     version: 1
     exec:
-      python -c:
-        hello: [print("hello")]
-	`)
+      environments:
+        python -c:
+          hello: [print("hello")]
+        bash:
+          echo:
+            flags:
+              special-wrapper: 'happy new year: {{ .flag }}'
+            help: 'this is an echo adapter'
+            args: ['{{ flagValue "--special-wrapper" }}', '{{ arg 1 ""}}', '{{ arg 0 "" }}']
+
+          with-flag:
+            flags:
+              flag-desc:
+                effect: "a"
+                shorthand: "f"
+                help: "flag-help"
+
+    `)
 
 	c := Config{}
 	err := c.Unmarshal([]byte(config))
 
 	require.Nil(t, err)
-	assert.Equal(t, "print(\"hello\")", c.Executables["python -c"]["hello"][0])
+	args := c.Exec.ExecEnv["python -c"]["hello"].Value.(ArgSliceSpec)
+	assert.Equal(t, "print(\"hello\")", args[0])
+
+	cmdSpec := c.Exec.ExecEnv["bash"]["echo"].Value.(CmdDesc)
+	assert.Equal(t, `{{ flagValue "--special-wrapper" }}`, cmdSpec.Args[0])
+
+	assert.IsType(t, "", cmdSpec.Flags["special-wrapper"].Value)
+
+	cmdSpecWithFlags := c.Exec.ExecEnv["bash"]["with-flag"].Value.(CmdDesc)
+	assert.IsType(t, FlagSpec{}, cmdSpecWithFlags.Flags["flag-desc"].Value)
 }

@@ -87,7 +87,7 @@ func DryRun(enable bool) Option {
 	}
 }
 
-// Filename sets the requested filename in the boxed data.
+// Filename sets the requested filename in the embedded filesystem.
 func Filename(filename string) Option {
 	return func(opts *options) error {
 		opts.filename = filename
@@ -115,7 +115,7 @@ func Dest(dest string) Option {
 	}
 }
 
-func out(w io.Writer) Option {
+func Out(w io.Writer) Option {
 	return func(opts *options) error {
 		opts.out = w
 		return nil

@@ -13,13 +13,17 @@
   - [Use-cases](#use-cases)
     - [Makefile Library](#makefile-library)
     - [Templating](#templating)
-    - [Running A Binary](#running-a-binary)
-      - [Templated Invokables](#templated-invokables)
+    - [Running a Binary](#running-a-binary)
+      - [Templated Execution Environments](#templated-execution-environments)
+      - [Enhanced command description](#enhanced-command-description)
       - [Keeping DRY](#keeping-dry)
       - [Template Functions Available in Summon](#template-functions-available-in-summon)
         - [Summon Function](#summon-function)
         - [Arg and Args Function](#arg-and-args-function)
         - [Run Function](#run-function)
+        - [flagValue Function](#flagvalue-function)
+        - [.flag field](#flag-field)
+      - [A Note on Completions](#a-note-on-completions)
       - [Removing the run subcommand](#removing-the-run-subcommand)
     - [Dump the Data at a Location](#dump-the-data-at-a-location)
     - [Output a File to stdout](#output-a-file-to-stdout)
@@ -29,17 +33,19 @@
     - [View Data Version Information](#view-data-version-information)
     - [Configure Bash Completion](#configure-bash-completion)
   - [TODO](#todo)
+  - [Acknowledgments](#acknowledgments)
   - [FAQ](#faq)
 
 # Summon
 
 Summon is used to manage a central location of data or
-executable references, allowing distribution to any go-enabled environment. You can use it in your team to share common snippets of code or domain knowlege.
+executable references, allowing distribution to any go-enabled environment.
+You can use it in your team to share common snippets of code or domain knowledge.
 
 It solves the maintenance problem of multiple copies of same
-code snippets distributed in many repos (like general makefile recipies), leveraging go modules and version
-management. It also allows configuring a standard set of tools that a dev team can readily
-invoke by name.
+code snippets distributed in many repos (like general makefile recipes),
+leveraging go modules and version management. It also allows configuring a
+standard set of tools that a dev team can readily invoke by name.
 
 You can make an analogy with a data singleton which always has the desired
 state (packed scripts or pinned versions of binaries).
@@ -67,7 +73,7 @@ Summon is a library which is consumed by an asset repository (which, by default,
 has also the `summon` name). This asset repository, managed by your team,
 provides the summon executable command (it's main() function is in
 summon/summon.go). The library provides the command-line interface, so no
-coding is necessary in the assert repo.
+coding is necessary in the asset repo.
 
 Summon also provides a boostrapping feature in the scaffold command.
 
@@ -112,6 +118,7 @@ You will then have something resembling this structure:
 ```
 
 There is an example setup at https://github.com/davidovich/summon-example-assets.
+Also, a simple fake utility is also hosted in the `examples/` directory.
 
 You just need to populate the `summon/assets` directory with your own data.
 
@@ -122,7 +129,7 @@ library, and creates the main command executable.
 
 The v0.13.0 version uses the embed.FS and the `//go:embed assets/*` directive.
 Prior versions used to reference the `assets/` dir at the root of the repo.
-This means that the data being embeded must now be a sibling of the source
+This means that the data being embedded must now be a sibling of the source
 file containing `package main`.
 
 ### Summon config File
@@ -132,15 +139,19 @@ customize summon. You can define:
 
 - aliases
 - default output-dir
-- executables
+- handles to configured executables
 
 > Breaking in v0.11.0: Handles now take an array of params
 
 ```yaml
-version: 1
-outputdir: .summoned
+version: 1 # although at version 1, this config is not quite stable yet, but it
+           # is getting closer.
+
+outputdir: ".summoned" # where summoned files are placed
+hideAssetsInHelp: true # should the assets be shown in the help ?
+
 aliases:
-    simple-handle: a/file/in/asset-dir
+  simple-handle: a/file/in/asset-dir
 
 templates: |
   {{/* new starting at v0.12.0, global templates available to command params */}}
@@ -150,21 +161,48 @@ templates: |
     {{- end -}}
   {{- end -}}
 
-# exec section declares invokables with their handle
-# a same handle name cannot be in two invokers at the same time
-# they are grouped by invoker.
+# exec section declares flags and execution environments and their handle.
+# A same handle name cannot be in two exec:environments at the same time.
 exec:
-    bash -c:
-    # ^ invoker
-        # (script can be inlined with | yaml operator)
-        hello: [echo, hello]
-                 # ^ optional params that will be passed to invoker
-                 # these can contain templates (starting at v0.10.0)
-        # ^ handle to script (must be unique). This is what you use
-        # to invoke the script: `summon run hello`.
+  flags: # global flags that can be used in any `args:` section
+    hello:
+      effect: '{{.flag}}' # when the user uses the flag, it's value will be in
+                          # the .flag variable
+      default: 'world' # value to use if the flag is used alone (without value, `--hello`).
+      shorthand: 'o' # -o can be used instead
 
-    go run: # go gettable executables
-        gohack: [github.com/rogppepe/gohack@latest]
+  environments: # new and breaking in v0.14.0, this corresponds to the original
+                # exec: section.
+    bash -c:
+    # ^ execution environment
+    #   (script can be inlined with the | (pipe) yaml operator)
+
+        hello: [echo hello] # simple form of command configuration
+    #     ^        ^ args that will be appended to the environment
+    #     |          these can contain templates (starting at v0.10.0)
+    #     |- handle to script (must be unique). This is what you use
+    #        to invoke the script: `summon run hello`.
+
+  # New in v0.14.0: complex command and sub-command specification
+  # Here, we define a proxy to gohack, with completion
+  # See a complete definition in the examples/cmd-proxy/assets dir
+  go run:
+    gohack [command]: #
+      args: &rog [github.com/rogpeppe/gohack@latest]
+      # completion must produce a `\n` separated string that is used as candidates
+      completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
+      subCmd: # subCmd is new in v0.14.0
+        get:
+          args: [*rog, get,'{{ flagValue "vcs" }}'] # note that this command
+                                                    # definition is separate
+                                                    # from the top level gohack
+                                                    # so we use an anchor to keep
+                                                    # DRY.
+          flags:
+            vcs:
+              effect: '{{.flag}}'
+              default: '-vcs'
+        undo: [*rog, undo]
 
     python -c:
         hello-python: [print("hello from python!")]
@@ -189,14 +227,15 @@ This will call and run gohack using `go run` and forward the arguments that you
 provide.
 
 > New in v0.10.0, summon now allows templating in the invocable section. See
-> [Templating](#/templating).
+> [Templating](#templating).
 
 ## Build
 
 In an empty asset data repository directory:
 
 - First (and once) invoke `go run github.com/davidovich/summon/scaffold@latest init [repo host (module name)]`
-    This will create code template similar as above
+    This will create code template similar as above in the current directory
+    (this can be modified by using the `-o` [output dir] flag).
 
 1. Add assets that need to be shared amongst consumers
 2. Use the provided Makefile to create the asset executable: `make`
@@ -278,25 +317,26 @@ will yield:
    myRenderedFileName
 ```
 
-### Running A Binary
+### Running a Binary
 
-`summon run [executable]` allows to run executables declared in the
-[config file](#/summon-config-file).
+`summon run [handle]` allows to run executables declared in the
+[config file](#summon-config-file).
 
 > New in v0.10.0:
-> * you can use go templates in the `exec:` section.
-> * you can summon embedded data in the `exec:` section.
+> - you can use go templates in the `exec:` section.
+> - you can summon embedded data in the `exec:` section.
 
-#### Templated Invokables
+#### Templated Execution Environments
 
 Suppose you want to make a wrapper around a docker utility. The specific
-docker invocation can be quite cryptic. Help your team by adding an invocable
-in the config file:
+docker invocation can be quite cryptic and long. Help your team by adding an
+exec environment in the config file:
 
 ```yaml
 ...
 exec:
-  docker run -v {{ env "PWD" }}:/mounted-app alpine:
+  environments:
+    docker run -v {{ env "PWD" }}:/mounted-app alpine:
       ls: [ls, /mounted-app]
 ```
 
@@ -305,6 +345,60 @@ Calling `summon run ls` would render the
 current directory, resulting in this call:
 
 `docker run -v [working-dir]:/mounted-app alpine ls /mounted-app`
+
+In effect, this feature allows creating your own cli that can wrap complex
+containers. The cli is a kind of trampoline to the container.
+
+Note that the whole environment line can be templated.
+
+#### Enhanced command description
+
+> New in v0.14.0
+
+You can now build complex command line interfaces in a declarative way using a
+command spec (see `pkg/config/config.go` for the struct definitions).
+
+Typically, this will be used to simplify complex tools, or give a simple
+interface to a complex docker invocation.
+
+Below is a synthetic example that uses every available command and flag config.
+
+```yaml
+exec:
+  environments:
+    docker: # this can be a complex docker invocation like mounting volumes (-v),
+            # container removal arg (--rm), passed environment (-e), interactive
+            # terminal (-ti), etc.
+      handle [possible param hint to user]: # handle is used to invoke this docker container
+        args: ['hardcoded-arg-1', '{{ arg 0 }}', '{{ flagValue "my-flag" }}']
+        join: false # should the args array be joined by a space? Useful for
+                    # `bash -c` type commands
+        help: help that will be printed when user invokes `--help`
+        hidden: false # should this command appear in the help or completion ?
+        completion: '{{ }}' # dynamic completion candidates separated by `\n`
+                            # declared commands need not be listed here. But
+                            # calling a surrogate process might be handy to
+                            # complete a proxied command (especially if the
+                            # command lives in a container!).
+        subCmd:
+          first: # sub-command name, as invoked on the command line.
+            args: ['this is a complete new command description']
+            # ...
+            subCmd:
+              second-sub-cmd: [] # same recursive structure
+        flags:
+          my-flag:
+            effect: '{{.flag}}' # template to construct the value. The user
+                                # provided value is put in the .flag variable.
+                                # You can place the flag explicitly with the
+                                # flagValue template function.
+            shorthand: 'one letter shorthand (invoked with a single dash: i.e -i)'
+            default: if the user provides no value, use this
+            help: Help for the flag
+            explicit: true # Use this flag to disable automatic appending of
+                           # the flag effect to the args. If used in an argument
+                           # args array, explicit is true.
+```
 
 #### Keeping DRY
 
@@ -322,7 +416,8 @@ can use YAML anchors to define the static (but required) params in
     - c
 
 exec:
-    bash -c:
+  environments:
+    docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
       echo: [*baseargs, d]
 ```
 
@@ -341,19 +436,20 @@ invocable (new in v.0.10.0). You would use the `summon` template function bundle
 
 ```yaml
 exec:
-  bash -c:
-    hello: ['{{ summon "hello.sh" }}']
+  environments:
+    bash:
+      hello: ['{{ summon "hello.sh" }}']
 ```
 
 Assuming you have a `hello.sh` file in the assets repo, this would result in
-sommoning the file in a temp dir and calling the invoker:
+summoning the file in a temp dir and calling the invoker:
 
 ```shell
-bash -c /tmp/hello.sh
+bash /tmp/hello.sh
 ```
 
 > Note that `hello.sh` could also contain templates that will be
-rendered at instanciation time.
+rendered at instantiation time.
 
 ##### Arg and Args Function
 
@@ -362,8 +458,8 @@ rendered at instanciation time.
 Summon provisions the `args`, `arg` functions and `.osArgs` slice of arguments. You can use
 these in a template of the params array.
 
-* `args` will contain unknown args passed from the command-line (see `ls` handle
-  defined in the [config section](#/summon-config-file))
+- `args` will contain unknown args passed from the command-line (see `ls` handle
+  defined in the [config section](#summon-config-file))
 
     ```bash
     summon run ls -al
@@ -372,21 +468,22 @@ these in a template of the params array.
 
     Here, `{{ args }}` would return `[-al]`.
 
-* `arg` allows accessing one arg, with an error message if arg is not found
+- `arg` allows accessing one arg, with an error message if arg is not found
 
     ```yaml
     ...
     exec:
-       bash -c:
+      environments:
+        bash:
           ls: [ls, '{{ arg 0 "error msg" }}']
     ```
 
 When used, summon will remove the consumed args, as this would
-surprisingly double the args. In other words, when accessing `{{ args }}`,
-summon will not append the resulting args, and using `{{ arg 0 "error" }}`,
-summon would only append the unconsumed args (after index 0).
+surprisingly double the args in the resulting invocation. In other words, when
+accessing `{{ args }}`, summon will not append the resulting args, and using
+`{{ arg 0 "error" }}`, summon would only append the unconsumed args (after index 0).
 
-* `.osArgs` contains the whole command-line slice
+- `.osArgs` contains the whole command-line slice
 
 If the result of using args is a string representation of an array, like
 `[a b c d]` this array will be flattened to the final args array.
@@ -397,7 +494,7 @@ If the result of using args is a string representation of an array, like
 
 The `run` function allows running a configured handle of the config file, right
 inside the config file. This effectively opens many use cases of executing
-code to control arguments. Called subprocesses can have side effects and can
+code to control arguments. Called sub-processes can have side effects and can
 be used to execute pre conditions.
 
 Consider:
@@ -406,10 +503,13 @@ We want to mount volumes of a docker container, conditionally.
 
 ```yaml
 exec:
-  docker run -it --rm {{ run "eval-mounts" }} alpine:
-    ls: ['ls']
-  bash -c:
-    eval-mounts: ["echo -v {{ env PWD }}:/app"]
+  environments:
+    # here, "eval-mounts" is a reference to the corresponding handle
+    docker run -it --rm {{ run "eval-mounts" }} alpine:
+      ls: ['ls']
+    bash -c:
+      eval-mounts: ["echo -v {{ env PWD }}:/app"]
+    #    ^ used to compute the volumes.
 ```
 
 When inovking `summon run ls`, summon will first invoke:
@@ -419,9 +519,64 @@ then call the `ls` handle to produce:
 
 `docker run -it --rm -v current_dir:/app alpine`
 
-> Warning: `run` must not start a recursive process as `summon` does not currently
+> WARNING: `run` must not start a recursive process as `summon` does not currently
 > protect from this type of call. The consequence of doing this will probably
 > result in a fork bomb.
+
+##### flagValue Function
+
+> New in v0.14.0
+
+The `{{ flagValue "my-flag" }}` function is used in the `args:` section. To
+render this function, summon looks at the `flags:` section to find the
+corresponding flag and inserts it's rendered `effect:`. If the render produces
+no value, the block is a no-op and has no effect in the passed arguments.
+
+If the flag is not found in the top level handle command, or subCmd, summon
+will render an empty value.
+
+Use the `--dry-run` or `-n` to debug what the invocation would look like.
+
+##### .flag field
+
+> New in v0.14.0
+
+The `{{ .flag }}` template field is only used and valid in the `effect:` flag
+configuration field. It takes the value provided by the user. For example,
+if the user provides `--my-flag=my-value` flag, the `.flag` template field
+will hold the `my-value` value.
+
+#### A Note on Completions
+
+Surfacing a completion from a docker container hosted command can be a challenge.
+While developing this feature, experimentation was done to trigger the completion
+mechanisms of the target program. This is used to populate the completion from
+the host machine by using the completion result in the container.
+
+For example, we present below the completion command for a [`posener/complete`](https://github.com/posener/complete) based implementation.
+
+Also, a [cobra](https://github.com/spf13/cobra) based program (kubectl).
+
+```yaml
+exec:
+  environments:
+    bash -c: # here bash -c is used to test, but normally this is a complex
+             # docker container invocation.
+
+      # tanka delegates it's completion to posener/complete. Fake a completion
+      # call by setting the COMP_LINE enviroment var.
+      # delegate this to a simple bash-c handle
+      tk:
+        completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
+
+      kubectl: # cobra based commands are a bit more involved as we need to
+               # filter the control characters (:0) that it outputs.
+        completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
+
+    bash --norc --noprofile -c: # this is a simple bash environment to delegate calls
+      bash-c:
+        hidden: true
+```
 
 #### Removing the run subcommand
 
@@ -487,20 +642,42 @@ source <(summon completion)
 
 ## TODO
 
-- [ ] Add a `required` template function to enforce `.args` presence, and error
-  with a message.
-- [ ] Add help documentation for proxied commands
-- [ ] Explore ways to hook completions from proxied commands.
+This is a non exhaustive list of things to think about.
+
+- [ ] Give precise config line numbers when a template rendering fails (#78)
+- [ ] Add debugging messages for introspection.
+- [X] Add help documentation for proxied commands (#77)
+- [X] Explore ways to hook completions from proxied commands (#77)
+
+## Acknowledgments
+
+Built on the shoulders of giants.
+
+- The summon library would not be possible without the excellent [Cobra](https://github.com/spf13/cobra)
+library. Summon uses the dynamic command structure and completion offered
+by Cobra.
+
+- [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) Powers the polymorphic
+nature of the yaml config file with its Node parsing API.
+(And soon the exact template line numbers: #78).
+
+- The [Masterminds Sprig Library](github.com/Masterminds/sprig/v3)
+  allows doing amazing stuff in templates.
+
+- The [Go Tree](github.com/DiSiqueira/GoTree) to present the asset tree like the
+  shell `tree` command.
 
 ## FAQ
 
-- Why is the `exec:` config file ordered by "invoker" ?
+- Why is the `exec:` config file ordered by "environment" ?
 
   Summon is oriented at providing an easy CLI interface to complex sub programs.
   In this regard, it tends to group invocations in the same execution "environment".
 
   This helps in scenarios of supplying a dev container from which are surfaced
   tools for your team.
+
+  We are interested to hear if this organization is a nuisance for you.
 
 - Why not use git directly ?
 
@@ -509,7 +686,7 @@ source <(summon completion)
   In summon you leverage go execution to bootstrap in one phase. So your data can do:
 
   ```bash
-  go run github.com/davidovich/summon-example-assets/summon --help
+  go run github.com/davidovich/summon-example-assets/summon@latest --help
   # or list the data deliverables
-  go run github.com/davidovich/summon-example-assets/summon ls
+  go run github.com/davidovich/summon-example-assets/summon@latest ls
   ```

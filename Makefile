@@ -5,7 +5,7 @@ HAS_GOCOVERUTIL			:= $(shell command -v gocoverutil)
 export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
-SCAFFOLD_SRCS := $(shell GO111MODULE=on go list -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' github.com/davidovich/summon/scaffold/...)
+SRCS = $(shell GO111MODULE=on go list -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
 COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
 
 DOC_REPO_NAME := davidovich.github.io
@@ -19,8 +19,15 @@ all: test $(SCAFFOLD_BIN)
 .PHONY: bin
 bin: $(SCAFFOLD_BIN)
 
+.PHONY: examples
+examples: bin/cmd-proxy
+
+bin/cmd-proxy: $(call SRCS,github.com/davidovich/summon/examples/cmd-proxy) $(shell find examples/cmd-proxy/assets)
+	go build -o $@ github.com/davidovich/summon/examples/$(@F)
+
+
 .PHONY: $(SCAFFOLD_BIN)
-$(SCAFFOLD_BIN): $(ASSETS) $(SCAFFOLD_SRCS)
+$(SCAFFOLD_BIN): $(ASSETS) $(call SRCS,github.com/davidovich/summon/scaffold)
 	go build -o $@ $(@F)/$(@F).go
 
 COVERAGE := build/coverage/report/summon

@@ -13,7 +13,7 @@ func (d *Driver) List(opts ...Option) ([]string, error) {
 	d.Configure(opts...)
 
 	var list []string
-	err := fs.WalkDir(d.box, d.baseDataDir, func(path string, de fs.DirEntry, err error) error {
+	err := fs.WalkDir(d.fs, d.baseDataDir, func(path string, de fs.DirEntry, err error) error {
 		if path == d.baseDataDir {
 			return nil
 		}
