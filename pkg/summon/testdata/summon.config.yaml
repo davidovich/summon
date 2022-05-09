@@ -7,35 +7,35 @@ templates: >-
   {{ define "version" }}1.2.3{{ end }}
 exec:
   environments:
-    bash:
-      hello-bash: [ hello.sh ]
-      bash-self-ref: ['{{ summon "hello.sh" }}']
-      run-example: ['{{ run "hello-bash" }}']
-      args: ['args:', '{{ arg 0 "" }}']
-      one-arg: ['args:', '{{arg 0 "" }}']
-      all-args: ['args:', '{{ args }}']
-      osArgs: ['osArgs:', '{{ .osArgs }}']
-      templateref: ['{{ template "version"}}']
-      overrides:
-        help: 'help override'
-        args: [ hello.sh ]
-        subCmd:
-          subcmd:
-            help: "override subcmd help"
-            args: [hello.sh, subcmd]
+    hello-bash: [bash, hello.sh ]
+    bash-self-ref: [bash, '{{ summon "hello.sh" }}']
+    run-example: [bash, '{{ run "hello-bash" }}']
+    args: [bash, 'args:', '{{ arg 0 "" }}']
+    one-arg: [bash, 'args:', '{{arg 0 "" }}']
+    all-args: [bash, 'args:', '{{ args }}']
+    osArgs: [bash, 'osArgs:', '{{ .osArgs }}']
+    templateref: [bash, '{{ template "version"}}']
+    overrides:
+      cmd: [bash]
+      help: 'help override'
+      args: [ hello.sh ]
+      subCmd:
+        subcmd:
+          help: "override subcmd help"
+          args: [hello.sh, subcmd]
 
-    docker {{ lower "INFO" }}: # template example
-      docker: []
-    go run:
-      gohack: [github.com/rogpeppe/gohack@latest]
-    python -c:
-      hello: ['print("hello from python!")']
-      hello-join:
-        args: ['print("', 'these', 'params', 'will', 'be', 'joined', '")']
-        join: true
-        subCmd:
-          non-inlined:
-            args: ['print("hello")', '#', 'these', 'are', 'separate', 'args', '-']
-            join: false
+    docker: [docker, '{{ lower "INFO" }}'] # template example
+    gohack: [go, run, github.com/rogpeppe/gohack@latest]
+
+
+    hello: ['python', '-c', 'print("hello from python!")']
+    hello-join:
+      cmd: [python, -c]
+      args: ['print("', 'these', 'params', 'will', 'be', 'joined', '")']
+      join: true
+      subCmd:
+        non-inlined:
+          args: ['print("hello")', '#', 'these', 'are', 'separate', 'args', '-']
+          join: false
 
 

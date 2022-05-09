@@ -5,7 +5,7 @@ HAS_GOCOVERUTIL			:= $(shell command -v gocoverutil)
 export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
-SRCS = $(shell GO111MODULE=on go list -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
+SRCS = $(shell go list -buildvcs=false -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
 COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
 
 DOC_REPO_NAME := davidovich.github.io
@@ -60,7 +60,7 @@ $(HTML_COVERAGE): $(MERGED_COVERAGE)
 
 $(COVERAGE):
 	@mkdir -p $(@D)
-	go test ./... -timeout 30s --cover -coverprofile $@ -v
+	go test -buildvcs=false ./... -timeout 30s --cover -coverprofile $@ -v
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)

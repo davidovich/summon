@@ -232,15 +232,14 @@ exec:
     config-root: 'CONFIG_ROOT=.'
 
   environments:
-    echo:
-      echo-pwd: ['pwd:', '{{ env "PWD" | base }}']
+    echo-pwd: ['echo', 'pwd:', '{{ env "PWD" | base }}']
 
-    docker:
-      manifest:
-        help: 'render kubernetes manifests in build dir'
-        # popArg is used to remove the arg from user input
-        args: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
-        completion: '{{ summon "make list-environments" }}'
+    manifest:
+      cmd: [docker]
+      help: 'render kubernetes manifests in build dir'
+      # popArg is used to remove the arg from user input
+      args: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
+      completion: '{{ summon "make list-environments" }}'
 `
 
 	testFs := fstest.MapFS{}
@@ -255,7 +254,7 @@ exec:
 	assert.Contains(t, handles, "manifest")
 
 	assert.Equal(t,
-		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
+		[]string{"echo", "pwd:", "{{ env \"PWD\" | base }}"},
 		FlattenStrings(handles["echo-pwd"].args...))
 	assert.Equal(t,
 		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
@@ -335,14 +334,14 @@ func TestConstructCommandTree(t *testing.T) {
 		    config-root: 'CONFIG_ROOT=.'
 
 		  environments:
-		    docker:
-		      manifest:
-		        help: 'render kubernetes manifests in build dir'
-		        subCmd:
-		          all: [all subcmd]
-		        args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
-		        completion: 'a-completion'
-		      simple: [hello]
+		    manifest:
+		      cmd: [docker]
+		      help: 'render kubernetes manifests in build dir'
+		      subCmd:
+		        all: [all subcmd]
+		      args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
+		      completion: 'a-completion'
+		    simple: [docker, hello]
 		`)
 
 	tests := []struct {
@@ -435,25 +434,6 @@ func TestConstructCommandTree(t *testing.T) {
 	}
 }
 
-func TestDuplicateHandles(t *testing.T) {
-	configFile := dedent.Dedent(`
-		exec:
-		  environments:
-		    docker:
-		      manifest: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
-		    bash:
-		      manifest: [hello]
-		`)
-	testFs := fstest.MapFS{}
-	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
-
-	_, err := New(testFs)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(),
-			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFileName, "manifest"))
-	}
-}
-
 type flagTest struct {
 	name string
 	config.Flags
@@ -479,12 +459,12 @@ func (ft flagTest) run(t *testing.T) {
 			flags: ft.Flags,
 		}
 	}
-	cmdSpec.execEnvironment = "program"
+	cmdSpec.command = append(config.ArgSliceSpec{}, "program")
 
 	d.globalFlags = ft.globalFlags
 	d.handles = handles{"a-handle": cmdSpec}
 
-	programArgs := []string{cmdSpec.execEnvironment}
+	programArgs := cmdSpec.command
 	if ft.withRun {
 		programArgs = append(programArgs, "run")
 	}
@@ -497,7 +477,7 @@ func (ft flagTest) run(t *testing.T) {
 				return nil
 			},
 		}
-	}), Args(append(programArgs, ft.userInvocation...)...))
+	}), Args(append(FlattenStrings(programArgs), ft.userInvocation...)...))
 
 	rootCmd := &cobra.Command{Use: "root"}
 	helpCalled := false
@@ -631,6 +611,7 @@ func TestFlagUsages(t *testing.T) {
 }
 
 func TestFlagUsages2(t *testing.T) {
+	strings.Contains("abd", "a")
 
 	configFile := dedent.Dedent(`
 		exec:
@@ -639,16 +620,17 @@ func TestFlagUsages2(t *testing.T) {
 		      effect: 'global-flag-set'
 		      explicit: true
 		  environments:
-		    program:
-		      a-command:
-		        args: [-c]
-		        flags:
-		          user-flag:
-		            effect: 'CONVERTED={{.flag}}'
-		            help: user-flag allows user to flag something to the callee
-		            shorthand: u
-		      b-cmd:
-		        args: [b-cmd, '{{flagValue "global-flag"}}']
+		    a-command:
+		      cmd: [program]
+		      args: [-c]
+		      flags:
+		        user-flag:
+		          effect: 'CONVERTED={{.flag}}'
+		          help: user-flag allows user to flag something to the callee
+		          shorthand: u
+		    b-cmd:
+		      cmd: [program]
+		      args: [b-cmd, '{{flagValue "global-flag"}}']
 		`)
 	testFs := fstest.MapFS{}
 	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
@@ -753,8 +735,8 @@ func TestHelpManagement(t *testing.T) {
 			name: "help-on-user-defined-help-is-cobra-managed",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
-					help:            "sub command help",
+					command: config.ArgSliceSpec{"program"},
+					help:    "sub command help",
 				}},
 			},
 			userInvocation:        []string{"sub-command", "--help"},
@@ -764,7 +746,7 @@ func TestHelpManagement(t *testing.T) {
 			name: "help-on-non-user-defined-help-is-passed",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
+					command: config.ArgSliceSpec{"program"},
 				}},
 			},
 			userInvocation: []string{"sub-command", "--help"},
@@ -774,10 +756,10 @@ func TestHelpManagement(t *testing.T) {
 			name: "no-cobra-help-on-user-defined-cmd-with-no-help",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
+					command: config.ArgSliceSpec{"program"},
 					subCmd: map[string]*commandSpec{"sub-sub-cmd": {
-						args:            config.ArgSliceSpec{[]string{"sub-command", "sub-sub-cmd"}},
-						execEnvironment: "program",
+						args:    config.ArgSliceSpec{[]string{"sub-command", "sub-sub-cmd"}},
+						command: config.ArgSliceSpec{"program"},
 					}},
 				}},
 			},

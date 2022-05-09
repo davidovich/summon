@@ -5,22 +5,21 @@ aliases:
 outputdir: "overridden_dir"
 exec:
   environments:
-    bash:
-      echo:
-        - echo
-        - hello {{ .Name -}}
-      hello-bash: [hello.sh]
+    echo:
+      - bash
+      - echo
+      - hello {{ .Name -}}
+    hello-bash: [bash, hello.sh]
 
-      tk:
-        args: [tk]
-        completion: '{{ run "fake-make" "a\nb\n" }}'
+    tk:
+      args: [tk]
+      completion: '{{ run "fake-make" "a\nb\n" }}'
 
-    bash --norc --noprofile -c:
-      fake-make:
-        args: ['echo -e "{{- args | join " " -}}"']
-        help: simulate make call echo params
+    fake-make:
+      cmd: [bash, --norc, --noprofile, -c]
+      args: ['echo -e "{{- args | join " " -}}"']
+      help: simulate make call echo params
 
-    go run:
-      gohack: [github.com/rogpeppe/gohack@latest]
-    python -c:
-      hello: [print("hello from python!")]
+    gohack: [go, run, github.com/rogpeppe/gohack@latest]
+
+    hello: [python, -c, print("hello from python!")]

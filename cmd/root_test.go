@@ -25,25 +25,13 @@ func makeRootCmd(withoutRun bool, args ...string) (*summon.Driver, *cobra.Comman
 func Test_createRootCmd(t *testing.T) {
 	defer testutil.ReplaceFs()()
 
-	mockBuildInfo := func() func() {
-		oldBi := buildInfo
-		buildInfo = func() (*debug.BuildInfo, bool) {
-			bi := &debug.BuildInfo{
-				Main: debug.Module{
-					Path:    "example.com/assets",
-					Version: "v0.1.0",
-				},
-				Deps: []*debug.Module{
-					{
-						Path:    "github.com/davidovich/summon",
-						Version: "(devel)",
-					},
-				},
+	mockBuildInfo := func(bInfo func() (*debug.BuildInfo, bool)) func() func() {
+		return func() func() {
+			oldBi := buildInfo
+			buildInfo = bInfo
+			return func() {
+				buildInfo = oldBi
 			}
-			return bi, true
-		}
-		return func() {
-			buildInfo = oldBi
 		}
 	}
 
@@ -86,11 +74,26 @@ func Test_createRootCmd(t *testing.T) {
 			rootCmd: makeRootCmd("-v"),
 			expected: `"mod": "example.com/assets",
     "version": "v0.1.0"`, // note 4 spaces indent
-			defered: mockBuildInfo,
+			defered: mockBuildInfo(func() (*debug.BuildInfo, bool) {
+				bi := &debug.BuildInfo{
+					Main: debug.Module{
+						Path:    "example.com/assets",
+						Version: "v0.1.0",
+					},
+					Deps: []*debug.Module{
+						{
+							Path:    "github.com/davidovich/summon",
+							Version: "(devel)",
+						},
+					},
+				}
+				return bi, true
+			}),
 		},
 		{
 			name:    "-v no-build-info",
 			rootCmd: makeRootCmd("-v"),
+			defered: mockBuildInfo(func() (*debug.BuildInfo, bool) { return nil, false }),
 			wantErr: true,
 		},
 		{

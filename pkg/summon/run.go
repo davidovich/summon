@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -15,8 +14,8 @@ import (
 
 // commandSpec describes a normalized command
 type commandSpec struct {
-	// execEnvironment is the caller environment (docker, bash, python)
-	execEnvironment string
+	// command is the caller environment (docker, bash, python)
+	command config.ArgSliceSpec
 	// args is the command and args that get appended to the ExecEnvironment
 	args config.ArgSliceSpec
 	// subCmd sub-command of current command
@@ -89,11 +88,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
-	renderedExecEnv, err := d.renderTemplate(cmdSpec.execEnvironment)
-	if err != nil {
-		return nil, err
-	}
-	execEnv, err := shlex.Split(renderedExecEnv)
+	execEnv, err := d.RenderArgs(cmdSpec.command)
 	if err != nil {
 		return nil, err
 	}
@@ -192,12 +187,13 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, error) {
+func normalizeExecDesc(argsDesc interface{}) (*commandSpec, error) {
 	c := &commandSpec{}
 	switch descType := argsDesc.(type) {
 	case config.ArgSliceSpec:
 		c.args = descType
 	case config.CmdDesc:
+		c.command = descType.Cmd
 		c.args = descType.Args
 		c.help = descType.Help
 		c.completion = descType.Completion
@@ -208,9 +204,13 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 		if descType.SubCmd != nil {
 			c.subCmd = make(map[string]*commandSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
-				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
+				subCmd, err := normalizeExecDesc(execDesc.Value)
 				if err != nil {
 					return nil, err
+				}
+				// inherit command if not set explicitely
+				if subCmd.command == nil {
+					subCmd.command = c.command
 				}
 				// propagate join to declared sub-commands
 				if subCmd.join == nil {
@@ -225,7 +225,6 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 			config.ConfigFileName, descType)
 	}
 
-	c.execEnvironment = invoker
 	return c, nil
 }
 
@@ -238,18 +237,13 @@ func (d *Driver) execContext() (config.Flags, handles, error) {
 
 	if d.handles == nil {
 		handles := handles{}
-		for invoker, handleDescs := range d.config.Exec.ExecEnv {
-			for handle, desc := range handleDescs {
-				if _, present := handles[handle]; present {
-					return nil, nil,
-						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
-				}
-				cmdSpec, err := normalizeExecDesc(desc.Value, invoker)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error in exec:environments:%s %s", invoker, err.Error())
-				}
-				handles[handle] = cmdSpec
+		for handle, execDesc := range d.config.Exec.ExecEnv {
+			cmdSpec, err := normalizeExecDesc(execDesc.Value)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error in exec:environments:%s %s", handle, err.Error())
 			}
+			handles[handle] = cmdSpec
+
 		}
 		d.handles = handles
 	}
