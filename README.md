@@ -14,7 +14,7 @@
     - [Makefile Library](#makefile-library)
     - [Templating](#templating)
     - [Running a Binary](#running-a-binary)
-      - [Templated Execution Environments](#templated-execution-environments)
+      - [Templated Execution handles](#templated-execution-handles)
       - [Enhanced command description](#enhanced-command-description)
       - [Keeping DRY](#keeping-dry)
       - [Template Functions Available in Summon](#template-functions-available-in-summon)
@@ -161,8 +161,8 @@ templates: |
     {{- end -}}
   {{- end -}}
 
-# exec section declares flags and execution environments and their handle.
-# A same handle name cannot be in two exec:environments at the same time.
+# exec section declares flags and execution handles and their handle.
+# A same handle name cannot be in two exec:handles at the same time.
 exec:
   flags: # global flags that can be used in any `args:` section
     hello:
@@ -171,23 +171,20 @@ exec:
       default: 'world' # value to use if the flag is used alone (without value, `--hello`).
       shorthand: 'o' # -o can be used instead
 
-  environments: # new and breaking in v0.14.0, this corresponds to the original
-                # exec: section.
-    bash -c:
-    # ^ execution environment
-    #   (script can be inlined with the | (pipe) yaml operator)
-
-        hello: [echo hello] # simple form of command configuration
-    #     ^        ^ args that will be appended to the environment
-    #     |          these can contain templates (starting at v0.10.0)
-    #     |- handle to script (must be unique). This is what you use
-    #        to invoke the script: `summon run hello`.
+  handles: # new and breaking in v0.15.0, this corresponds to the original
+           # exec: section.
+    hello: [bash, -c, 'echo hello'] # simple form of command configuration
+  #     ^          ^ args
+  #     |            these can contain templates (starting at v0.10.0)
+  #     |- handle to script (must be unique). This is what you use
+  #        to invoke the script: `summon run hello`.
 
   # New in v0.14.0: complex command and sub-command specification
   # Here, we define a proxy to gohack, with completion
   # See a complete definition in the examples/cmd-proxy/assets dir
-  go run:
+
     gohack [command]: #
+      cmd: [go, run]
       args: &rog [github.com/rogpeppe/gohack@latest]
       # completion must produce a `\n` separated string that is used as candidates
       completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
@@ -204,17 +201,14 @@ exec:
               default: '-vcs'
         undo: [*rog, undo]
 
-    python -c:
-        hello-python: [print("hello from python!")]
+    hello-python: [python, -c, print("hello from python!")]
 
     # Expose docker containers commands without having
     # to remember mounting volumes, etc.
-    # `?` YAML construct allows multi-line keys for easier reading
-    ? docker run -ti --rm -w /{{ env "PWD" | base }}
-      -v {{ env "PWD" }}:/{{ env "PWD" | base }}
-      {{ template "maybeChangeUser" }}
-      alpine
-    : ls: [ls]
+    ls: [docker, run, -ti, --rm, -w, '{{ env "PWD" | base }}',
+      -v, '{{ env "PWD" }}:/{{ env "PWD" | base }}',
+      '{{ template "maybeChangeUser" }}',
+      alpine, ls]
 ```
 
 You can invoke executables like so:
@@ -326,7 +320,7 @@ will yield:
 > - you can use go templates in the `exec:` section.
 > - you can summon embedded data in the `exec:` section.
 
-#### Templated Execution Environments
+#### Templated Execution handles
 
 Suppose you want to make a wrapper around a docker utility. The specific
 docker invocation can be quite cryptic and long. Help your team by adding an
@@ -335,9 +329,8 @@ exec environment in the config file:
 ```yaml
 ...
 exec:
-  environments:
-    docker run -v {{ env "PWD" }}:/mounted-app alpine:
-      ls: [ls, /mounted-app]
+  handles:
+    ls: [docker, run, -v, '{{ env "PWD" }}:/mounted-app', alpine, ls, /mounted-app]
 ```
 
 Calling `summon run ls` would render the
@@ -365,39 +358,39 @@ Below is a synthetic example that uses every available command and flag config.
 
 ```yaml
 exec:
-  environments:
-    docker: # this can be a complex docker invocation like mounting volumes (-v),
-            # container removal arg (--rm), passed environment (-e), interactive
-            # terminal (-ti), etc.
-      handle [possible param hint to user]: # handle is used to invoke this docker container
-        args: ['hardcoded-arg-1', '{{ arg 0 }}', '{{ flagValue "my-flag" }}']
-        join: false # should the args array be joined by a space? Useful for
-                    # `bash -c` type commands
-        help: help that will be printed when user invokes `--help`
-        hidden: false # should this command appear in the help or completion ?
-        completion: '{{ }}' # dynamic completion candidates separated by `\n`
-                            # declared commands need not be listed here. But
-                            # calling a surrogate process might be handy to
-                            # complete a proxied command (especially if the
-                            # command lives in a container!).
-        subCmd:
-          first: # sub-command name, as invoked on the command line.
-            args: ['this is a complete new command description']
-            # ...
-            subCmd:
-              second-sub-cmd: [] # same recursive structure
-        flags:
-          my-flag:
-            effect: '{{.flag}}' # template to construct the value. The user
-                                # provided value is put in the .flag variable.
-                                # You can place the flag explicitly with the
-                                # flagValue template function.
-            shorthand: 'one letter shorthand (invoked with a single dash: i.e -i)'
-            default: if the user provides no value, use this
-            help: Help for the flag
-            explicit: true # Use this flag to disable automatic appending of
-                           # the flag effect to the args. If used in an argument
-                           # args array, explicit is true.
+  handles:
+    handle [possible param hint to user]: # 'handle' is used to invoke this docker container
+      cmd: [docker] # this can be a complex docker invocation like mounting volumes (-v),
+                    # container removal arg (--rm), passed environment (-e), interactive
+                    # terminal (-ti), etc.]
+      args: ['hardcoded-arg-1', '{{ arg 0 }}', '{{ flagValue "my-flag" }}']
+      join: false # should the args array be joined by a space? Useful for
+                  # `bash -c` type commands
+      help: help that will be printed when user invokes `--help`
+      hidden: false # should this command appear in the help or completion ?
+      completion: '{{ }}' # dynamic completion candidates separated by `\n`.
+                          # declared commands handles need not be listed here. But
+                          # calling a surrogate process might be handy to
+                          # complete a proxied command (especially if the
+                          # command lives in a container!).
+      subCmd:
+        first: # sub-command name, as invoked on the command line.
+          args: ['this is a complete new command description']
+          # ...
+          subCmd:
+            second-sub-cmd: [] # same recursive structure
+      flags:
+        my-flag:
+          effect: '{{.flag}}' # template to construct the value. The user
+                              # provided value is put in the .flag variable.
+                              # You can place the flag explicitly with the
+                              # flagValue template function.
+          shorthand: 'one letter shorthand (invoked with a single dash: i.e -i)'
+          default: if the user provides no value, use this
+          help: Help for the flag
+          explicit: true # Use this flag to disable automatic appending of
+                          # the flag effect to the args. If used in an argument
+                          # args array, explicit is true.
 ```
 
 #### Keeping DRY
@@ -416,9 +409,8 @@ can use YAML anchors to define the static (but required) params in
     - c
 
 exec:
-  environments:
-    docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
-      echo: [*baseargs, d]
+  handles:
+    echo: [docker, run, -ti, -v, '{{ env "PWD"}}:/workdir', -w, /workdir, alpine, *baseargs, d]
 ```
 
 Here, when you run with the `echo` handle, the arrays will be flattened to produce
@@ -436,9 +428,8 @@ invocable (new in v.0.10.0). You would use the `summon` template function bundle
 
 ```yaml
 exec:
-  environments:
-    bash:
-      hello: ['{{ summon "hello.sh" }}']
+  handles:
+    hello: [bash, '{{ summon "hello.sh" }}']
 ```
 
 Assuming you have a `hello.sh` file in the assets repo, this would result in
@@ -473,9 +464,8 @@ these in a template of the params array.
     ```yaml
     ...
     exec:
-      environments:
-        bash:
-          ls: [ls, '{{ arg 0 "error msg" }}']
+      handles:
+        ls: [bash, ls, '{{ arg 0 "error msg" }}']
     ```
 
 When used, summon will remove the consumed args, as this would
@@ -503,12 +493,12 @@ We want to mount volumes of a docker container, conditionally.
 
 ```yaml
 exec:
-  environments:
+  handles:
     # here, "eval-mounts" is a reference to the corresponding handle
-    docker run -it --rm {{ run "eval-mounts" }} alpine:
-      ls: ['ls']
-    bash -c:
-      eval-mounts: ["echo -v {{ env PWD }}:/app"]
+    ls:
+      cmd: [docker, run, -it, --rm, '{{ run "eval-mounts" }}', alpine]
+      args: ['ls']
+    eval-mounts: [bash, -c, "echo -v {{ env PWD }}:/app"]
     #    ^ used to compute the volumes.
 ```
 
@@ -559,19 +549,19 @@ Also, a [cobra](https://github.com/spf13/cobra) based program (kubectl).
 
 ```yaml
 exec:
-  environments:
-    bash -c: # here bash -c is used to test, but normally this is a complex
-             # docker container invocation.
+  handles:
+    # tanka delegates it's completion to posener/complete. Fake a completion
+    # call by setting the COMP_LINE enviroment var.
+    # delegate this to a simple bash-c handle
+    tk:
+      cmd: &bash-c [bash, -c] # here bash -c is used to test, but normally this is a complex
+                              # docker container invocation.
+      completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
 
-      # tanka delegates it's completion to posener/complete. Fake a completion
-      # call by setting the COMP_LINE enviroment var.
-      # delegate this to a simple bash-c handle
-      tk:
-        completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
-
-      kubectl: # cobra based commands are a bit more involved as we need to
-               # filter the control characters (:0) that it outputs.
-        completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
+    kubectl: # cobra based commands are a bit more involved as we need to
+             # filter the control characters (:0) that it outputs.
+      cmd: *bash-c
+      completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
 
     bash --norc --noprofile -c: # this is a simple bash environment to delegate calls
       bash-c:
@@ -668,16 +658,6 @@ nature of the yaml config file with its Node parsing API.
   shell `tree` command.
 
 ## FAQ
-
-- Why is the `exec:` config file ordered by "environment" ?
-
-  Summon is oriented at providing an easy CLI interface to complex sub programs.
-  In this regard, it tends to group invocations in the same execution "environment".
-
-  This helps in scenarios of supplying a dev container from which are surfaced
-  tools for your team.
-
-  We are interested to hear if this organization is a nuisance for you.
 
 - Why not use git directly ?
 

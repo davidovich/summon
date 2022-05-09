@@ -231,7 +231,7 @@ exec:
   flags:
     config-root: 'CONFIG_ROOT=.'
 
-  environments:
+  handles:
     echo-pwd: ['echo', 'pwd:', '{{ env "PWD" | base }}']
 
     manifest:
@@ -333,7 +333,7 @@ func TestConstructCommandTree(t *testing.T) {
 		  flags:
 		    config-root: 'CONFIG_ROOT=.'
 
-		  environments:
+		  handles:
 		    manifest:
 		      cmd: [docker]
 		      help: 'render kubernetes manifests in build dir'
@@ -619,7 +619,7 @@ func TestFlagUsages2(t *testing.T) {
 		    global-flag:
 		      effect: 'global-flag-set'
 		      explicit: true
-		  environments:
+		  handles:
 		    a-command:
 		      cmd: [program]
 		      args: [-c]

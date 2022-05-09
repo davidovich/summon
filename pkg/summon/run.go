@@ -240,7 +240,7 @@ func (d *Driver) execContext() (config.Flags, handles, error) {
 		for handle, execDesc := range d.config.Exec.ExecEnv {
 			cmdSpec, err := normalizeExecDesc(execDesc.Value)
 			if err != nil {
-				return nil, nil, fmt.Errorf("error in exec:environments:%s %s", handle, err.Error())
+				return nil, nil, fmt.Errorf("error in exec:handles:%s %s", handle, err.Error())
 			}
 			handles[handle] = cmdSpec
 

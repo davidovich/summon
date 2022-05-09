@@ -28,9 +28,9 @@ type Config struct {
 	HideAssetsInHelp bool        `yaml:"hideAssetsInHelp"`
 }
 
-// ExecContext houses execution environments and global flags
+// ExecContext houses execution handles and global flags
 type ExecContext struct {
-	ExecEnv     map[string]ExecDesc `yaml:"environments"`
+	ExecEnv     map[string]ExecDesc `yaml:"handles"`
 	GlobalFlags map[string]FlagDesc `yaml:"flags"`
 }
 

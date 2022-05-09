@@ -4,7 +4,7 @@ aliases:
   a: "subdir/a/a.txt"
 outputdir: "overridden_dir"
 exec:
-  environments:
+  handles:
     echo:
       - bash
       - echo

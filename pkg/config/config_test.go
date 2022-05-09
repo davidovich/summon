@@ -12,7 +12,7 @@ func TestConfigReader(t *testing.T) {
 	config := dedent.Dedent(`
     version: 1
     exec:
-      environments:
+      handles:
         hello: [python, -c, print("hello")]
         echo:
           cmd: [bash]

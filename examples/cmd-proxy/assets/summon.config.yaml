@@ -13,7 +13,7 @@ exec:
   flags:
     config-root: 'CONFIG_ROOT={{.flag}}'
 
-  environments:
+  handles:
     test:
       cmd: ['{{ printf "%s" (env "inContainer") }}']
       args: [*string, 'b', 'c']
