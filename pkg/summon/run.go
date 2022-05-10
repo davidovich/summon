@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	// "github.com/google/shlex"
+	"github.com/anmitsu/go-shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -88,12 +90,18 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
-	execEnv, err := d.RenderArgs(cmdSpec.command)
+	execEnv, err := d.RenderArgs(FlattenStrings(cmdSpec.command)...)
 	if err != nil {
 		return nil, err
 	}
+
+	args := FlattenStrings(cmdSpec.args)
 	// Render and flatten arguments array of arrays to simple array
-	arguments, err := d.RenderArgs(cmdSpec.args...)
+	if cmdSpec.join != nil && *cmdSpec.join {
+		oneLine := strings.Join(args, " ")
+		args = []string{oneLine}
+	}
+	arguments, err := d.RenderArgs(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,19 +146,14 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		}
 	}
 
-	if cmdSpec.join != nil && *cmdSpec.join {
-		oneLine := strings.Join(finalArgs, " ")
-		finalArgs = []string{oneLine}
-	}
-
 	finalCmd := append(execEnv, finalArgs...)
 
 	return finalCmd, nil
 }
 
-func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
+func (d *Driver) RenderArgs(args ...string) ([]string, error) {
 	targets := make([]string, 0, len(args))
-	for _, t := range FlattenStrings(args) {
+	for _, t := range args {
 		rt, err := d.renderTemplate(t)
 		if err != nil {
 			return nil, err
@@ -159,12 +162,17 @@ func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
 			continue
 		}
 
-		renderedTargets := []string{rt}
+		inner := rt
+		var renderedTargets []string
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			inner := strings.Trim(rt, "[]")
-			renderedTargets = strings.Split(inner, "\n")
-			if inner == "" {
-				renderedTargets = []string{""}
+			inner = strings.Trim(rt, "[]")
+		}
+		if inner == "" {
+			renderedTargets = []string{""}
+		} else {
+			renderedTargets, err = shlex.Split(inner, true)
+			if err != nil {
+				return nil, err
 			}
 		}
 
