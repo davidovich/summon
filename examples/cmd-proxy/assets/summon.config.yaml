@@ -14,8 +14,16 @@ exec:
     config-root: 'CONFIG_ROOT={{.flag}}'
 
   handles:
-    test:
-      cmd: ['{{ printf "%s" (env "inContainer") }}']
+    test: ['python3', '-c', "'print(\"hello from python\")'"]
+    testContainer:
+      cmd:
+      - |-
+        {{ if not (env "inContainer") }}
+        echo docker run -v \"{{ env "PWD" }}\"
+        -w \"a-dir\"
+        alpine
+        {{ end }}
+
       args: [*string, 'b', 'c']
 
 
