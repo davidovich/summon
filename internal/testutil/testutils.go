@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/davidovich/summon/pkg/command"
 	"github.com/spf13/afero"
@@ -31,7 +30,7 @@ func ReplaceFs() func() {
 
 //Call is a recording of a fake call
 type Call struct {
-	Args string
+	Args []string
 	Env  []string
 	Out  string
 }
@@ -79,10 +78,7 @@ func FakeExecCommand(testToCall string, stdout, stderr *bytes.Buffer) func(strin
 
 // IsHelper returns true if a process helper is wanted
 func IsHelper() bool {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return false
-	}
-	return true
+	return os.Getenv("GO_WANT_HELPER_PROCESS") == "1"
 }
 
 func startCall(out io.Writer) {
@@ -96,7 +92,7 @@ func willAppendCall(out io.Writer) {
 // MakeCall prepares a call structure
 func MakeCall() Call {
 	return Call{
-		Args: strings.Join(CleanHelperArgs(os.Args), " "),
+		Args: CleanHelperArgs(os.Args),
 		Env:  os.Environ(),
 	}
 }

@@ -12,11 +12,11 @@ func TestUnMarshallCall(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	call1 := Call{
-		Args: "a b c",
+		Args: []string{"a", "b", "c"},
 		Env:  []string{"a=b"},
 	}
 	call2 := Call{
-		Args: "a b c",
+		Args: []string{"a", "b", "c"},
 		Env:  []string{"a=b"},
 	}
 
@@ -36,8 +36,8 @@ func TestUnMarshallCall(t *testing.T) {
 
 func TestMarshallCalls(t *testing.T) {
 	c := Calls{Calls: []Call{
-		Call{
-			Args: "a b c",
+		{
+			Args: []string{"a", "b", "c"},
 			Env:  []string{"a=b"},
 			Out:  "output",
 		},
@@ -46,5 +46,5 @@ func TestMarshallCalls(t *testing.T) {
 	b, err := json.Marshal(c)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "{\"Calls\":[{\"Args\":\"a b c\",\"Env\":[\"a=b\"],\"Out\":\"output\"}]}", string(b))
+	assert.Equal(t, "{\"Calls\":[{\"Args\":[\"a\",\"b\",\"c\"],\"Env\":[\"a=b\"],\"Out\":\"output\"}]}", string(b))
 }

@@ -145,19 +145,19 @@ func Test_RootCmdWithRunnables(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         []string
-		expectedCall string
+		expectedCall []string
 		wantErr      bool
 	}{
 		{
 			name:         "call echo",
 			args:         []string{"echo"},
-			expectedCall: "bash echo hello",
+			expectedCall: []string{"bash", "echo", "hello "},
 			wantErr:      false,
 		},
 		{
 			name:         "call hello-bash",
 			args:         []string{"hello-bash"},
-			expectedCall: "bash hello.sh",
+			expectedCall: []string{"bash", "hello.sh"},
 			wantErr:      false,
 		},
 	}
@@ -177,7 +177,7 @@ func Test_RootCmdWithRunnables(t *testing.T) {
 
 			c, err := testutil.GetCalls(stderr)
 			assert.Nil(t, err)
-			assert.Contains(t, c.Calls[0].Args, tt.expectedCall)
+			assert.Equal(t, c.Calls[0].Args, tt.expectedCall)
 		})
 	}
 }
