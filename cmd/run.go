@@ -8,7 +8,7 @@ import (
 	"github.com/davidovich/summon/pkg/summon"
 )
 
-func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) error {
+func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.ConfigurableRunner, main *mainCmd) (*cobra.Command, error) {
 	osArgs := os.Args
 	if main.osArgs != nil {
 		osArgs = *main.osArgs
@@ -17,7 +17,6 @@ func newRunCmd(runCmdEnabled bool, root *cobra.Command, driver summon.Configurab
 	// read config for exec section
 	driver.Configure(
 		summon.Args(osArgs...),
-		summon.JSON(&main.json),
 	)
 
 	return driver.ConstructCommandTree(root, runCmdEnabled)

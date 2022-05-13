@@ -3,10 +3,8 @@ package cmd
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,7 +21,6 @@ func TestRunCmd(t *testing.T) {
 		desc      string
 		callArgs  []string
 		args      []string
-		main      *mainCmd
 		wantError bool
 		noCalls   bool
 	}{
@@ -49,17 +46,14 @@ func TestRunCmd(t *testing.T) {
 		},
 		{
 			desc: "sub-param-passed",
-			args: []string{"run", "echo", "--unknown-arg", "last", "params"},
-			main: &mainCmd{
-				json: "{\"Name\": \"david\"}",
-			},
+			args: []string{"run", "--json", "{\"Name\": \"david\"}", "echo", "--unknown-arg", "last", "params"},
 			// this relies on the v0.10.0 version of templated exec
 			// see the echo command in testdata/summon.config.yaml
 			callArgs: []string{"bash", "echo", "hello david", "--unknown-arg", "last", "params"},
 		},
 		{
 			desc:    "dry-run",
-			args:    []string{"run", "echo", "-n"},
+			args:    []string{"run", "-n", "echo", "hello"},
 			noCalls: true,
 		},
 		{
@@ -81,22 +75,9 @@ func TestRunCmd(t *testing.T) {
 			err := s.Configure(summon.ExecCmd(execCommand))
 			assert.NoError(t, err)
 
-			if tC.main == nil {
-				tC.main = &mainCmd{}
-			}
 			injectOsArgs := append([]string{"summon"}, tC.args...)
-			tC.main.osArgs = &injectOsArgs
-			cobraCmd := &cobra.Command{Use: "summon", RunE: func(cmd *cobra.Command, args []string) error {
-				return fmt.Errorf("root cmd called")
-			}}
-			// make sure we don't pass a nil slice to cobra, as this is the
-			// zero value. Cobra uses os.Args if args are nil.
-			// https://stackoverflow.com/a/44305910/28275
-			if tC.args == nil {
-				tC.args = make([]string, 0)
-			}
-			err = newRunCmd(true, cobraCmd, s, tC.main)
-			assert.NoError(t, err)
+			cobraCmd, err := CreateRootCmd(s, injectOsArgs, summon.MainOptions{})
+			require.NoError(t, err)
 
 			err = cobraCmd.Execute()
 			if tC.wantError {

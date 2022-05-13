@@ -13,7 +13,7 @@ type ConfigurableRunner interface {
 // Runner allows executing configured aliases from summon.config.yaml.
 type Runner interface {
 	Run(opts ...Option) error
-	ConstructCommandTree(*cobra.Command, bool) error
+	ConstructCommandTree(*cobra.Command, bool) (*cobra.Command, error)
 }
 
 // Configurer allows configuring a driver from variadic options.

@@ -29,7 +29,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -45,8 +44,6 @@ type mainCmd struct {
 	dest        string
 	driver      *summon.Driver
 	filename    string
-	json        string
-	jsonFile    string
 	raw         bool
 	debug       bool
 	out         io.Writer
@@ -70,17 +67,15 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 		cmdHint = " [handle | file to summon]"
 	}
 	rootCmd := &cobra.Command{
-		Use:   exeName + cmdHint,
-		Short: exeName + " main command",
+		Use:              exeName + cmdHint,
+		Short:            exeName + " main command",
+		TraverseChildren: true,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if main.copyAll || showVersion || main.listOptions.asOption {
 				return nil
 			}
 			if len(args) < 1 {
 				return fmt.Errorf("requires one file to summon, received %d", len(args))
-			}
-			if main.json != "" && main.jsonFile != "" {
-				return fmt.Errorf("--json and --json-file are mutually exclusive")
 			}
 			return nil
 		},
@@ -104,9 +99,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 
 	main.cmd = rootCmd
 
-	rootCmd.PersistentFlags().StringVar(&main.json, "json", "", "json to use to render template")
-	rootCmd.PersistentFlags().StringVar(&main.jsonFile, "json-file", "", "json file to use to render template, with '-' for stdin")
-	rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")
+	// rootCmd.PersistentFlags().BoolVarP(&main.debug, "debug", "d", false, "print debug info on stderr")
 	rootCmd.Flags().BoolVarP(&main.copyAll, "all", "a", false, "restitute all data")
 	rootCmd.Flags().BoolVar(&main.raw, "raw", false, "output without any template rendering")
 	rootCmd.Flags().StringVarP(&main.dest, "out", "o", driver.OutputDir(), "destination directory, or '-' for stdout")
@@ -125,12 +118,6 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 			rootCmd.AddCommand(&cobra.Command{
 				Use:   summonable,
 				Short: "summon " + summonable + " file to " + main.dest + "/ dir",
-				Args: func(cmd *cobra.Command, args []string) error {
-					if main.json != "" && main.jsonFile != "" {
-						return fmt.Errorf("--json and --json-file are mutually exclusive")
-					}
-					return nil
-				},
 				RunE: func(cmd *cobra.Command, args []string) error {
 					main.filename = cmd.Use
 					return main.run()
@@ -150,13 +137,18 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 	}
 
 	// add run cmd, or root subcommands
-	err := newRunCmd(!options.WithoutRunSubcmd, rootCmd, driver, main)
+	runRoot, err := newRunCmd(!options.WithoutRunSubcmd, rootCmd, driver, main)
 	if err != nil {
 		return nil, err
 	}
 
 	// add completion
 	rootCmd.AddCommand(newCompletionCmd(driver))
+
+	// ask driver to register its flags
+	driver.RegisterFlags(runRoot)
+
+	driver.SetupRunArgs(runRoot)
 
 	return rootCmd, nil
 }
@@ -174,28 +166,15 @@ func (m *mainCmd) run() error {
 		m.out = m.cmd.OutOrStdout()
 	}
 
-	if m.jsonFile != "" {
-		var j []byte
-		var err error
-		if m.jsonFile == "-" {
-			j, err = ioutil.ReadAll(m.cmd.InOrStdin())
-		} else {
-			j, err = ioutil.ReadFile(m.jsonFile)
-		}
-		if err != nil {
-			return err
-		}
-
-		m.json = string(j)
-	}
-
-	m.driver.Configure(
+	err := m.driver.Configure(
 		summon.All(m.copyAll),
 		summon.Dest(m.dest),
 		summon.Filename(m.filename),
-		summon.JSON(&m.json),
 		summon.Raw(m.raw),
 	)
+	if err != nil {
+		return err
+	}
 
 	resultFilepath, err := m.driver.Summon()
 	if err != nil {

@@ -180,7 +180,9 @@ func TestRun(t *testing.T) {
 			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(args...))
 
 			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
-			s.ConstructCommandTree(rootCmd, tt.enableRun)
+			runRoot, err := s.ConstructCommandTree(rootCmd, tt.enableRun)
+			require.NoError(t, err)
+			s.SetupRunArgs(runRoot)
 
 			if _, err := executeCommand(rootCmd); (err != nil) != tt.wantErr {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
@@ -194,7 +196,7 @@ func TestRun(t *testing.T) {
 			} else {
 				if len(tt.expect) != 0 {
 					for nthCall, e := range tt.expect {
-						require.Less(t, nthCall, len(c.Calls), "%d out of range of calls, expected %s", nthCall, e)
+						require.Lessf(t, nthCall, len(c.Calls), "%d out of range of calls, expected %s", nthCall, e)
 						assert.Equal(t, e, c.Calls[nthCall].Args)
 					}
 				}
@@ -313,16 +315,16 @@ func TestExtractUnknownArgs(t *testing.T) {
 	json := ""
 	fset.StringVarP(&json, "json", "j", "{}", "")
 
-	unknown := extractUnknownArgs(fset, []string{"--json", "{}", "--unknown"})
+	unknown := extractUnknownArgsForFlags(fset, []string{"--json", "{}", "--unknown"})
 	assert.Equal(t, []string{"--unknown"}, unknown)
 
-	unknown = extractUnknownArgs(fset, []string{"--"})
+	unknown = extractUnknownArgsForFlags(fset, []string{"--"})
 	assert.Equal(t, []string{"--"}, unknown)
 
-	unknownShort := extractUnknownArgs(fset, []string{"-j", "--unknown"})
+	unknownShort := extractUnknownArgsForFlags(fset, []string{"-j", "--unknown"})
 	assert.Equal(t, []string{"--unknown"}, unknownShort)
 
-	unknownShort = extractUnknownArgs(fset, []string{"-"})
+	unknownShort = extractUnknownArgsForFlags(fset, []string{"-"})
 	assert.Equal(t, []string{"-"}, unknownShort)
 }
 
@@ -418,7 +420,7 @@ func TestConstructCommandTree(t *testing.T) {
 			assert.NoError(t, err)
 
 			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
-			err = s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
+			_, err = s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
 			if tt.withRunCmd {
 				cmd, _, err := rootCmd.Find([]string{"run"})
@@ -500,7 +502,9 @@ func (ft flagTest) run(t *testing.T) {
 		helpCalled = true
 	})
 
-	err := d.ConstructCommandTree(rootCmd, ft.withRun)
+	runRoot, err := d.ConstructCommandTree(rootCmd, ft.withRun)
+	d.SetupRunArgs(runRoot)
+
 	assert.NoError(t, err)
 
 	_, err = executeCommand(rootCmd)
@@ -669,7 +673,7 @@ func TestFlagUsages2(t *testing.T) {
 
 		rootCmd := &cobra.Command{Use: "root"}
 		s.Configure(Args("prog", "a-command", "--user-flag", "user-value"))
-		err := s.ConstructCommandTree(rootCmd, false)
+		_, err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
 		_, err = executeCommand(rootCmd)
@@ -682,7 +686,7 @@ func TestFlagUsages2(t *testing.T) {
 
 		rootCmd := &cobra.Command{Use: "root"}
 		s.Configure(Args("prog", "b-cmd", "arg1", "arg2", "--global-flag", "user-value"))
-		err := s.ConstructCommandTree(rootCmd, false)
+		_, err := s.ConstructCommandTree(rootCmd, false)
 		assert.NoError(t, err)
 
 		s.Configure(Args("prog", "arg1", "arg2"))

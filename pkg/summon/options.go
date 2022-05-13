@@ -32,6 +32,8 @@ type options struct {
 	cobraCmd *cobra.Command
 	// args to exec entry
 	args []string
+	// args as wanted by user (except help)
+	initialArgs []string
 	// help wanted is the position of --help or -h request
 	helpWanted helpInfo
 	// keep track of arg indexes that were used

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
@@ -133,4 +134,55 @@ func (d *Driver) Configure(opts ...Option) error {
 	d.opts.data["osArgs"] = os.Args
 
 	return nil
+}
+
+// manage json manually
+type jsonValue struct {
+	d             Configurer
+	cmd           *cobra.Command
+	isFile        bool
+	otherValueSet *bool
+	valueSet      bool
+	json          string
+}
+
+func (jv *jsonValue) Set(s string) error {
+	jv.json = s
+	if *jv.otherValueSet {
+		return fmt.Errorf("--json and --json-file are mutually exclusive")
+	}
+	jv.valueSet = true
+	if jv.isFile {
+		var j []byte
+		var err error
+		if s == "-" {
+			j, err = ioutil.ReadAll(jv.cmd.InOrStdin())
+		} else {
+			j, err = ioutil.ReadFile(s)
+		}
+		if err != nil {
+			return err
+		}
+
+		jv.json = string(j)
+	}
+	return jv.d.Configure(JSON(&jv.json))
+}
+
+func (jv *jsonValue) String() string {
+	return jv.json
+}
+
+func (jv *jsonValue) Type() string { return "string" }
+
+func (d *Driver) RegisterFlags(runRoot *cobra.Command) {
+	json := &jsonValue{d: d, cmd: runRoot.Root()}
+	jsonFile := &jsonValue{d: d, cmd: runRoot.Root(), isFile: true, otherValueSet: &json.valueSet}
+	json.otherValueSet = &jsonFile.valueSet
+
+	runRoot.Root().PersistentFlags().Var(json, "json", "json to use to render template")
+	runRoot.Root().PersistentFlags().Var(jsonFile, "json-file", "json file to use to render template, with '-' for stdin")
+
+	runRoot.Root().Flags().BoolVarP(&d.opts.debug, "debug", "d", false, "print debug info on stderr")
+	runRoot.Flags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
 }
