@@ -6,4 +6,4 @@ outputdir: ".summoned"
 hideAssetsInHelp: false
 exec:
   flags: {}
-  environments: {}
+  handles: {}

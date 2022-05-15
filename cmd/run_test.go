@@ -20,17 +20,17 @@ var cmdTestFS embed.FS
 func TestRunCmd(t *testing.T) {
 
 	testCases := []struct {
-		desc             string
-		callArgsFragment string
-		args             []string
-		main             *mainCmd
-		wantError        bool
-		noCalls          bool
+		desc      string
+		callArgs  []string
+		args      []string
+		main      *mainCmd
+		wantError bool
+		noCalls   bool
 	}{
 		{
-			desc:             "sub-command",
-			args:             []string{"run", "echo"},
-			callArgsFragment: "bash echo hello",
+			desc:     "sub-command",
+			args:     []string{"run", "echo"},
+			callArgs: []string{"bash", "echo", "hello "},
 		},
 		{
 			desc:      "no-sub-command",
@@ -55,7 +55,7 @@ func TestRunCmd(t *testing.T) {
 			},
 			// this relies on the v0.10.0 version of templated exec
 			// see the echo command in testdata/summon.config.yaml
-			callArgsFragment: "bash echo hello david --unknown-arg last params",
+			callArgs: []string{"bash", "echo", "hello david", "--unknown-arg", "last", "params"},
 		},
 		{
 			desc:    "dry-run",
@@ -63,9 +63,11 @@ func TestRunCmd(t *testing.T) {
 			noCalls: true,
 		},
 		{
-			desc:             "run-completion",
-			args:             []string{"__complete", "run", "tk", ""},
-			callArgsFragment: "a\nb\n",
+			desc: "run-completion",
+			args: []string{"__complete", "run", "tk", ""},
+			// Note that this test completion has an internal run command to output
+			// a \n separated string (fake-make), this explains the leading call aags
+			callArgs: []string{"bash", "--norc", "--noprofile", "-c", "echo -e a\nb\n"},
 		},
 	}
 
@@ -87,7 +89,7 @@ func TestRunCmd(t *testing.T) {
 			cobraCmd := &cobra.Command{Use: "summon", RunE: func(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("root cmd called")
 			}}
-			// make sure we dont pass a nil slice to cobra, as this is the
+			// make sure we don't pass a nil slice to cobra, as this is the
 			// zero value. Cobra uses os.Args if args are nil.
 			// https://stackoverflow.com/a/44305910/28275
 			if tC.args == nil {
@@ -109,7 +111,7 @@ func TestRunCmd(t *testing.T) {
 				assert.Len(t, c.Calls, 0)
 			} else {
 				require.Greater(t, len(c.Calls), 0, "should have made call")
-				assert.Contains(t, c.Calls[0].Args, tC.callArgsFragment)
+				assert.Equal(t, tC.callArgs, c.Calls[0].Args)
 			}
 		})
 	}

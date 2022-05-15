@@ -1,12 +1,9 @@
 SHELL=/bin/bash
 
-HAS_GOCOVERUTIL			:= $(shell command -v gocoverutil)
-
 export GO111MODULE := on
 
 SCAFFOLD_BIN := bin/scaffold
-SRCS = $(shell GO111MODULE=on go list -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
-COVERAGE_PERCENT_FILE := $(CURDIR)/build/coverage-percent.txt
+SRCS = $(shell go list -buildvcs=false -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
 
 DOC_REPO_NAME := davidovich.github.io
 DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
@@ -30,9 +27,9 @@ bin/cmd-proxy: $(call SRCS,github.com/davidovich/summon/examples/cmd-proxy) $(sh
 $(SCAFFOLD_BIN): $(ASSETS) $(call SRCS,github.com/davidovich/summon/scaffold)
 	go build -o $@ $(@F)/$(@F).go
 
-COVERAGE := build/coverage/report/summon
-MERGED_COVERAGE := build/coverage/report/cover.merged.out
-HTML_COVERAGE := build/coverage/html/index.html
+COVERAGE := build/coverage/coverage.out
+COVERAGE_PERCENT_FILE := build/coverage/percent.txt
+HTML_COVERAGE := build/coverage/index.html
 
 .PHONY: test
 test: clean-coverage output-coverage
@@ -42,25 +39,19 @@ clean-coverage:
 	rm -f $(COVERAGE)
 
 .PHONY: output-coverage
-output-coverage: $(MERGED_COVERAGE) $(HTML_COVERAGE)
+output-coverage: $(COVERAGE) $(HTML_COVERAGE)
 	go tool cover -func=$<
 
-$(COVERAGE_PERCENT_FILE): $(MERGED_COVERAGE)
+$(COVERAGE_PERCENT_FILE): $(COVERAGE)
 	go tool cover -func=$< | sed -n 's/total:[[:space:]]*(statements)[[:space:]]*\([0-9.]*\)%/\1/gw $@'
 
-$(MERGED_COVERAGE): $(COVERAGE)
-ifndef HAS_GOCOVERUTIL
-	go install github.com/AlekSi/gocoverutil@v0.2.0
-endif
-	gocoverutil -coverprofile=$@ merge $^
-
-$(HTML_COVERAGE): $(MERGED_COVERAGE)
+$(HTML_COVERAGE): $(COVERAGE)
 	@mkdir -p $(@D)
 	go tool cover -html=$< -o $@
 
 $(COVERAGE):
 	@mkdir -p $(@D)
-	go test ./... -timeout 30s --cover -coverprofile $@ -v
+	go test -buildvcs=false ./... -timeout 30s --coverpkg=./... -coverprofile $@ -v
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)

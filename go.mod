@@ -1,11 +1,10 @@
 module github.com/davidovich/summon
 
-go 1.17
+go 1.18
 
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20190529205929-3e23dcd4532b
 	github.com/Masterminds/sprig/v3 v3.2.2
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/lithammer/dedent v1.1.0
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/cobra v1.3.0
@@ -17,6 +16,7 @@ require (
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/huandu/xstrings v1.3.1 // indirect

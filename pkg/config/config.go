@@ -28,20 +28,17 @@ type Config struct {
 	HideAssetsInHelp bool        `yaml:"hideAssetsInHelp"`
 }
 
-// ExecContext houses execution environments and global flags
+// ExecContext houses execution handles and global flags
 type ExecContext struct {
-	ExecEnv     map[string]HandlesDesc `yaml:"environments"`
-	GlobalFlags map[string]FlagDesc    `yaml:"flags"`
+	ExecEnv     map[string]ExecDesc `yaml:"handles"`
+	GlobalFlags map[string]FlagDesc `yaml:"flags"`
 }
 
-// ExecDesc allows unmarshaling complex subtype
+// ExecDesc allows unmarshalling complex subtype. Can be a slice of
+// cmd args, or a CmdDesc
 type ExecDesc struct {
 	Value interface{}
 }
-
-// HandlesDesc describes a handle name and invocable target.
-// The ExecDesc target can be an ArgSliceSpec, or a CmdDesc
-type HandlesDesc map[string]ExecDesc
 
 // Flags are the normalized FlagDesc
 type Flags map[string]*FlagSpec
@@ -54,6 +51,7 @@ type ArgSliceSpec []interface{}
 // Its SubCmd is an ExecDesc so it can be an ArgsSliceSpec or a CmdSpec
 // Its Flags can be a one line string flag or a FlagSpec
 type CmdDesc struct {
+	Cmd ArgSliceSpec `yaml:"cmd"`
 	// Args contain the args that get appended to the ExecEnvironment
 	Args ArgSliceSpec `yaml:"args"`
 	// SubCmd describes a sub-command of current command

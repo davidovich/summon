@@ -28,38 +28,39 @@ func TestRun(t *testing.T) {
 		helper    string
 		cmd       []string
 		enableRun bool
-		expect    []string
-		contains  []string
+		expect    [][]string
+		out       string
+		contains  [][]string
 		args      []string
 		wantErr   bool
 	}{
 		{
 			name:    "composite-invoker", // python -c
 			cmd:     []string{"hello"},
-			expect:  []string{"python -c print(\"hello from python!\")"},
+			expect:  [][]string{{"python", "-c", "print(\"hello from python!\")"}},
 			wantErr: false,
 		},
 		{
 			name:    "simple-invoker", // bash
 			cmd:     []string{"hello-bash"},
-			expect:  []string{"bash hello.sh"},
+			expect:  [][]string{{"bash", "hello.sh"}},
 			wantErr: false,
 		},
 		{
 			name:    "self-reference-invoker", // bash
 			cmd:     []string{"bash-self-ref"},
-			expect:  []string{fmt.Sprintf("bash %s", filepath.Join(os.TempDir(), "hello.sh"))},
+			expect:  [][]string{{"bash", filepath.Join(os.TempDir(), "hello.sh")}},
 			wantErr: false,
 		},
 		{
 			name:   "self-reference-run", // bash
 			helper: "TestSubCommandTemplateRunCall",
 			cmd:    []string{"run-example", "--help"},
-			expect: []string{
+			expect: [][]string{
 				// run first call (returns "hello from subcmd")
 				// should not have help active
-				"bash hello.sh",
-				"bash hello from subcmd --help", // actual run-example call with args
+				{"bash", "hello.sh"},
+				{"bash", "hello from subcmd", "--help"}, // actual run-example call with args
 			},
 			wantErr: false,
 		},
@@ -77,57 +78,57 @@ func TestRun(t *testing.T) {
 		{
 			name:    "renderable-invoker",
 			cmd:     []string{"docker"},
-			expect:  []string{"docker info"},
+			expect:  [][]string{{"docker", "info"}},
 			wantErr: false,
 		},
 		{
 			name:    "args-access",
 			cmd:     []string{"args"},
-			args:    []string{"a c", "b"},
-			expect:  []string{"bash args: a c b"},
+			args:    []string{"'a c'", "b"},
+			expect:  [][]string{{"bash", "args:", "a c", "b"}},
 			wantErr: false,
 		},
 		{
 			name:    "one-arg-access-remainder-passed",
 			cmd:     []string{"one-arg"},
-			args:    []string{"\"acce ssed\"", "remainder1", "remainder2"},
-			expect:  []string{"bash args: \"acce ssed\" remainder1 remainder2"},
+			args:    []string{"'acce ssed'", "remainder1", "remainder2"},
+			expect:  [][]string{{"bash", "args:", "acce ssed", "remainder1", "remainder2"}},
 			wantErr: false,
 		},
 		{
 			name:    "all-args-access-no-remainder-passed",
 			cmd:     []string{"all-args"},
 			args:    []string{"a", "b", "c", "d"},
-			expect:  []string{"bash args: a b c d"},
+			expect:  [][]string{{"bash", "args:", "a", "b", "c", "d"}},
 			wantErr: false,
 		},
 		{
 			name:     "osArgs-access",
 			cmd:      []string{"osArgs"},
-			contains: []string{"test"},
+			contains: [][]string{{"summon.test"}},
 			wantErr:  false,
 		},
 		{
-			cmd:      []string{"templateref"},
-			contains: []string{"bash 1.2.3"},
-			wantErr:  false,
+			cmd:     []string{"templateref"},
+			expect:  [][]string{{"bash", "1.2.3"}},
+			wantErr: false,
 		},
 		{
 			name:   "new-cmd-spec",
 			cmd:    []string{"overrides"},
-			expect: []string{"bash hello.sh"},
+			expect: [][]string{{"bash", "hello.sh"}},
 		},
 		{
 			name:   "new-cmd-spec-subcmd",
 			cmd:    []string{"overrides"},
 			args:   []string{"subcmd", "another"},
-			expect: []string{"bash hello.sh subcmd another"},
+			expect: [][]string{{"bash", "hello.sh", "subcmd", "another"}},
 		},
 		{
 			name:      "sub-cmd-with-run-enabled",
 			enableRun: true,
 			cmd:       []string{"run", "hello-bash"},
-			expect:    []string{"bash hello.sh"},
+			expect:    [][]string{{"bash", "hello.sh"}},
 		},
 		{
 			name:      "args-error-run-enabled",
@@ -154,12 +155,12 @@ func TestRun(t *testing.T) {
 		{
 			name:   "join-arguments",
 			args:   []string{"hello-join"},
-			expect: []string{"python -c print(\" these params will be joined \")"},
+			expect: [][]string{{"python", "-c", "print(\" these params will be joined \")"}},
 		},
 		{
 			name:   "join-then-dont-on-subarguments",
 			args:   []string{"hello-join", "non-inlined"},
-			expect: []string{"python -c print(\"hello\") # these are separate args -"},
+			expect: [][]string{{"python", "-c", "print(\"hello\")", "#", "these", "are", "separate", "args", "-"}},
 		},
 	}
 	for _, tt := range tests {
@@ -192,14 +193,28 @@ func TestRun(t *testing.T) {
 				assert.Len(t, c.Calls, 0)
 			} else {
 				if len(tt.expect) != 0 {
-					for i, e := range tt.expect {
-						assert.Equal(t, e, c.Calls[i].Args)
+					for nthCall, e := range tt.expect {
+						require.Less(t, nthCall, len(c.Calls), "%d out of range of calls, expected %s", nthCall, e)
+						assert.Equal(t, e, c.Calls[nthCall].Args)
 					}
 				}
 				if len(tt.contains) != 0 {
-					for i, e := range tt.contains {
-						assert.Contains(t, c.Calls[i].Args, e)
+					for nthCall, args := range tt.contains {
+						contains := false
+						for _, arg := range args {
+							for _, callArg := range c.Calls[nthCall].Args {
+								if strings.Contains(callArg, arg) {
+									contains = true
+									break
+								}
+							}
+							if contains {
+								break
+							}
+						}
+						assert.True(t, contains, "Args %s does not contain %s", c.Calls[nthCall].Args, args)
 					}
+
 				}
 			}
 		})
@@ -219,7 +234,7 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 		defer os.Exit(0)
 		testutil.WriteCall(testutil.MakeCall())
 
-		fmt.Fprint(os.Stdout, "hello from subcmd")
+		fmt.Fprint(os.Stdout, "\"hello from subcmd\"")
 	}
 }
 
@@ -231,16 +246,15 @@ exec:
   flags:
     config-root: 'CONFIG_ROOT=.'
 
-  environments:
-    echo:
-      echo-pwd: ['pwd:', '{{ env "PWD" | base }}']
+  handles:
+    echo-pwd: ['echo', 'pwd:', '{{ env "PWD" | base }}']
 
-    docker:
-      manifest:
-        help: 'render kubernetes manifests in build dir'
-        # popArg is used to remove the arg from user input
-        args: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
-        completion: '{{ summon "make list-environments" }}'
+    manifest:
+      cmd: [docker]
+      help: 'render kubernetes manifests in build dir'
+      # popArg is used to remove the arg from user input
+      args: ['manifests/{{ arg 0 }}','{{ flag "config-root" }}']
+      completion: '{{ summon "make list-environments" }}'
 `
 
 	testFs := fstest.MapFS{}
@@ -255,7 +269,7 @@ exec:
 	assert.Contains(t, handles, "manifest")
 
 	assert.Equal(t,
-		[]string{"pwd:", "{{ env \"PWD\" | base }}"},
+		[]string{"echo", "pwd:", "{{ env \"PWD\" | base }}"},
 		FlattenStrings(handles["echo-pwd"].args...))
 	assert.Equal(t,
 		[]string{"manifests/{{ arg 0 }}", `{{ flag "config-root" }}`},
@@ -334,15 +348,15 @@ func TestConstructCommandTree(t *testing.T) {
 		  flags:
 		    config-root: 'CONFIG_ROOT=.'
 
-		  environments:
-		    docker:
-		      manifest:
-		        help: 'render kubernetes manifests in build dir'
-		        subCmd:
-		          all: [all subcmd]
-		        args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
-		        completion: 'a-completion'
-		      simple: [hello]
+		  handles:
+		    manifest:
+		      cmd: [docker]
+		      help: 'render kubernetes manifests in build dir'
+		      subCmd:
+		        all: [all subcmd]
+		      args: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
+		      completion: 'a-completion'
+		    simple: [docker, hello]
 		`)
 
 	tests := []struct {
@@ -435,25 +449,6 @@ func TestConstructCommandTree(t *testing.T) {
 	}
 }
 
-func TestDuplicateHandles(t *testing.T) {
-	configFile := dedent.Dedent(`
-		exec:
-		  environments:
-		    docker:
-		      manifest: ['manifests{{ if args }}/{{arg 0 "manifest"}}{{end}}']
-		    bash:
-		      manifest: [hello]
-		`)
-	testFs := fstest.MapFS{}
-	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
-
-	_, err := New(testFs)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(),
-			fmt.Sprintf("in config %s: cannot have duplicate handles: '%s'", config.ConfigFileName, "manifest"))
-	}
-}
-
 type flagTest struct {
 	name string
 	config.Flags
@@ -479,12 +474,12 @@ func (ft flagTest) run(t *testing.T) {
 			flags: ft.Flags,
 		}
 	}
-	cmdSpec.execEnvironment = "program"
+	cmdSpec.command = append(config.ArgSliceSpec{}, "program")
 
 	d.globalFlags = ft.globalFlags
 	d.handles = handles{"a-handle": cmdSpec}
 
-	programArgs := []string{cmdSpec.execEnvironment}
+	programArgs := cmdSpec.command
 	if ft.withRun {
 		programArgs = append(programArgs, "run")
 	}
@@ -497,7 +492,7 @@ func (ft flagTest) run(t *testing.T) {
 				return nil
 			},
 		}
-	}), Args(append(programArgs, ft.userInvocation...)...))
+	}), Args(append(FlattenStrings(programArgs), ft.userInvocation...)...))
 
 	rootCmd := &cobra.Command{Use: "root"}
 	helpCalled := false
@@ -631,6 +626,7 @@ func TestFlagUsages(t *testing.T) {
 }
 
 func TestFlagUsages2(t *testing.T) {
+	strings.Contains("abd", "a")
 
 	configFile := dedent.Dedent(`
 		exec:
@@ -638,17 +634,18 @@ func TestFlagUsages2(t *testing.T) {
 		    global-flag:
 		      effect: 'global-flag-set'
 		      explicit: true
-		  environments:
-		    program:
-		      a-command:
-		        args: [-c]
-		        flags:
-		          user-flag:
-		            effect: 'CONVERTED={{.flag}}'
-		            help: user-flag allows user to flag something to the callee
-		            shorthand: u
-		      b-cmd:
-		        args: [b-cmd, '{{flagValue "global-flag"}}']
+		  handles:
+		    a-command:
+		      cmd: [program]
+		      args: [-c]
+		      flags:
+		        user-flag:
+		          effect: 'CONVERTED={{.flag}}'
+		          help: user-flag allows user to flag something to the callee
+		          shorthand: u
+		    b-cmd:
+		      cmd: [program]
+		      args: [b-cmd, '{{flagValue "global-flag"}}']
 		`)
 	testFs := fstest.MapFS{}
 	testFs[config.ConfigFileName] = &fstest.MapFile{Data: []byte(configFile)}
@@ -753,8 +750,8 @@ func TestHelpManagement(t *testing.T) {
 			name: "help-on-user-defined-help-is-cobra-managed",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
-					help:            "sub command help",
+					command: config.ArgSliceSpec{"program"},
+					help:    "sub command help",
 				}},
 			},
 			userInvocation:        []string{"sub-command", "--help"},
@@ -764,7 +761,7 @@ func TestHelpManagement(t *testing.T) {
 			name: "help-on-non-user-defined-help-is-passed",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
+					command: config.ArgSliceSpec{"program"},
 				}},
 			},
 			userInvocation: []string{"sub-command", "--help"},
@@ -774,10 +771,10 @@ func TestHelpManagement(t *testing.T) {
 			name: "no-cobra-help-on-user-defined-cmd-with-no-help",
 			cmdSpec: &commandSpec{
 				subCmd: map[string]*commandSpec{"sub-command": {
-					execEnvironment: "program",
+					command: config.ArgSliceSpec{"program"},
 					subCmd: map[string]*commandSpec{"sub-sub-cmd": {
-						args:            config.ArgSliceSpec{[]string{"sub-command", "sub-sub-cmd"}},
-						execEnvironment: "program",
+						args:    config.ArgSliceSpec{[]string{"sub-command", "sub-sub-cmd"}},
+						command: config.ArgSliceSpec{"program"},
 					}},
 				}},
 			},

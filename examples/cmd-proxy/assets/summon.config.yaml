@@ -5,87 +5,102 @@ aliases: {}
 outputdir: ".summoned" # where summoned files are placed
 hideAssetsInHelp: true # should the assets be shown in the help ?
 
-.base: &baseargs
-- echo
+.base: &baseargs [ echo ]
+
+.aString: &string '{{ if env "echo" }}echo{{ end }}'
 
 exec:
   flags:
     config-root: 'CONFIG_ROOT={{.flag}}'
 
-  environments:
-    go run:
-      gohack [command]:
-        args: &rog [github.com/rogpeppe/gohack@latest]
-        completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
-        subCmd:
-          get [module]:
-            args: [*rog, get,'{{ flagValue "vcs" }}']
-            flags:
-              vcs: { effect: '{{.flag}}', default: '-vcs'}
-          undo: [*rog, undo]
-          status: [*rog, status]
-          help [command]:
-            args: [*rog, help]
-            completion: '{{ printf "get\nundo\nstatus" }}'
+  handles:
+    test: ['python3', '-c', "'print(\"hello from python\")'"]
+    testContainer:
+      cmd:
+      - |-
+        {{ if not (env "inContainer") }}
+        echo docker run -v \"{{ env "PWD" }}\"
+        -w \"a-dir\"
+        alpine
+        {{ end }}
+
+      args: [*string, 'b', 'c']
 
 
-    bash --norc --noprofile -c:
-      fake-make:
-        args: ['echo -e "{{- args | join " " -}}"']
-        help: simulate make call echo param
-        hidden: true
-      bash-c:
-        hidden: true
+    gohack [command]:
+      cmd: &gorun [go, run]
+      args: &rog [github.com/rogpeppe/gohack@latest]
+      completion: '{{ printf "get\nundo\nstatus\nhelp" }}'
+      subCmd:
+        get [module]:
+          args: [*rog, get,'{{ flagValue "vcs" }}']
+          flags:
+            vcs: { effect: '{{.flag}}', default: '-vcs'}
+        undo: [*rog, undo]
+        status: [*rog, status]
+        help [command]:
+          args: [*rog, help]
+          completion: '{{ printf "get\nundo\nstatus" }}'
+
+    fake-make:
+      cmd: &bash-c [bash, --norc, --noprofile, -c]
+      args: ['echo -e "{{- args | join " " -}}"']
+      help: simulate make call echo param
+      hidden: true
+    bash-c:
+      cmd: *bash-c
+      hidden: true
 
     kubectl: # kubectl 0.23.1 uses the newer cobra completion which will allow delegating completions
-      kubectl:
-        completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
-        help: call kubectl directly
+      cmd: [kubectl]
+      completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
+      help: call kubectl directly
 
-    bash:
-      hello-bash: ['{{ summon "hello.sh" }}']
+    hello-bash: [bash, '{{ summon "hello.sh" }}']
 
-    bash -c:
-      tk:
-        args: [tk]
-        help: call tanka directly
-        # tk uses the posener/complete library. Fake a completion call by
-        # setting the COMP_LINE environment var.
-        completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
-        join: true
+    tk:
+      cmd: [bash, -c]
+      args: [tk]
+      help: call tanka directly
+      # tk uses the posener/complete library. Fake a completion call by
+      # setting the COMP_LINE environment var.
+      completion: '{{ run "bash-c" (printf "COMP_LINE=''%s'' tk" (join " " args)) }}'
+      join: true
 
-      manifest [env]:
-        help: 'render kubernetes manifests in build dir'
-        args: ['echo manifests/{{arg 0 "manifest"}} {{- flagValue "config-root" -}}']
-        completion: '{{ run "fake-make" "a-env\nb-env\n" }}'
+    manifest [env]:
+      cmd: [bash, -c]
+      help: 'render kubernetes manifests in build dir'
+      args: ['echo manifests/{{arg 0 "manifest"}} {{- flagValue "config-root" -}}']
+      completion: '{{ run "fake-make" "a-env\nb-env\n" }}'
 
-      build:
-        help: 'build components'
-        args: ['echo build/{{arg 0}} {{ flagValue "config-root" }}']
-        subCmd:
-          image [path to Dockerfile]:
-            args: ['echo would build build/image/{{- arg 0 "build image" -}}']
-            help: "build images in this repo"
-            completion: '{{ run "fake-make" "a-image\nb-image" }}'
+    build:
+      cmd: [bash, -c]
+      help: 'build components'
+      args: ['echo build/{{arg 0}} {{ flagValue "config-root" }}']
+      subCmd:
+        image [path to Dockerfile]:
+          args: ['echo would build build/image/{{- arg 0 "build image" -}}']
+          help: "build images in this repo"
+          completion: '{{ run "fake-make" "a-image\nb-image" }}'
 
-          gitlab-ci.yaml:
-            flags:
-              one-pipeline:
-                effect: '{{ if eq .flag "true" }}PARENT_CHILD=0{{ else }}PARENT_CHILD=1{{ end }}'
-                default: "true"
-                help: should the pipeline be added directly or with a parent-child style
-            args: ['echo would run {{ flagValue "one-pipeline" }}']
-            help: "Initialize or merge gitlab-ci.yaml"
-            subCmd:
-              sub:
-                args: ['echo gitlab-ci.yaml sub {{ args }}']
+        gitlab-ci.yaml:
+          flags:
+            one-pipeline:
+              effect: '{{ if eq .flag "true" }}PARENT_CHILD=0{{ else }}PARENT_CHILD=1{{ end }}'
+              default: "true"
+              help: should the pipeline be added directly or with a parent-child style
+          args: ['echo would run {{ flagValue "one-pipeline" }}']
+          help: "Initialize or merge gitlab-ci.yaml"
+          subCmd:
+            sub:
+              args: ['echo gitlab-ci.yaml sub {{ args }}']
 
-    docker run -v {{ env "PWD" }}:/mounted-app alpine:
-      list:
-        args: [ls, /mounted-app]
-        help: list files of mount a seen from inside container
+    list:
+      cmd: [docker, run, -v, '{{ env "PWD" }}:/mounted-app', alpine]
+      args: [ls, /mounted-app]
+      help: list files of mount a seen from inside container
 
-    docker run -ti -v {{ env "PWD"}}:/workdir -w /workdir alpine:
-      echo-alpine:
-        args: [echo]
-        help: use alpine to echo a string
+    echo-alpine:
+      cmd: [docker, run, -ti, -v, '{{ env "PWD"}}:/workdir', -w, /workdir, alpine]
+      args: [echo]
+      help: use alpine to echo a string

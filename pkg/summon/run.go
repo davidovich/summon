@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/shlex"
+	// "github.com/google/shlex"
+	"github.com/anmitsu/go-shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -15,8 +16,8 @@ import (
 
 // commandSpec describes a normalized command
 type commandSpec struct {
-	// execEnvironment is the caller environment (docker, bash, python)
-	execEnvironment string
+	// command is the caller environment (docker, bash, python)
+	command config.ArgSliceSpec
 	// args is the command and args that get appended to the ExecEnvironment
 	args config.ArgSliceSpec
 	// subCmd sub-command of current command
@@ -89,16 +90,18 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
 
-	renderedExecEnv, err := d.renderTemplate(cmdSpec.execEnvironment)
+	execEnv, err := d.RenderArgs(FlattenStrings(cmdSpec.command)...)
 	if err != nil {
 		return nil, err
 	}
-	execEnv, err := shlex.Split(renderedExecEnv)
-	if err != nil {
-		return nil, err
-	}
+
+	args := FlattenStrings(cmdSpec.args)
 	// Render and flatten arguments array of arrays to simple array
-	arguments, err := d.RenderArgs(cmdSpec.args...)
+	if cmdSpec.join != nil && *cmdSpec.join {
+		oneLine := strings.Join(args, " ")
+		args = []string{oneLine}
+	}
+	arguments, err := d.RenderArgs(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,19 +146,14 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 		}
 	}
 
-	if cmdSpec.join != nil && *cmdSpec.join {
-		oneLine := strings.Join(finalArgs, " ")
-		finalArgs = []string{oneLine}
-	}
-
 	finalCmd := append(execEnv, finalArgs...)
 
 	return finalCmd, nil
 }
 
-func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
+func (d *Driver) RenderArgs(args ...string) ([]string, error) {
 	targets := make([]string, 0, len(args))
-	for _, t := range FlattenStrings(args) {
+	for _, t := range args {
 		rt, err := d.renderTemplate(t)
 		if err != nil {
 			return nil, err
@@ -164,12 +162,17 @@ func (d *Driver) RenderArgs(args ...interface{}) ([]string, error) {
 			continue
 		}
 
-		renderedTargets := []string{rt}
+		inner := rt
+		var renderedTargets []string
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			inner := strings.Trim(rt, "[]")
-			renderedTargets = strings.Split(inner, "\n")
-			if inner == "" {
-				renderedTargets = []string{""}
+			inner = strings.Trim(rt, "[]")
+		}
+		if inner == "" {
+			renderedTargets = []string{""}
+		} else {
+			renderedTargets, err = shlex.Split(inner, true)
+			if err != nil {
+				return nil, err
 			}
 		}
 
@@ -192,12 +195,13 @@ func computeUnused(args []string, consumed map[int]struct{}) []string {
 	return unusedArgs
 }
 
-func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, error) {
+func normalizeExecDesc(argsDesc interface{}) (*commandSpec, error) {
 	c := &commandSpec{}
 	switch descType := argsDesc.(type) {
 	case config.ArgSliceSpec:
 		c.args = descType
 	case config.CmdDesc:
+		c.command = descType.Cmd
 		c.args = descType.Args
 		c.help = descType.Help
 		c.completion = descType.Completion
@@ -208,9 +212,13 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 		if descType.SubCmd != nil {
 			c.subCmd = make(map[string]*commandSpec)
 			for subCmdName, execDesc := range descType.SubCmd {
-				subCmd, err := normalizeExecDesc(execDesc.Value, invoker)
+				subCmd, err := normalizeExecDesc(execDesc.Value)
 				if err != nil {
 					return nil, err
+				}
+				// inherit command if not set explicitely
+				if subCmd.command == nil {
+					subCmd.command = c.command
 				}
 				// propagate join to declared sub-commands
 				if subCmd.join == nil {
@@ -225,7 +233,6 @@ func normalizeExecDesc(argsDesc interface{}, invoker string) (*commandSpec, erro
 			config.ConfigFileName, descType)
 	}
 
-	c.execEnvironment = invoker
 	return c, nil
 }
 
@@ -238,18 +245,13 @@ func (d *Driver) execContext() (config.Flags, handles, error) {
 
 	if d.handles == nil {
 		handles := handles{}
-		for invoker, handleDescs := range d.config.Exec.ExecEnv {
-			for handle, desc := range handleDescs {
-				if _, present := handles[handle]; present {
-					return nil, nil,
-						fmt.Errorf("config error for 'exec.environments:%s' in config %s: cannot have duplicate handles: '%s'", invoker, config.ConfigFileName, handle)
-				}
-				cmdSpec, err := normalizeExecDesc(desc.Value, invoker)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error in exec:environments:%s %s", invoker, err.Error())
-				}
-				handles[handle] = cmdSpec
+		for handle, execDesc := range d.config.Exec.ExecEnv {
+			cmdSpec, err := normalizeExecDesc(execDesc.Value)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error in exec:handles:%s %s", handle, err.Error())
 			}
+			handles[handle] = cmdSpec
+
 		}
 		d.handles = handles
 	}
