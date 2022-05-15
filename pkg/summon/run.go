@@ -8,6 +8,7 @@ import (
 
 	// "github.com/google/shlex"
 	"github.com/anmitsu/go-shlex"
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -52,11 +53,12 @@ func (d *Driver) Run(opts ...Option) error {
 
 	cmd := d.execCommand(cmdArgs[0], cmdArgs[1:]...)
 	if d.opts.debug || d.opts.dryrun {
+		_, ref := d.getCmdSpec()
 		msg := "Executing"
 		if d.opts.dryrun {
 			msg = "Would execute"
 		}
-		fmt.Fprintf(os.Stderr, "%s `%s`...\n", msg, cmd)
+		fmt.Fprintf(os.Stderr, "%s [%s] -> `%s`...\n", msg, ref, cmd)
 	}
 
 	if !d.opts.dryrun {
@@ -71,21 +73,8 @@ func (d *Driver) Run(opts ...Option) error {
 }
 
 func (d *Driver) buildCmdArgs() ([]string, error) {
-	var cmdSpec *commandSpec
-	var ref string
-	if d.opts.cobraCmd != nil {
-		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
-		ref = d.opts.cobraCmd.Name()
-	} else {
-		// find the corresponding command
-		for cmd, spec := range d.cmdToSpec {
-			if cmd.Name() == d.opts.ref {
-				cmdSpec = spec
-				ref = d.opts.ref
-				break
-			}
-		}
-	}
+	// find the corresponding command
+	cmdSpec, ref := d.getCmdSpec()
 	if cmdSpec == nil {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
 	}
@@ -149,6 +138,25 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	finalCmd := append(execEnv, finalArgs...)
 
 	return finalCmd, nil
+}
+
+func (d *Driver) getCmdSpec() (*commandSpec, string) {
+	var cmdSpec *commandSpec
+	var ref string
+	if d.opts.cobraCmd != nil {
+		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
+		ref = d.opts.cobraCmd.Name()
+	} else {
+
+		for cmd, spec := range d.cmdToSpec {
+			if cmd.Name() == d.opts.ref {
+				cmdSpec = spec
+				ref = d.opts.ref
+				break
+			}
+		}
+	}
+	return cmdSpec, ref
 }
 
 func (d *Driver) RenderArgs(args ...string) ([]string, error) {
@@ -306,10 +314,10 @@ const (
 	local  bool = false
 )
 
-func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) error {
+func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) (*cobra.Command, error) {
 	globalFlags, handles, err := d.execContext()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if runCmdEnabled {
@@ -333,7 +341,6 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 		root.AddCommand(newRoot)
 		root = newRoot
 	}
-	root.PersistentFlags().BoolVarP(&d.opts.dryrun, "dry-run", "n", false, "only show what would be executed")
 
 	d.AddFlags(root, globalFlags, global)
 
@@ -341,9 +348,7 @@ func (d *Driver) ConstructCommandTree(root *cobra.Command, runCmdEnabled bool) e
 		d.addCmdSpec(root, h, spec)
 	}
 
-	d.setupArgs(root)
-
-	return nil
+	return root, nil
 }
 
 func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpec) {
@@ -353,7 +358,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 			cmd.SilenceUsage = true
 
 			return d.Run(CobraCmd(cmd),
-				Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
+				Args(extractUnknownArgs(cmd, d.opts.initialArgs, d.opts.args)...))
 		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
@@ -364,7 +369,7 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 	}
 	if cmdSpec.completion != "" {
 		subCmd.ValidArgsFunction = func(cmd *cobra.Command, cobraArgs []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			d.Configure(Args(extractUnknownArgs(cmd.Flags(), d.opts.args)...))
+			d.Configure(Args(extractUnknownArgs(cmd, d.opts.initialArgs, d.opts.args)...))
 			inlineComp, err := d.RenderArgs(cmdSpec.completion)
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), err)
@@ -403,9 +408,9 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 	root.AddCommand(subCmd)
 }
 
-// setupArgs ensures that the cobra command receives correct arguments when
+// SetupRunArgs ensures that the cobra command receives correct arguments when
 // help is requested.
-func (d *Driver) setupArgs(root *cobra.Command) {
+func (d *Driver) SetupRunArgs(root *cobra.Command) {
 	// Summon needs to pass the help flag down to the proxied
 	// command, but cobra is very agressive in wanting to manage the help.
 	// To workaround this, remove the help, but reintroduce it only if the user
@@ -465,7 +470,6 @@ func (d *Driver) setupArgs(root *cobra.Command) {
 		managedHelp = allArgs
 	}
 
-	root.ParseFlags(managedHelp)
 	root.Root().PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		_, d.opts.args, _ = cmd.Root().Find(managedHelp)
 
@@ -473,11 +477,51 @@ func (d *Driver) setupArgs(root *cobra.Command) {
 			fl.initializing = false
 		}
 	}
-
+	d.opts.initialArgs = managedHelp
 	root.Root().SetArgs(managedHelp)
 }
 
-func extractUnknownArgs(flags *pflag.FlagSet, args []string) []string {
+func extractUnknownArgs(cmd *cobra.Command, initialAgs, args []string) []string {
+	if len(args) == 0 || len(initialAgs) == 0 {
+		return []string{}
+	}
+	unknownFromCmd := extractUnknownArgsForFlags(cmd.Flags(), args)
+	if len(unknownFromCmd) == 0 {
+		return []string{}
+	}
+
+	unknownFromRoot := extractUnknownArgsForFlags(cmd.Root().Flags(), unknownFromCmd)
+
+	if cmp.Equal(unknownFromCmd, unknownFromRoot) {
+		return unknownFromCmd
+	}
+
+	if len(unknownFromRoot) != 0 || len(unknownFromCmd) != 0 {
+		// known to root but unknown to cmd, try to find if the flag is before or after
+		// then return the unknowns from that
+		cmdPos := 0
+		unknownFromCmdPos := 0
+		for i, a := range initialAgs {
+			if cmd.Name() == a {
+				// equal, we must know the command, register its position
+				cmdPos = i
+			}
+
+			for _, unFromC := range unknownFromCmd {
+				if unFromC == a {
+					unknownFromCmdPos = i
+				}
+			}
+		}
+		if unknownFromCmdPos < cmdPos && cmdPos+1 >= len(initialAgs) {
+			return []string{}
+		}
+		return extractUnknownArgsForFlags(cmd.Flags(), initialAgs[cmdPos+1:])
+	}
+	return unknownFromCmd
+}
+
+func extractUnknownArgsForFlags(flags *pflag.FlagSet, args []string) []string {
 	unknownArgs := []string{}
 
 	for i := 0; i < len(args); i++ {

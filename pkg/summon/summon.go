@@ -169,9 +169,19 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			driverCopy.opts.argsConsumed = map[int]struct{}{}
 			driverCopy.opts.cobraCmd = nil
 			driverCopy.opts.helpWanted.helpFlag = ""
+
 			b := &strings.Builder{}
 			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
 
+			if d.opts.dryrun {
+				b.WriteString("[")
+				b.WriteString(args[0])
+				b.WriteString(" (dry-run)]")
+			}
+
+			if d.opts.debug {
+				fmt.Fprintf(os.Stderr, "Output [%s] ->: `%s`...\n", args[0], b)
+			}
 			return strings.TrimSpace(b.String()), err
 		},
 		"summon": func(path string) (string, error) {
