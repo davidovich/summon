@@ -6,9 +6,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.17
-    environment:
-      GO111MODULE=on
+      - image: cimg/go:1.18
     steps:
 
       - checkout
