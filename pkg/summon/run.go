@@ -8,6 +8,7 @@ import (
 
 	// "github.com/google/shlex"
 	"github.com/anmitsu/go-shlex"
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -481,39 +482,43 @@ func (d *Driver) SetupRunArgs(root *cobra.Command) {
 }
 
 func extractUnknownArgs(cmd *cobra.Command, initialAgs, args []string) []string {
-	return extractUnknownArgsForFlags(cmd.Flags(), args)
+	if len(args) == 0 || len(initialAgs) == 0 {
+		return []string{}
+	}
+	unknownFromCmd := extractUnknownArgsForFlags(cmd.Flags(), args)
+	if len(unknownFromCmd) == 0 {
+		return []string{}
+	}
 
-	// wip for precise unknown extraction
-	// unknownFromRoot := extractUnknownArgsForFlags(cmd.Root().Flags(), args)
-	// unknownFromCmd := extractUnknownArgsForFlags(cmd.Flags(), args)
+	unknownFromRoot := extractUnknownArgsForFlags(cmd.Root().Flags(), unknownFromCmd)
 
-	// // if len(unknownFromRoot) == 0 {
-	// // all args are known from root (meaning that the flags are managed
-	// // there), find if they are positioned before the command or after
+	if cmp.Equal(unknownFromCmd, unknownFromRoot) {
+		return unknownFromCmd
+	}
 
-	// cmdPos := 0
-	// unknownFromCmdPos := 0
+	if len(unknownFromRoot) != 0 || len(unknownFromCmd) != 0 {
+		// known to root but unknown to cmd, try to find if the flag is before or after
+		// then return the unknowns from that
+		cmdPos := 0
+		unknownFromCmdPos := 0
+		for i, a := range initialAgs {
+			if cmd.Name() == a {
+				// equal, we must know the command, register its position
+				cmdPos = i
+			}
 
-	// for i, a := range initialAgs {
-	// 	if cmd.Name() == a {
-	// 		// equal, we must know the command, the first args must be
-	// 		// global flags
-	// 		cmdPos = i
-	// 	}
-
-	// 	for _, cu := range unknownFromCmd {
-	// 		if cu == a {
-	// 			unknownFromCmdPos = i
-	// 		}
-	// 	}
-	// }
-	// if unknownFromCmdPos < cmdPos && cmdPos+1 >= len(initialAgs) {
-	// 	return []string{}
-	// }
-	// return initialAgs[cmdPos+1:]
-	// // }
-
-	// return unknownFromRoot
+			for _, unFromC := range unknownFromCmd {
+				if unFromC == a {
+					unknownFromCmdPos = i
+				}
+			}
+		}
+		if unknownFromCmdPos < cmdPos && cmdPos+1 >= len(initialAgs) {
+			return []string{}
+		}
+		return extractUnknownArgsForFlags(cmd.Flags(), initialAgs[cmdPos+1:])
+	}
+	return unknownFromCmd
 }
 
 func extractUnknownArgsForFlags(flags *pflag.FlagSet, args []string) []string {

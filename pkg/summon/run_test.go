@@ -416,11 +416,11 @@ func TestConstructCommandTree(t *testing.T) {
 			if tt.expectSubArgs == nil {
 				tt.expectSubArgs = []string{}
 			}
-			s, err := New(testFs, DryRun(true), Args(append([]string{"prog"}, tt.cmd...)...))
+			s, err := New(testFs, DryRun(true), Args(tt.cmd...))
 			assert.NoError(t, err)
 
-			rootCmd := cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
-			_, err = s.ConstructCommandTree(&rootCmd, tt.withRunCmd)
+			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
+			_, err = s.ConstructCommandTree(rootCmd, tt.withRunCmd)
 			assert.NoError(t, err)
 			if tt.withRunCmd {
 				cmd, _, err := rootCmd.Find([]string{"run"})
@@ -438,9 +438,10 @@ func TestConstructCommandTree(t *testing.T) {
 			assert.Equal(t, tt.expectSubArgs, subArgs)
 
 			// check completion
-			completeArgs := []string{cobra.ShellCompNoDescRequestCmd}
-			rootCmd.SetArgs(append(completeArgs, append(tt.cmd, "")...))
-			out, err := executeCommand(&rootCmd)
+			completeArgs := []string{"prog", cobra.ShellCompNoDescRequestCmd}
+			s.Configure(Args(append(completeArgs, append(tt.cmd, "")...)...))
+			s.SetupRunArgs(rootCmd)
+			out, err := executeCommand(rootCmd)
 			assert.NoError(t, err)
 			completeSlice := strings.Split(out, "\n")
 
@@ -502,8 +503,8 @@ func (ft flagTest) run(t *testing.T) {
 		helpCalled = true
 	})
 
-	runRoot, err := d.ConstructCommandTree(rootCmd, ft.withRun)
-	d.SetupRunArgs(runRoot)
+	_, err := d.ConstructCommandTree(rootCmd, ft.withRun)
+	d.SetupRunArgs(rootCmd)
 
 	assert.NoError(t, err)
 
@@ -788,5 +789,98 @@ func TestHelpManagement(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, test.run)
+	}
+}
+
+func Test_extractUnknownArgs(t *testing.T) {
+	type args struct {
+		initialAgs []string
+		args       []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "no-args",
+			args: args{
+				initialAgs: []string{},
+				args:       []string{},
+			},
+			want: []string{},
+		},
+		{
+			name: "-d-before-cmd",
+			args: args{
+				initialAgs: []string{"-d", "bash"},
+				args:       []string{"-d"},
+			},
+			want: []string{},
+		},
+		{
+			name: "after-cmd",
+			args: args{
+				initialAgs: []string{"bash", "-d"},
+				args:       []string{"-d"},
+			},
+			want: []string{"-d"},
+		},
+		{
+			name: "with-other-unknown",
+			args: args{
+				initialAgs: []string{"bash", "-d", "other"},
+				args:       []string{"-d", "other"},
+			},
+			want: []string{"-d", "other"},
+		},
+		{
+			name: "with-other-unknown-d-before",
+			args: args{
+				initialAgs: []string{"-d", "bash", "other"},
+				args:       []string{"-d", "other"},
+			},
+			want: []string{"other"},
+		},
+		{
+			name: "with-other-unknown-a-d-after",
+			args: args{
+				initialAgs: []string{"bash", "-a", "-d", "other"},
+				args:       []string{"-a", "-d", "other"},
+			},
+			want: []string{"-a", "-d", "other"},
+		},
+		{
+			name: "with-other-unknown-d-before-a-after",
+			args: args{
+				initialAgs: []string{"-d", "bash", "-a", "other"},
+				args:       []string{"-d", "-a", "other"},
+			},
+			want: []string{"-a", "other"},
+		},
+		{
+			name: "unknown-from-root-known-from-cmd",
+			args: args{
+				initialAgs: []string{"-d", "bash", "-s", "other"},
+				args:       []string{"-d", "-s", "other"},
+			},
+			want: []string{"other"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &cobra.Command{Use: "root", TraverseChildren: true}
+			subCmd := &cobra.Command{Use: "bash", Run: func(cmd *cobra.Command, args []string) {}}
+
+			cmd.AddCommand(subCmd)
+
+			cmd.Flags().BoolP("debug", "d", false, "")
+			cmd.Flags().BoolP("all", "a", false, "")
+
+			subCmd.Flags().BoolP("subflaginconfig", "s", false, "")
+
+			got := extractUnknownArgs(subCmd, tt.args.initialAgs, tt.args.args)
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }
