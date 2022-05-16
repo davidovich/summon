@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -478,7 +479,7 @@ func (d *Driver) SetupRunArgs(root *cobra.Command) {
 			fl.initializing = false
 		}
 	}
-	d.opts.initialArgs = managedHelp
+	d.opts.initialArgs = slices.Clone(managedHelp)
 	root.Root().SetArgs(managedHelp)
 }
 

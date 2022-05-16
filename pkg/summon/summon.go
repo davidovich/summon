@@ -180,7 +180,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			}
 
 			if d.opts.debug {
-				fmt.Fprintf(os.Stderr, "Output [%s] ->: `%s`...\n", args[0], b)
+				fmt.Fprintf(os.Stderr, "Output [%s] -> `%s`...\n", args[0], b)
 			}
 			return strings.TrimSpace(b.String()), err
 		},
