@@ -28,14 +28,14 @@ exec:
     gohack: [go, run, github.com/rogpeppe/gohack@latest]
 
 
-    hello: ['python', '-c', '"print(\"hello from python!\")"']
+    hello: ['python', '-c', 'print("hello from python!")']
     hello-join:
       cmd: [python, -c]
-      args: ["'print(\"", 'these', 'params', 'will', 'be', 'joined', "\")'"]
+      args: ["print(\"", 'these', 'params', 'will', 'be', 'joined', "\")"]
       join: true
       subCmd:
         non-inlined:
-          args: ["'print(\"hello\")'", '#', 'these', 'are', 'separate', 'args', '-']
+          args: ["print(\"hello\")", '#', 'these', 'are', 'separate', 'args', '-']
           join: false
 
 

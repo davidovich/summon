@@ -84,14 +84,14 @@ func TestRun(t *testing.T) {
 		{
 			name:    "args-access",
 			cmd:     []string{"args"},
-			args:    []string{"'a c'", "b"},
+			args:    []string{"a c", "b"},
 			expect:  [][]string{{"bash", "args:", "a c", "b"}},
 			wantErr: false,
 		},
 		{
 			name:    "one-arg-access-remainder-passed",
 			cmd:     []string{"one-arg"},
-			args:    []string{"'acce ssed'", "remainder1", "remainder2"},
+			args:    []string{"acce ssed", "remainder1", "remainder2"},
 			expect:  [][]string{{"bash", "args:", "acce ssed", "remainder1", "remainder2"}},
 			wantErr: false,
 		},
@@ -236,7 +236,7 @@ func TestSubCommandTemplateRunCall(t *testing.T) {
 		defer os.Exit(0)
 		testutil.WriteCall(testutil.MakeCall())
 
-		fmt.Fprint(os.Stdout, "\"hello from subcmd\"")
+		fmt.Fprint(os.Stdout, "hello from subcmd")
 	}
 }
 
