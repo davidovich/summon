@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 
 	"github.com/davidovich/summon/pkg/config"
 )
@@ -171,16 +172,17 @@ func (d *Driver) RenderArgs(args ...string) ([]string, error) {
 		}
 
 		inner := rt
-		var renderedTargets []string
+		var renderedTargets = []string{rt}
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
 			inner = strings.Trim(rt, "[]")
-		}
-		if inner == "" {
-			renderedTargets = []string{""}
-		} else {
-			renderedTargets, err = shlex.Split(inner, true)
-			if err != nil {
-				return nil, err
+
+			if inner == "" {
+				renderedTargets = []string{""}
+			} else {
+				renderedTargets, err = shlex.Split(inner, true)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
@@ -477,7 +479,7 @@ func (d *Driver) SetupRunArgs(root *cobra.Command) {
 			fl.initializing = false
 		}
 	}
-	d.opts.initialArgs = managedHelp
+	d.opts.initialArgs = slices.Clone(managedHelp)
 	root.Root().SetArgs(managedHelp)
 }
 

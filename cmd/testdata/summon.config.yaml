@@ -8,7 +8,7 @@ exec:
     echo:
       - bash
       - echo
-      - "'hello {{ .Name -}}'"
+      - "hello {{ .Name -}}"
     hello-bash: [bash, hello.sh]
 
     tk:
@@ -17,7 +17,7 @@ exec:
 
     fake-make:
       cmd: [bash, --norc, --noprofile, -c]
-      args: ['"echo -e {{ args | join " " -}}"']
+      args: ['echo -e {{ args | join " " -}}']
       help: simulate make call echo params
 
     gohack: [go, run, github.com/rogpeppe/gohack@latest]
