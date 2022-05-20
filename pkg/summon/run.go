@@ -171,17 +171,20 @@ func (d *Driver) RenderArgs(args ...string) ([]string, error) {
 			continue
 		}
 
-		inner := rt
 		var renderedTargets = []string{rt}
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			inner = strings.Trim(rt, "[]")
+			inner := strings.Trim(rt, "[]")
 
 			if inner == "" {
-				renderedTargets = []string{""}
+				continue
 			} else {
-				renderedTargets, err = shlex.Split(inner, true)
-				if err != nil {
-					return nil, err
+				if inner == `""` {
+					renderedTargets = []string{""}
+				} else {
+					renderedTargets, err = shlex.Split(inner, true)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}

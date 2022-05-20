@@ -297,6 +297,11 @@ func TestFlattenStrings(t *testing.T) {
 			want: []string{},
 		},
 		{
+			name: "empty-slice",
+			args: []interface{}{[]interface{}{}},
+			want: []string{},
+		},
+		{
 			name: "slice-of-slice-of-string",
 			args: []interface{}{[]string{"elem"}},
 			want: []string{"elem"},
@@ -620,8 +625,8 @@ func TestFlagUsages(t *testing.T) {
 			expected: []string{"arg"},
 		},
 		{
-			name:     "empty-array-used-to-insert-empty-arg-pos",
-			args:     []string{`[{{flagValue "inexistant"}}]`, "arg"},
+			name:     "empty-array-with-quotes-used-to-insert-empty-arg-pos",
+			args:     []string{`["{{flagValue "inexistant"}}"]`, "arg"},
 			expected: []string{"", "arg"},
 		},
 	}
