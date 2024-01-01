@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/davidovich/summon.svg?style=svg)](https://circleci.com/gh/davidovich/summon)
+![Action](https://github.com/davidovich/summon/actions/workflows/go.yml/badge.svg)
 ![Custom badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fdavidovich.github.io%2Fshields%2Fsummon%2Fsummon.json)
 [![GoDoc](https://godoc.org/github.com/davidovich/summon?status.svg)](https://godoc.org/github.com/davidovich/summon)
 
@@ -53,7 +53,7 @@ state (packed scripts or pinned versions of binaries).
 > NOTE: This project is still a WIP and experimental.
 
 To install, you first need to create something to install by populating a
-[data repository](#Configuration). Then, this data repo is installed by using
+[data repository](#configuration). Then, this data repo is installed by using
 the `go install` command:
 
 ```bash
@@ -61,7 +61,7 @@ go install [your-summon-data-repo]/summon@latest
 ```
 
 Assuming there is a my-team-utility.sh script hosted in the data repo, (see how
-to [configure](#Configuration) below) you can do things like:
+to [configure](#configuration) below) you can do things like:
 
 ```bash
 bash $(summon my-team-utility.sh)
@@ -117,7 +117,7 @@ You will then have something resembling this structure:
     └── summon.go
 ```
 
-There is an example setup at https://github.com/davidovich/summon-example-assets.
+There is an example setup at <https://github.com/davidovich/summon-example-assets>.
 Also, a simple fake utility is also hosted in the `examples/` directory.
 
 You just need to populate the `summon/assets` directory with your own data.
@@ -317,6 +317,7 @@ will yield:
 [config file](#summon-config-file).
 
 > New in v0.10.0:
+>
 > - you can use go templates in the `exec:` section.
 > - you can summon embedded data in the `exec:` section.
 
