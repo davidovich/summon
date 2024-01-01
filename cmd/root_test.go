@@ -165,19 +165,16 @@ func Test_RootCmdWithRunnables(t *testing.T) {
 		t.Run(strconv.Itoa(i)+"_"+tt.name, func(t *testing.T) {
 			s, rootCmd := makeRootCmd(true, tt.args...)
 
-			stdout := &bytes.Buffer{}
-			stderr := &bytes.Buffer{}
-			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
+			execCommand := testutil.FakeExecCommand("TestSummonRunHelper")
 
-			s.Configure(summon.ExecCmd(execCommand))
+			s.Configure(summon.ExecCmd(execCommand.Fn))
 
 			if err := rootCmd.Execute(); (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			c, err := testutil.GetCalls(stderr)
-			assert.Nil(t, err)
-			assert.Equal(t, c.Calls[0].Args, tt.expectedCall)
+			c := execCommand.GetCalls()
+			assert.Equal(t, c[0].Args, tt.expectedCall)
 		})
 	}
 }

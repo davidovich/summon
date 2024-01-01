@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"embed"
 	"testing"
 
@@ -68,11 +67,9 @@ func TestRunCmd(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			s, _ := summon.New(cmdTestFS)
-			stdout := &bytes.Buffer{}
-			stderr := &bytes.Buffer{}
-			execCommand := testutil.FakeExecCommand("TestSummonRunHelper", stdout, stderr)
+			execCommand := testutil.FakeExecCommand("TestSummonRunHelper")
 
-			err := s.Configure(summon.ExecCmd(execCommand))
+			err := s.Configure(summon.ExecCmd(execCommand.Fn))
 			assert.NoError(t, err)
 
 			injectOsArgs := append([]string{"summon"}, tC.args...)
@@ -86,13 +83,12 @@ func TestRunCmd(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			c, err := testutil.GetCalls(stderr)
-			assert.Nil(t, err)
+			c := execCommand.GetCalls()
 			if tC.noCalls {
-				assert.Len(t, c.Calls, 0)
+				assert.Len(t, c, 0)
 			} else {
-				require.Greater(t, len(c.Calls), 0, "should have made call")
-				assert.Equal(t, tC.callArgs, c.Calls[0].Args)
+				require.Greater(t, len(c), 0, "should have made call")
+				assert.Equal(t, tC.callArgs, c[0].Args)
 			}
 		})
 	}
