@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-export GO111MODULE := on
+ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
 SCAFFOLD_BIN := bin/scaffold
 SRCS = $(shell go list -buildvcs=false -f '{{ $$dir := .Dir}}{{range .GoFiles}}{{ printf "%s/%s\n" $$dir . }}{{end}}' $(1)/... github.com/davidovich/summon/...)
@@ -8,6 +8,12 @@ SRCS = $(shell go list -buildvcs=false -f '{{ $$dir := .Dir}}{{range .GoFiles}}{
 DOC_REPO_NAME := davidovich.github.io
 DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
 SUMMON_BADGE_JSON_FILE := $(DOC_REPO_NAME)/shields/summon/summon.json
+TEST_TIMEOUT := 30s
+
+GOTESTSUM_VERSION=latest
+gotestsum := build/gotestsum
+
+TEST_COMMAND := $(gotestsum) --format pkgname --packages="./..." -- -timeout $(TEST_TIMEOUT)
 
 ASSETS := $(shell find internal/scaffold/templates/scaffold)
 
@@ -32,7 +38,10 @@ COVERAGE_PERCENT_FILE := build/coverage/percent.txt
 HTML_COVERAGE := build/coverage/index.html
 
 .PHONY: test
-test: clean-coverage output-coverage
+test: $(gotestsum) clean-coverage output-coverage
+
+$(gotestsum):
+	GOBIN=$(ROOT_DIR)/build go install gotest.tools/gotestsum@$(GOTESTSUM_VERSION)
 
 .PHONY: clean-coverage
 clean-coverage:
@@ -51,7 +60,7 @@ $(HTML_COVERAGE): $(COVERAGE)
 
 $(COVERAGE):
 	@mkdir -p $(@D)
-	go test -buildvcs=false ./... -timeout 30s --coverpkg=./... -coverprofile $@ -v
+	$(TEST_COMMAND) -buildvcs=false --coverpkg=./... -coverprofile $@ -v
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)

@@ -168,16 +168,14 @@ func TestRun(t *testing.T) {
 			s, err := New(summonTestFS)
 			assert.Nil(t, err)
 
-			stdout := &bytes.Buffer{}
-			stderr := &bytes.Buffer{}
-
 			if tt.helper == "" {
 				tt.helper = "TestSummonRunHelper"
 			}
 
 			program := append([]string{"summon"}, tt.cmd...)
 			args := append(program, tt.args...)
-			s.Configure(ExecCmd(testutil.FakeExecCommand(tt.helper, stdout, stderr)), Args(args...))
+			execCmd := testutil.FakeExecCommand(tt.helper)
+			s.Configure(ExecCmd(execCmd.Fn), Args(args...))
 
 			rootCmd := &cobra.Command{Use: "root", Run: func(cmd *cobra.Command, args []string) {}}
 			runRoot, err := s.ConstructCommandTree(rootCmd, tt.enableRun)
@@ -188,23 +186,22 @@ func TestRun(t *testing.T) {
 				t.Errorf("summon.Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			c, err := testutil.GetCalls(stderr)
-			assert.Nil(t, err)
+			c := execCmd.GetCalls()
 
 			if tt.wantErr {
-				assert.Len(t, c.Calls, 0)
+				assert.Len(t, c, 0)
 			} else {
 				if len(tt.expect) != 0 {
 					for nthCall, e := range tt.expect {
-						require.Lessf(t, nthCall, len(c.Calls), "%d out of range of calls, expected %s", nthCall, e)
-						assert.Equal(t, e, c.Calls[nthCall].Args)
+						require.Lessf(t, nthCall, len(c), "%d out of range of calls, expected %s", nthCall, e)
+						assert.Equal(t, e, c[nthCall].Args)
 					}
 				}
 				if len(tt.contains) != 0 {
 					for nthCall, args := range tt.contains {
 						contains := false
 						for _, arg := range args {
-							for _, callArg := range c.Calls[nthCall].Args {
+							for _, callArg := range c[nthCall].Args {
 								if strings.Contains(callArg, arg) {
 									contains = true
 									break
@@ -214,7 +211,7 @@ func TestRun(t *testing.T) {
 								break
 							}
 						}
-						assert.True(t, contains, "Args %s does not contain %s", c.Calls[nthCall].Args, args)
+						assert.True(t, contains, "Args %s does not contain %s", c[nthCall].Args, args)
 					}
 
 				}
@@ -234,7 +231,6 @@ func TestSummonRunHelper(t *testing.T) {
 func TestSubCommandTemplateRunCall(t *testing.T) {
 	if testutil.IsHelper() {
 		defer os.Exit(0)
-		testutil.WriteCall(testutil.MakeCall())
 
 		fmt.Fprint(os.Stdout, "hello from subcmd")
 	}
