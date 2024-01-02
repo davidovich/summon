@@ -19,3 +19,9 @@ jobs:
 
       - name: Build and Test
         run: make
+
+      - name: Update coverage
+        run: make update-coverage-badge
+        env:
+          COVERAGE_REPO_PAT: ${{secrets.COVERAGE_REPO_PAT}}
+          USER: automation

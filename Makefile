@@ -7,6 +7,7 @@ SRCS = $(shell go list -buildvcs=false -f '{{ $$dir := .Dir}}{{range .GoFiles}}{
 
 DOC_REPO_NAME := davidovich.github.io
 DOC_REPO := git@github.com:davidovich/$(DOC_REPO_NAME).git
+COVERAGE_REPO := github.com/davidovich/$(DOC_REPO_NAME).git
 SUMMON_BADGE_JSON_FILE := $(DOC_REPO_NAME)/shields/summon/summon.json
 TEST_TIMEOUT := 30s
 
@@ -64,16 +65,15 @@ $(COVERAGE):
 
 .PHONY: update-coverage-badge
 update-coverage-badge: $(COVERAGE_PERCENT_FILE)
-ifneq ("$(CIRCLE_BRANCH)","master")
-	@echo
-	@echo "On branch $(CIRCLE_BRANCH), not publishing this branch's $$(cat $(COVERAGE_PERCENT_FILE))% total coverage."
+ifneq ("$(GITHUB_REF_NAME)","main")
+	@echo "On branch $(if $(GITHUB_REF_NAME),$(GITHUB_REF_NAME),$(shell git rev-parse --abbrev-ref HEAD)), not publishing this branch's $$(cat $(COVERAGE_PERCENT_FILE))% total coverage."
 else
 	rm -rf /tmp/$(DOC_REPO_NAME)
 	git -C /tmp clone $(DOC_REPO)
 	cd /tmp/$(DOC_REPO_NAME) && \
-	go run github.com/davidovich/summon-example-assets@3c2e66d7 shields.io/coverage.json.gotmpl --json "{\"Coverage\": \"$$(cat $(COVERAGE_PERCENT_FILE))\"}" -o- > /tmp/$(SUMMON_BADGE_JSON_FILE)
-	git -C /tmp/$(DOC_REPO_NAME) diff-index --quiet HEAD || git -C /tmp/$(DOC_REPO_NAME) -c user.email=automation@davidovich.com -c user.name=automation commit -am "automated coverage commit of $$(cat $(COVERAGE_PERCENT_FILE)) %" || true
-	git -C /tmp/$(DOC_REPO_NAME) push
+	go run github.com/davidovich/summon-example-assets@3c2e66d7 shields.io/coverage.json.gotmpl --json "{\"Coverage\": \"$$(cat $(ROOT_DIR)/$(COVERAGE_PERCENT_FILE))\"}" -o- > /tmp/$(SUMMON_BADGE_JSON_FILE)
+	git -C /tmp/$(DOC_REPO_NAME) diff-index --quiet HEAD || git -C /tmp/$(DOC_REPO_NAME) -c user.email=$(USER)@davidovich.com -c user.name=$(USER) commit -am "automated coverage commit of $$(cat $(COVERAGE_PERCENT_FILE)) %" || true
+	git -C /tmp/$(DOC_REPO_NAME) push https://$(USER):$(COVERAGE_REPO_PAT)@$(COVERAGE_REPO)
 endif
 
 .PHONY: clean
