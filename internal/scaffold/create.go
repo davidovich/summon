@@ -28,7 +28,7 @@ func Create(destDir, modName, summonerName string, force bool) error {
 	empty, err := isEmptyDir(destDir)
 	if !force && !empty || err != nil {
 		if err == nil || !os.IsNotExist(err) {
-			return fmt.Errorf("destination directory is not empty")
+			return fmt.Errorf("destination directory is not empty: %s", destDir)
 		}
 	}
 
