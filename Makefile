@@ -42,7 +42,7 @@ HTML_COVERAGE := build/coverage/index.html
 test: $(gotestsum) clean-coverage output-coverage
 
 $(gotestsum):
-	GOBIN=$(ROOT_DIR)/build go install gotest.tools/gotestsum@$(GOTESTSUM_VERSION)
+	GOBIN=$(ROOT_DIR)build go install gotest.tools/gotestsum@$(GOTESTSUM_VERSION)
 
 .PHONY: clean-coverage
 clean-coverage:

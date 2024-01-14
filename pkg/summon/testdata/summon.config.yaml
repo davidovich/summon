@@ -7,6 +7,7 @@ templates: >-
   {{ define "version" }}1.2.3{{ end }}
 exec:
   handles:
+    # These handles are setup for testing
     hello-bash: [bash, hello.sh ]
     bash-self-ref: [bash, '{{ summon "hello.sh" }}']
     run-example: [bash, '{{ run "hello-bash" }}']
@@ -14,6 +15,7 @@ exec:
     one-arg: [bash, 'args:', '{{arg 0 "" }}']
     all-args: [bash, 'args:', '{{ args }}']
     osArgs: [bash, 'osArgs:', '{{ .osArgs }}']
+    swallowargs: [bash, 'swallowargs:', '{{ swallowargs }}']
     templateref: [bash, '{{ template "version"}}']
     overrides:
       cmd: [bash]
