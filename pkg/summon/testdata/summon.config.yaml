@@ -10,6 +10,7 @@ exec:
     # These handles are setup for testing
     hello-bash: [bash, hello.sh ]
     bash-self-ref: [bash, '{{ summon "hello.sh" }}']
+    summon-with-destination: [cat, '{{ summon "hello.sh" "dest-dir" }}']
     run-example: [bash, '{{ run "hello-bash" }}']
     args: [bash, 'args:', '{{ arg 0 "" }}']
     one-arg: [bash, 'args:', '{{arg 0 "" }}']

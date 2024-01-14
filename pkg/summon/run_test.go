@@ -33,6 +33,7 @@ func TestRun(t *testing.T) {
 		contains  [][]string
 		args      []string
 		wantErr   bool
+		replaceFS bool
 	}{
 		{
 			name:    "composite-invoker", // python -c
@@ -47,10 +48,17 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "self-reference-invoker", // bash
-			cmd:     []string{"bash-self-ref"},
-			expect:  [][]string{{"bash", filepath.Join(os.TempDir(), "hello.sh")}},
-			wantErr: false,
+			name:      "self-reference-invoker", // bash
+			cmd:       []string{"bash-self-ref"},
+			expect:    [][]string{{"bash", filepath.Join(os.TempDir(), "hello.sh")}},
+			wantErr:   false,
+			replaceFS: true,
+		},
+		{
+			name:      "summon-function-with-destination",
+			cmd:       []string{"summon-with-destination"},
+			expect:    [][]string{{"cat", filepath.Join("dest-dir", "hello.sh")}},
+			replaceFS: true,
 		},
 		{
 			name:   "self-reference-run", // bash
@@ -177,6 +185,10 @@ func TestRun(t *testing.T) {
 
 			if tt.helper == "" {
 				tt.helper = "TestSummonRunHelper"
+			}
+
+			if tt.replaceFS {
+				defer testutil.ReplaceFs()()
 			}
 
 			program := append([]string{"summon"}, tt.cmd...)
