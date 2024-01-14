@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"text/template"
 
@@ -194,8 +195,14 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			}
 			return strings.TrimSpace(b.String()), err
 		},
-		"summon": func(path string) (string, error) {
-			return d.Summon(Filename(path), Dest(os.TempDir()))
+		"summon": func(path string, arg ...any) (string, error) {
+			dest := os.TempDir()
+			if len(arg) > 0 {
+				if reflect.TypeOf(arg[0]).Kind() == reflect.String {
+					dest = arg[0].(string)
+				}
+			}
+			return d.Summon(Filename(path), Dest(dest))
 		},
 		"flagValue": func(flag string) (string, error) {
 			for _, toRender := range d.flagsToRender {

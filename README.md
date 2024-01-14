@@ -452,7 +452,15 @@ bash /tmp/hello.sh
 > Note that `hello.sh` could also contain templates that will be
 rendered at instantiation time.
 
-##### Arg and Args Function
+Destination
+
+> new in v0.16.0
+>
+> The summon function takes an additional parameter specifying where the summoned
+> file should be written. If not specified, it will be written to the temp
+> directory.
+
+##### `{{ arg }}` and `{{ args }}` Function
 
 > New in v0.12.0
 
@@ -583,9 +591,9 @@ exec:
       cmd: *bash-c
       completion: '{{ (split ":" (run "bash-c" (printf "kubectl __complete %s ''%s''" (join " " (rest (initial args))) (last args))))._0 }}'
 
-    bash --norc --noprofile -c: # this is a simple bash environment to delegate calls
-      bash-c:
-        hidden: true
+    bash: # this is a simple bash environment to delegate calls
+      cmd: [bash, --norc, --noprofile, -c]
+      hidden: true
 ```
 
 #### Removing the run subcommand
