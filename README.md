@@ -76,7 +76,7 @@ provides the summon executable command (it's main() function is in
 summon/summon.go). The library provides the command-line interface, so no
 coding is necessary in the asset repo.
 
-Summon also provides a boostrapping feature in the scaffold command.
+Summon also provides a bootstrapping feature in the scaffold command.
 
 > New in v0.13.0
 
@@ -252,7 +252,7 @@ go install [your-go-repo-module]/summon@latest
 
 ### Makefile Library
 
-In makefiles it can be useful to centralize certain libraries, notice how
+In a makefile it can be useful to centralize certain libraries, notice how
 summon returns the path ot where the resource was instantiated:
 
 ```bash
@@ -500,10 +500,10 @@ If the result of using args is a string representation of an array, like
 
 > New in v0.16.0
 
-Swalowargs will consume all arguments. Use it to capture unwanted arguments
+`swallowargs` will consume all arguments. Use it to capture unwanted arguments
 that would be added by your user. This would be used when you want tight
-control of the arguments and not let the user add unknown arguments to the exec
-handle (which is the summon default).
+control of the arguments and not let the user append unknown arguments to the
+exec handle (which is what summon does by default).
 
 ##### Run Function
 
@@ -529,7 +529,7 @@ exec:
     #    ^ used to compute the volumes.
 ```
 
-When inovking `summon run ls`, summon will first invoke:
+When invoking `summon run ls`, summon will first invoke:
 
 `bash -c 'echo -v current_dir:/app'` which yields `-v current_dir:/app` and
 then call the `ls` handle to produce:
@@ -579,7 +579,7 @@ Also, a [cobra](https://github.com/spf13/cobra) based program (kubectl).
 exec:
   handles:
     # tanka delegates it's completion to posener/complete. Fake a completion
-    # call by setting the COMP_LINE enviroment var.
+    # call by setting the COMP_LINE environment var.
     # delegate this to a simple bash-c handle
     tk:
       cmd: &bash-c [bash, -c] # here bash -c is used to test, but normally this is a complex
