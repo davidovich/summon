@@ -1,28 +1,29 @@
 // Package cmd defines the main command line interface entry-points.
 //
 // See summon -h:
-//  summon main command
 //
-//  Usage:
-//    summon [file to summon] [flags]
-//    summon [command]
+//	summon main command
 //
-//  Available Commands:
-//    completion  Output bash completion script
-//    help        Help about any command
-//    ls          List all summonables
-//    run         Launch executable from summonables
+//	Usage:
+//	  summon [file to summon] [flags]
+//	  summon [command]
 //
-//  Flags:
-//    -a, --all                restitute all data
-//    -h, --help               help for summon
-//        --json string        json to use to render template
-//        --json-file string   json file to use to render template, with '-' for stdin
-//    -o, --out string         destination directory, or '-' for stdout (default ".summoned")
-//        --raw                output without any template rendering
-//    -v, --version            output data version info and exit
+//	Available Commands:
+//	  completion  Output bash completion script
+//	  help        Help about any command
+//	  ls          List all summonables
+//	  run         Launch executable from summonables
 //
-//  Use "summon [command] --help" for more information about a command.
+//	Flags:
+//	  -a, --all                restitute all data
+//	  -h, --help               help for summon
+//	      --json string        json to use to render template
+//	      --json-file string   json file to use to render template, with '-' for stdin
+//	  -o, --out string         destination directory, or '-' for stdout (default ".summoned")
+//	      --raw                output without any template rendering
+//	  -v, --version            output data version info and exit
+//
+//	Use "summon [command] --help" for more information about a command.
 package cmd
 
 import (
@@ -71,7 +72,7 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 		Short:            exeName + " main command",
 		TraverseChildren: true,
 		Args: func(cmd *cobra.Command, args []string) error {
-			if main.copyAll || showVersion || main.listOptions.asOption {
+			if main.copyAll || showVersion || main.listOptions.asOption || main.listOptions.tree {
 				return nil
 			}
 			if len(args) < 1 {
@@ -154,7 +155,8 @@ func CreateRootCmd(driver *summon.Driver, args []string, options summon.MainOpti
 }
 
 func (m *mainCmd) run() error {
-	if m.listOptions.asOption {
+	// tree implies ls
+	if m.listOptions.asOption || m.listOptions.tree {
 		err := m.listOptions.run()
 		if err != nil {
 			return err
