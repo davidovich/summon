@@ -18,8 +18,9 @@
       - [Enhanced command description](#enhanced-command-description)
       - [Keeping DRY](#keeping-dry)
       - [Template Functions Available in Summon](#template-functions-available-in-summon)
-        - [Summon Function](#summon-function)
-        - [Arg and Args Function](#arg-and-args-function)
+        - [`{{ summon }}` Function](#-summon--function)
+        - [`{{ arg }}` and `{{ args }}` Function](#-arg--and--args--function)
+        - [`{{ swallowargs }}` Function](#-swallowargs--function)
         - [Run Function](#run-function)
         - [flagValue Function](#flagvalue-function)
         - [.flag field](#flag-field)
@@ -240,7 +241,8 @@ In an empty asset data repository directory:
 
 ## Install
 
-Install (using `go install`) the asset repo which will become the summon executable.
+Install (using `go install`) the asset repo which will become the summon
+executable.
 
 ```bash
 go install [your-go-repo-module]/summon@latest
@@ -265,7 +267,9 @@ the root of the current directory. This can be changed with the `-o` flag.
 Files in the asset directory can contain go templates. This allows applying
 customization using json data, just before rendering the file (and its contents).
 
-> New in v0.3.0, summon now uses the [Sprig templating library](https://github.com/Masterminds/sprig), which provides many useful templating functions.
+> New in v0.3.0, summon now uses the [Sprig templating
+> library](https://github.com/Masterminds/sprig), which provides many useful
+> templating functions.
 
 For example, consider this file in a summon asset provider:
 
@@ -345,6 +349,11 @@ containers. The cli is a kind of trampoline to the container.
 
 Note that the whole environment line can be templated.
 
+> By default, any parameters passed by the user will be appended to the
+> rendered execution handle. If you want to control this, see [{{ args
+> }}](#-arg--and--args--function) or [{{ swallowargs
+> }}](#-swallowargs--function)
+
 #### Enhanced command description
 
 > New in v0.14.0
@@ -422,7 +431,7 @@ Here, when you run with the `echo` handle, the arrays will be flattened to produ
 Summon comes with template functions that can be used in the config file or
 contained assets.
 
-##### Summon Function
+##### `{{ summon }}` Function
 
 Say you would like to bundle a script in the data repo and also use it as an
 invocable (new in v.0.10.0). You would use the `summon` template function bundled in summon:
@@ -469,15 +478,24 @@ these in a template of the params array.
         ls: [bash, ls, '{{ arg 0 "error msg" }}']
     ```
 
-When used, summon will remove the consumed args, as this would
-surprisingly double the args in the resulting invocation. In other words, when
-accessing `{{ args }}`, summon will not append the resulting args, and using
-`{{ arg 0 "error" }}`, summon would only append the unconsumed args (after index 0).
+When args or arg is used, summon will remove the consumed args, so as to not
+append the args in the exec invocation. In other words, when accessing `{{ args
+}}`, summon will not append the residual args, and using `{{ arg 0 "error"
+}}`, summon would only append the unconsumed args (after index 0).
 
 - `.osArgs` contains the whole command-line slice
 
 If the result of using args is a string representation of an array, like
 `[a b c d]` this array will be flattened to the final args array.
+
+##### `{{ swallowargs }}` Function
+
+> New in v0.16.0
+
+Swalowargs will consume all arguments. Use it to capture unwanted arguments
+that would be added by your user. This would be used when you want tight
+control of the arguments and not let the user add unknown arguments to the exec
+handle (which is the summon default).
 
 ##### Run Function
 
@@ -544,7 +562,8 @@ While developing this feature, experimentation was done to trigger the completio
 mechanisms of the target program. This is used to populate the completion from
 the host machine by using the completion result in the container.
 
-For example, we present below the completion command for a [`posener/complete`](https://github.com/posener/complete) based implementation.
+For example, we present below the completion command for a
+[`posener/complete`](https://github.com/posener/complete) based implementation.
 
 Also, a [cobra](https://github.com/spf13/cobra) based program (kubectl).
 

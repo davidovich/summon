@@ -89,6 +89,13 @@ func TestRun(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "swallowargs",
+			cmd:     []string{"swallowargs"},
+			args:    []string{"all", "these", "user", "args", "will", "be", "swallowed"},
+			expect:  [][]string{{"bash", "swallowargs:"}}, // we should not see user passed args
+			wantErr: false,
+		},
+		{
 			name:    "one-arg-access-remainder-passed",
 			cmd:     []string{"one-arg"},
 			args:    []string{"acce ssed", "remainder1", "remainder2"},

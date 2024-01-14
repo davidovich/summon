@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -154,6 +153,17 @@ func (d *Driver) resolveAlias(alias string) string {
 }
 
 func summonFuncMap(d *Driver) template.FuncMap {
+	initConsumed := func() {
+		if d.opts.argsConsumed == nil {
+			d.opts.argsConsumed = make(map[int]struct{}, len(d.opts.args))
+		}
+	}
+	consumeAllArgs := func() {
+		initConsumed()
+		for i := range d.opts.args {
+			d.opts.argsConsumed[i] = struct{}{}
+		}
+	}
 	return template.FuncMap{
 		"run": func(args ...string) (string, error) {
 			driverCopy := Driver{
@@ -206,21 +216,19 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			}
 
 			retrieved := d.opts.args[index]
-			if d.opts.argsConsumed == nil {
-				d.opts.argsConsumed = map[int]struct{}{}
-			}
+			initConsumed()
 			d.opts.argsConsumed[index] = struct{}{}
 			return retrieved, nil
 		},
 		"args": func() []string {
-			if d.opts.argsConsumed == nil {
-				d.opts.argsConsumed = make(map[int]struct{}, len(d.opts.args))
-			}
-			for i := range d.opts.args {
-				d.opts.argsConsumed[i] = struct{}{}
-			}
+			consumeAllArgs()
 
 			return d.opts.args
+		},
+		"swallowargs": func() string {
+			consumeAllArgs()
+
+			return ""
 		},
 	}
 }
@@ -260,7 +268,7 @@ func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (strin
 		out = outf
 	}
 
-	fileContent, err := ioutil.ReadAll(embeddedFile)
+	fileContent, err := io.ReadAll(embeddedFile)
 	if err != nil {
 		return "", err
 	}
