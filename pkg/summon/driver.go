@@ -35,6 +35,7 @@ type Driver struct {
 	configRead    bool
 	flagsToRender []*flagValue
 	cmdToSpec     map[*cobra.Command]*commandSpec
+	prompts       map[string]string
 }
 
 // New creates the Driver.
@@ -43,6 +44,7 @@ func New(filesystem fs.FS, opts ...Option) (*Driver, error) {
 		fs:          filesystem,
 		execCommand: command.New,
 		cmdToSpec:   map[*cobra.Command]*commandSpec{},
+		prompts:     map[string]string{},
 	}
 
 	err := fs.WalkDir(d.fs, ".", func(path string, de fs.DirEntry, err error) error {

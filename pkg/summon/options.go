@@ -22,7 +22,7 @@ type options struct {
 	all bool
 	// where the summoned file will land or stdout if "-"
 	destination string
-	// single file to instanciate
+	// single file to instantiate
 	filename string
 	// show tree of files
 	tree bool

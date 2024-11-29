@@ -140,5 +140,23 @@ func summonFuncMap(d *Driver) template.FuncMap {
 
 			return ""
 		},
+		"prompt": func(slot, prompt string, fallback any) string {
+			def := ""
+			if reflect.TypeOf(fallback).Kind() == reflect.String {
+				def = fallback.(string)
+			}
+			_ = def
+			result := "io on command-line"
+
+			d.prompts[slot] = result
+			return ""
+		},
+		"promptValue": func(slot string) (string, error) {
+			p, ok := d.prompts[slot]
+			if !ok {
+				return "", fmt.Errorf("no previous prompts were filled for slot %s", slot)
+			}
+			return p, nil
+		},
 	}
 }
