@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/cqroot/prompt"
 )
 
 func (d *Driver) prepareTemplate() (*template.Template, error) {
@@ -79,6 +80,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				execCommand: d.execCommand,
 				configRead:  d.configRead,
 				cmdToSpec:   d.cmdToSpec,
+				prompts:     d.prompts,
 			}
 			driverCopy.opts.argsConsumed = map[int]struct{}{}
 			driverCopy.opts.cobraCmd = nil
@@ -140,21 +142,40 @@ func summonFuncMap(d *Driver) template.FuncMap {
 
 			return ""
 		},
-		"prompt": func(slot, prompt string, fallback any) string {
-			def := ""
-			if reflect.TypeOf(fallback).Kind() == reflect.String {
-				def = fallback.(string)
-			}
-			_ = def
-			result := "io on command-line"
+		"prompt": func(slot, ask string, params any) (result string, err error) {
+			defaultValue := ""
+			selectors := []string{}
 
+			switch t := params.(type) {
+			case string:
+				defaultValue = t
+			case []any:
+				for _, e := range t {
+					selectors = append(selectors, e.(string))
+				}
+			default:
+				return "", fmt.Errorf("last parameter should be a default value or a list of choices")
+			}
+
+			pr := prompt.New().Ask(ask)
+			if len(selectors) != 0 {
+				result, err = pr.Choose(selectors)
+			} else {
+				result, err = pr.Input(defaultValue)
+			}
+
+			if err != nil {
+				return "", err
+			}
+
+			// record result for future use
 			d.prompts[slot] = result
-			return ""
+			return result, nil
 		},
 		"promptValue": func(slot string) (string, error) {
 			p, ok := d.prompts[slot]
 			if !ok {
-				return "", fmt.Errorf("no previous prompts were filled for slot %s", slot)
+				return "", fmt.Errorf("no previous prompts were filled for slot '%s'", slot)
 			}
 			return p, nil
 		},

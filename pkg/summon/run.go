@@ -84,7 +84,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 
 	_, err := d.renderTemplate(cmdSpec.prompts)
 	if err != nil {
-		return nil, fmt.Errorf("could not get all prompts for exec handle '%s' in config %s", ref, config.ConfigFileName)
+		return nil, fmt.Errorf("could not get all prompts for exec handle '%s' in config %s, error: %s", ref, config.ConfigFileName, err)
 	}
 
 	execEnv, err := d.RenderArgs(FlattenStrings(cmdSpec.command)...)

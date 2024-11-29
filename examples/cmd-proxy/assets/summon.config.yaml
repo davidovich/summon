@@ -104,3 +104,11 @@ exec:
       cmd: [docker, run, -ti, -v, '{{ env "PWD"}}:/workdir', -w, /workdir, alpine]
       args: [echo]
       help: use alpine to echo a string
+
+    prompt:
+      prompts: '{{ prompt "slotA" "What is your name" "David" }}'
+      cmd: [bash, -c]
+      args:
+        - |
+          echo hello {{ promptValue "slotA" }}! \
+          How should I continue {{ prompt "continue" "Select One" (list "A" "B" "C") }}
