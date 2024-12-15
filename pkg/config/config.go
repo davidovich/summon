@@ -52,6 +52,8 @@ type ArgSliceSpec []interface{}
 // Its Flags can be a one line string flag or a FlagSpec
 type CmdDesc struct {
 	Cmd ArgSliceSpec `yaml:"cmd"`
+	// Prompts are used to prompt the user with values. They can be templated.
+	Prompts string `yaml:"prompts"`
 	// Args contain the args that get appended to the ExecEnvironment
 	Args ArgSliceSpec `yaml:"args"`
 	// SubCmd describes a sub-command of current command
@@ -98,11 +100,21 @@ func (e *FlagDesc) UnmarshalYAML(value *yaml.Node) error {
 	switch value.Kind {
 	case yaml.ScalarNode:
 		var args string
-		value.Decode(&args)
+		err := value.Decode(&args)
+		if err != nil {
+			return &yaml.TypeError{
+				Errors: []string{fmt.Sprintf("could not decode flag: %s", err)},
+			}
+		}
 		e.Value = args
 	case yaml.MappingNode:
 		flag := FlagSpec{}
-		value.Decode(&flag)
+		err := value.Decode(&flag)
+		if err != nil {
+			return &yaml.TypeError{
+				Errors: []string{fmt.Sprintf("could not decode flag as mapping: %s", err)},
+			}
+		}
 		e.Value = flag
 	default:
 		return &yaml.TypeError{

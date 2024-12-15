@@ -20,6 +20,8 @@ import (
 type commandSpec struct {
 	// command is the caller environment (docker, bash, python)
 	command config.ArgSliceSpec
+	// Inputs are used to prompt the user with values. They can be templated.
+	prompts string
 	// args is the command and args that get appended to the ExecEnvironment
 	args config.ArgSliceSpec
 	// subCmd sub-command of current command
@@ -78,6 +80,11 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	cmdSpec, ref := d.getCmdSpec()
 	if cmdSpec == nil {
 		return nil, fmt.Errorf("could not find exec handle reference '%s' in config %s", ref, config.ConfigFileName)
+	}
+
+	_, err := d.renderTemplate(cmdSpec.prompts)
+	if err != nil {
+		return nil, fmt.Errorf("could not get all prompts for exec handle '%s' in config %s, error: %s", ref, config.ConfigFileName, err)
 	}
 
 	execEnv, err := d.RenderArgs(FlattenStrings(cmdSpec.command)...)
@@ -144,11 +151,7 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 func (d *Driver) getCmdSpec() (*commandSpec, string) {
 	var cmdSpec *commandSpec
 	var ref string
-	if d.opts.cobraCmd != nil {
-		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
-		ref = d.opts.cobraCmd.Name()
-	} else {
-
+	if d.opts.cobraCmd == nil {
 		for cmd, spec := range d.cmdToSpec {
 			if cmd.Name() == d.opts.ref {
 				cmdSpec = spec
@@ -156,6 +159,9 @@ func (d *Driver) getCmdSpec() (*commandSpec, string) {
 				break
 			}
 		}
+	} else {
+		cmdSpec = d.cmdToSpec[d.opts.cobraCmd]
+		ref = d.opts.cobraCmd.Name()
 	}
 	return cmdSpec, ref
 }
@@ -216,6 +222,7 @@ func normalizeExecDesc(argsDesc interface{}) (*commandSpec, error) {
 	case config.CmdDesc:
 		c.command = descType.Cmd
 		c.args = descType.Args
+		c.prompts = descType.Prompts
 		c.help = descType.Help
 		c.completion = descType.Completion
 		c.hidden = descType.Hidden
@@ -229,7 +236,7 @@ func normalizeExecDesc(argsDesc interface{}) (*commandSpec, error) {
 				if err != nil {
 					return nil, err
 				}
-				// inherit command if not set explicitely
+				// inherit command if not set explicitly
 				if subCmd.command == nil {
 					subCmd.command = c.command
 				}

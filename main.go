@@ -9,13 +9,13 @@ code snippets distributed in many repos (like general makefile recipes), leverag
 management. It also allows configuring a standard set of tools that a dev team can readily
 invoke by name.
 
-Basics
+# Basics
 
 This library needs a command entrypoint in a data repository. See https://github.com/davidovich/summon-example-assets.
 It can be bootstrapped in an empty directory by using:
 
-  cd [empty data repo dir]
-  go run github.com/davidovich/summon/scaffold@latest init [module name]
+	cd [empty data repo dir]
+	go run github.com/davidovich/summon/scaffold@latest init [module name]
 */
 package summon
 
@@ -49,7 +49,7 @@ func Main(args []string, fs embed.FS, opts ...option) int {
 		return 1
 	}
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for range c {

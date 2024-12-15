@@ -22,7 +22,7 @@ type options struct {
 	all bool
 	// where the summoned file will land or stdout if "-"
 	destination string
-	// single file to instanciate
+	// single file to instantiate
 	filename string
 	// show tree of files
 	tree bool
@@ -50,6 +50,8 @@ type options struct {
 	dryrun bool
 	// execCommand overrides the command used to run external processes
 	execCommand command.ExecCommandFn
+	//prompter
+	prompter Prompter
 }
 
 type helpInfo struct {
@@ -186,5 +188,13 @@ func ExecCmd(e command.ExecCommandFn) Option {
 func (o *options) DefaultsFrom(conf config.Config) {
 	if conf.OutputDir != "" {
 		o.destination = conf.OutputDir
+	}
+}
+
+// WithPrompter configures the prompter. This is mostly used in testing.
+func WithPrompter(p Prompter) Option {
+	return func(opts *options) error {
+		opts.prompter = p
+		return nil
 	}
 }
