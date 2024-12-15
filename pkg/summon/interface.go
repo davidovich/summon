@@ -36,3 +36,10 @@ type ConfigurableLister interface {
 type Lister interface {
 	List(opts ...Option) ([]string, error)
 }
+
+// Prompter allows prompting the user.
+type Prompter interface {
+	NewPrompt(userPrompt string)
+	Choose(choices []string) (string, error)
+	Input(defaultVal string) (string, error)
+}

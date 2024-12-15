@@ -81,6 +81,7 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				configRead:  d.configRead,
 				cmdToSpec:   d.cmdToSpec,
 				prompts:     d.prompts,
+				prompter:    d.prompter,
 			}
 			driverCopy.opts.argsConsumed = map[int]struct{}{}
 			driverCopy.opts.cobraCmd = nil
@@ -157,11 +158,12 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				return "", fmt.Errorf("last parameter should be a default value or a list of choices")
 			}
 
-			pr := prompt.New().Ask(ask)
+			d.prompter.NewPrompt(ask)
+
 			if len(selectors) != 0 {
-				result, err = pr.Choose(selectors)
+				result, err = d.prompter.Choose(selectors)
 			} else {
-				result, err = pr.Input(defaultValue)
+				result, err = d.prompter.Input(defaultValue)
 			}
 
 			if err != nil {
@@ -180,4 +182,30 @@ func summonFuncMap(d *Driver) template.FuncMap {
 			return p, nil
 		},
 	}
+}
+
+type Prompt struct {
+	pr         *prompt.Prompt
+	promptStr  string
+	selectors  []string
+	defaultVal string
+}
+
+func (p *Prompt) NewPrompt(userPrompt string) {
+	p.pr = prompt.New().Ask(userPrompt)
+}
+
+func (p *Prompt) Choose(choices []string) (string, error) {
+	if p.pr == nil {
+		return "", fmt.Errorf("prompter is not initialized")
+	}
+
+	return p.pr.Choose(choices)
+}
+
+func (p *Prompt) Input(defaultVal string) (string, error) {
+	if p.pr == nil {
+		return "", fmt.Errorf("prompter is not initialized")
+	}
+	return p.pr.Input(defaultVal)
 }

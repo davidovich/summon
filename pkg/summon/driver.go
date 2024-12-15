@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
@@ -36,6 +35,7 @@ type Driver struct {
 	flagsToRender []*flagValue
 	cmdToSpec     map[*cobra.Command]*commandSpec
 	prompts       map[string]string
+	prompter      Prompter
 }
 
 // New creates the Driver.
@@ -45,6 +45,7 @@ func New(filesystem fs.FS, opts ...Option) (*Driver, error) {
 		execCommand: command.New,
 		cmdToSpec:   map[*cobra.Command]*commandSpec{},
 		prompts:     map[string]string{},
+		prompter:    &Prompt{},
 	}
 
 	err := fs.WalkDir(d.fs, ".", func(path string, de fs.DirEntry, err error) error {
@@ -133,6 +134,11 @@ func (d *Driver) Configure(opts ...Option) error {
 		d.opts.data = map[string]interface{}{}
 	}
 
+	// override prompter
+	if d.opts.prompter != nil {
+		d.prompter = d.opts.prompter
+	}
+
 	d.opts.data["osArgs"] = os.Args
 
 	return nil
@@ -158,9 +164,9 @@ func (jv *jsonValue) Set(s string) error {
 		var j []byte
 		var err error
 		if s == "-" {
-			j, err = ioutil.ReadAll(jv.cmd.InOrStdin())
+			j, err = io.ReadAll(jv.cmd.InOrStdin())
 		} else {
-			j, err = ioutil.ReadFile(s)
+			j, err = os.ReadFile(s)
 		}
 		if err != nil {
 			return err
