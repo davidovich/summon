@@ -21,9 +21,10 @@
         - [`{{ summon }}` Function](#-summon--function)
         - [`{{ arg }}` and `{{ args }}` Function](#-arg--and--args--function)
         - [`{{ swallowargs }}` Function](#-swallowargs--function)
-        - [Run Function](#run-function)
-        - [flagValue Function](#flagvalue-function)
-        - [.flag field](#flag-field)
+        - [`{{ run }}` Function](#-run--function)
+        - [`{{ prompt }} and {{ promptValue }}` Functions](#-prompt--and--promptvalue--functions)
+        - [`{{ flagValue }}` Function](#-flagvalue--function)
+        - [`{{ .flag }}` field](#-flag--field)
       - [A Note on Completions](#a-note-on-completions)
       - [Removing the run subcommand](#removing-the-run-subcommand)
     - [Dump the Data at a Location](#dump-the-data-at-a-location)
@@ -369,7 +370,9 @@ Below is a synthetic example that uses every available command and flag config.
 ```yaml
 exec:
   handles:
-    handle [possible param hint to user]: # 'handle' is used to invoke this docker container
+    my-docker [possible param hint to user]: # 'my-docker' is used to invoke this docker container
+      prompts: | # prompt the user before the start of this cmd
+        {{ prompt "storagevar" "What is your name?" "default Name" }}
       cmd: [docker] # this can be a complex docker invocation like mounting volumes (-v),
                     # container removal arg (--rm), passed environment (-e), interactive
                     # terminal (-ti), etc.]
@@ -505,7 +508,7 @@ that would be added by your user. This would be used when you want tight
 control of the arguments and not let the user append unknown arguments to the
 exec handle (which is what summon does by default).
 
-##### Run Function
+##### `{{ run }}` Function
 
 > New in v0.12.0
 
@@ -540,7 +543,44 @@ then call the `ls` handle to produce:
 > protect from this type of call. The consequence of doing this will probably
 > result in a fork bomb.
 
-##### flagValue Function
+##### `{{ prompt }} and {{ promptValue }}` Functions
+
+> New in v0.17.0
+
+You can prompt for arbitrary inputs in your execution handles. These prompts
+can occur at execution handle invocation (by using the `prompts:` config key),
+or inline at any other location that renders templates. Of course it is
+preferable to have prompts executed at command level for a more deterministic
+invocation.
+
+The prompt function takes 3 parameters:
+
+- The "variable" that holds the result,
+- The user prompt text
+- The default value OR a list of choices.
+
+The result of prompting will be held in the prompt variable and can be recalled
+with the `promptValue` template function. If you are using a list of choices,
+use the `list` function from the sprig template library to create a slice of
+possible choices.
+
+Here is an example:
+
+```yaml
+exec:
+  handles:
+    my-cli-command:
+      prompts: | # one string of prompts
+        '{{ prompt "projectName" "What is your projectName" (env "PWD" | base) }}'
+        '{{ prompt "preferredColor" "What is your preferred color" (list "red" "green" "blue") }}'
+      cmd: [bash, -c]
+      args:
+        - |
+          echo will create project {{ promptValue "projectName" }} \
+          Will use {{ promptValue "preferedColor" }} as background color.
+```
+
+##### `{{ flagValue }}` Function
 
 > New in v0.14.0
 
@@ -554,7 +594,7 @@ will render an empty value.
 
 Use the `--dry-run` or `-n` to debug what the invocation would look like.
 
-##### .flag field
+##### `{{ .flag }}` field
 
 > New in v0.14.0
 
