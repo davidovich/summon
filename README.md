@@ -11,6 +11,7 @@
   - [Build](#build)
   - [Install](#install)
   - [Use-cases](#use-cases)
+    - [Templated templates](#templated-templates)
     - [Makefile Library](#makefile-library)
     - [Templating](#templating)
     - [Running a Binary](#running-a-binary)
@@ -27,7 +28,8 @@
         - [`{{ .flag }}` field](#-flag--field)
       - [A Note on Completions](#a-note-on-completions)
       - [Removing the run subcommand](#removing-the-run-subcommand)
-    - [Dump the Data at a Location](#dump-the-data-at-a-location)
+    - [Dump All the Data at a Location](#dump-all-the-data-at-a-location)
+    - [Dump Dir of Data at Location](#dump-dir-of-data-at-location)
     - [Output a File to stdout](#output-a-file-to-stdout)
     - [Output a Template File Without Rendering](#output-a-template-file-without-rendering)
     - [List Summon Contents](#list-summon-contents)
@@ -250,6 +252,26 @@ go install [your-go-repo-module]/summon@latest
 ```
 
 ## Use-cases
+
+### Templated templates
+
+When using `summon` (command line or as a [template
+function](#-summon--function)), summon will render all the templates in the
+referenced asset content. This can be problematic if there are template-like
+text in the source asset. You can disable rendering by modifying the source and
+escaping it.
+
+i.e.
+
+```text/template
+${{ not a go template }}
+```
+
+Can be escaped with backticks:
+
+```text/template
+{{`${{ not a go template }}`}}
+```
 
 ### Makefile Library
 
@@ -649,11 +671,21 @@ main command.
 
 In this mode, the `ls` subcommand to list embedded assets becomes a `--ls` flag.
 
-### Dump the Data at a Location
+### Dump All the Data at a Location
 
 ```bash
 summon --all --out .dir
 ```
+
+### Dump Dir of Data at Location
+
+```bash
+summon a-dir a-destination
+```
+
+When copying a directory, the semantics are like `cp -r source dest`, meaning
+that every file or directory present in `a-dir` will be copied recursively
+in `a-destination`.
 
 ### Output a File to stdout
 
