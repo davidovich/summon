@@ -54,6 +54,16 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
+	if len(cmdArgs) == 1 && cmdArgs[0] == d.opts.helpWanted.helpFlag {
+		// let cobra layer handle help
+		return fmt.Errorf("")
+	}
+
+	if len(cmdArgs) == 0 {
+		_, ref := d.getCmdSpec()
+		return fmt.Errorf("missing params for command '%s'", ref)
+	}
+
 	cmd := d.execCommand(cmdArgs[0], cmdArgs[1:]...)
 	if d.opts.debug || d.opts.dryrun {
 		_, ref := d.getCmdSpec()
@@ -378,8 +388,12 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 
-			return d.Run(CobraCmd(cmd),
+			err := d.Run(CobraCmd(cmd),
 				Args(extractUnknownArgs(cmd, d.opts.initialArgs, d.opts.args)...))
+			if err != nil {
+				cmd.SilenceUsage = false
+			}
+			return err
 		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
