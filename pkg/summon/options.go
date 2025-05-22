@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 
 	"github.com/spf13/cobra"
 
@@ -171,7 +172,10 @@ func JSON(j *string) Option {
 		if err != nil {
 			return err
 		}
-		opts.data = data
+		if opts.data == nil {
+			opts.data = map[string]interface{}{}
+		}
+		maps.Copy(opts.data, data)
 		return nil
 	}
 }

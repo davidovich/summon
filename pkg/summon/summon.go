@@ -58,7 +58,7 @@ func (d *Driver) Summon(opts ...Option) (string, error) {
 
 	embeddedFile, err := d.fs.Open(filename)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not open %s in store: %w", filename, err)
 	}
 	stat, err := embeddedFile.Stat()
 	if err != nil {
@@ -129,7 +129,7 @@ func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (strin
 		summonedFile = filepath.Join(destination, filename)
 		err := appFs.MkdirAll(filepath.Dir(summonedFile), os.ModePerm)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("could not create dir %s: %w", filepath.Dir(summonedFile), err)
 		}
 
 		outf, err := appFs.Create(summonedFile)
@@ -151,7 +151,7 @@ func (d *Driver) copyOneFile(embeddedFile fs.File, filename, root string) (strin
 	} else {
 		rendered, err = d.renderTemplate(string(fileContent))
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to render templates of file %s: %w", filepath.Join(root, filename), err)
 		}
 	}
 

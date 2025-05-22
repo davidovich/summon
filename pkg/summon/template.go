@@ -50,7 +50,7 @@ func (d *Driver) renderTemplate(tmpl string) (string, error) {
 
 	t, err = t.Parse(tmpl)
 	if err != nil {
-		return tmpl, err
+		return tmpl, fmt.Errorf("could not parse template: '%s' error: %w", tmpl, err)
 	}
 
 	data := d.opts.data
@@ -121,8 +121,8 @@ func summonFuncMap(d *Driver) template.FuncMap {
 		},
 		"arg": func(index int, missingErrors ...string) (string, error) {
 			missingError := strings.Join(missingErrors, " ")
-			if d.opts.args == nil {
-				return "", fmt.Errorf(missingError)
+			if len(d.opts.args) == 0 {
+				return "", fmt.Errorf("%s", missingError)
 			}
 			if index >= len(d.opts.args) {
 				return "", fmt.Errorf("%s: index %v out of range, args: %s", missingError, index, d.opts.args)
@@ -154,6 +154,8 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				for _, e := range t {
 					selectors = append(selectors, e.(string))
 				}
+			case []string:
+				selectors = append(selectors, t...)
 			default:
 				return "", fmt.Errorf("last parameter should be a default value or a list of choices")
 			}

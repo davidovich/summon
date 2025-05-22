@@ -54,6 +54,16 @@ func (d *Driver) Run(opts ...Option) error {
 		return err
 	}
 
+	if len(cmdArgs) == 1 && cmdArgs[0] == d.opts.helpWanted.helpFlag {
+		// let cobra layer handle help
+		return fmt.Errorf("")
+	}
+
+	if len(cmdArgs) == 0 {
+		_, ref := d.getCmdSpec()
+		return fmt.Errorf("missing params for command '%s'", ref)
+	}
+
 	cmd := d.execCommand(cmdArgs[0], cmdArgs[1:]...)
 	if d.opts.debug || d.opts.dryrun {
 		_, ref := d.getCmdSpec()
@@ -93,14 +103,16 @@ func (d *Driver) buildCmdArgs() ([]string, error) {
 	}
 
 	args := FlattenStrings(cmdSpec.args)
-	// Render and flatten arguments array of arrays to simple array
-	if cmdSpec.join != nil && *cmdSpec.join {
-		oneLine := strings.Join(args, " ")
-		args = []string{oneLine}
-	}
+
 	arguments, err := d.RenderArgs(args...)
 	if err != nil {
 		return nil, err
+	}
+
+	// Render and flatten arguments array of arrays to simple array
+	if cmdSpec.join != nil && *cmdSpec.join {
+		oneLine := strings.Join(arguments, " ")
+		arguments = []string{oneLine}
 	}
 
 	// Render flags
@@ -178,18 +190,25 @@ func (d *Driver) RenderArgs(args ...string) ([]string, error) {
 		}
 
 		var renderedTargets = []string{rt}
+
+		// We want to remove template introduced [] for slice render.
+		// The resulting list should be split by shell rules.
+		// The [] operator allows an empty param list or verbatim mode.
 		if strings.HasPrefix(rt, "[") && strings.HasSuffix(rt, "]") {
-			inner := strings.Trim(rt, "[]")
+			inner := strings.TrimSuffix(strings.TrimPrefix(rt, "["), "]")
 
 			if inner == "" {
 				continue
+			}
+			// check if user wants to keep args list as one param (verbatim)
+			if strings.HasPrefix(inner, "[") && strings.HasSuffix(inner, "]") {
+				renderedTargets = []string{strings.TrimSuffix(strings.TrimPrefix(inner, "["), "]")}
 			} else {
-				if inner == `""` {
-					renderedTargets = []string{""}
-				} else {
+				renderedTargets = []string{""}
+				if inner != `""` {
 					renderedTargets, err = shlex.Split(inner, true)
 					if err != nil {
-						return nil, err
+						return nil, fmt.Errorf("could not split args: %w", err)
 					}
 				}
 			}
@@ -369,8 +388,12 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 
-			return d.Run(CobraCmd(cmd),
+			err := d.Run(CobraCmd(cmd),
 				Args(extractUnknownArgs(cmd, d.opts.initialArgs, d.opts.args)...))
+			if err != nil {
+				cmd.SilenceUsage = false
+			}
+			return err
 		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
@@ -424,11 +447,11 @@ func (d *Driver) addCmdSpec(root *cobra.Command, arg string, cmdSpec *commandSpe
 // help is requested.
 func (d *Driver) SetupRunArgs(root *cobra.Command) {
 	// Summon needs to pass the help flag down to the proxied
-	// command, but cobra is very agressive in wanting to manage the help.
+	// command, but cobra is very aggressive in wanting to manage the help.
 	// To workaround this, remove the help, but reintroduce it only if the user
 	// defined a help for his command in the config file. If the help is removed,
-	// it can be positionned explicitely by the user with flagValue "help".
-	// Otherwize the help is reintroduced when calling the proxied command. It
+	// it can be positioned explicitly by the user with flagValue "help".
+	// Otherwise the help is reintroduced when calling the proxied command. It
 	// is reinserted at the same position (before a recorded arg), if this arg
 	// was not manipulated by a template rendering. In the latter case, help
 	// is appended to the proxied command.
