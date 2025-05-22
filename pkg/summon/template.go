@@ -154,6 +154,8 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				for _, e := range t {
 					selectors = append(selectors, e.(string))
 				}
+			case []string:
+				selectors = append(selectors, t...)
 			default:
 				return "", fmt.Errorf("last parameter should be a default value or a list of choices")
 			}
