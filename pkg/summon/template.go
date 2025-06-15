@@ -10,6 +10,8 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/cqroot/prompt"
+
+	"github.com/davidovich/summon/pkg/config"
 )
 
 func (d *Driver) prepareTemplate() (*template.Template, error) {
@@ -84,11 +86,28 @@ func summonFuncMap(d *Driver) template.FuncMap {
 				prompter:    d.prompter,
 			}
 			driverCopy.opts.argsConsumed = map[int]struct{}{}
-			driverCopy.opts.cobraCmd = nil
+			savedCmd := driverCopy.opts.cobraCmd
+
+			// Check if cobraCmd is nil to prevent nil pointer dereference during completion
+			if driverCopy.opts.cobraCmd == nil {
+				// Execute the command directly using the handle specification
+				driverCopy.opts.ref = args[0]
+				if len(args) > 1 {
+					driverCopy.opts.args = args[1:]
+				}
+			} else {
+				subCmd, _, err := driverCopy.opts.cobraCmd.Root().Find(args)
+				if err != nil {
+					return "", fmt.Errorf("could not find command '%s' in config %s, error: %w", args[0], config.ConfigFileName, err)
+				}
+				driverCopy.opts.cobraCmd = subCmd
+			}
 			driverCopy.opts.helpWanted.helpFlag = ""
 
 			b := &strings.Builder{}
 			err := driverCopy.Run(Ref(args[0]), Args(args[1:]...), Out(b))
+
+			driverCopy.opts.cobraCmd = savedCmd
 
 			if d.opts.dryrun {
 				b.WriteString("[")
