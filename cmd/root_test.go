@@ -66,7 +66,7 @@ func Test_createRootCmd(t *testing.T) {
 		},
 		{
 			name:     "completion_run",
-			rootCmd:  makeRootCmd("completion"),
+			rootCmd:  makeRootCmd("completion", "bash"),
 			expected: "# bash completion V2 for summon",
 		},
 		{
