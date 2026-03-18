@@ -19,7 +19,7 @@ func newCompletionCmd(driver summon.Lister) *cobra.Command {
 	}
 
 	c := &cobra.Command{
-		Use:   "completion [bash|zsh]",
+		Use:   "completion [bash|zsh|fish]",
 		Short: "Generate completion script",
 		Long: `To load completion, run
 
@@ -29,15 +29,23 @@ or
 
 . <(summon completion zsh)
 
-To configure your bash shell to load completions for each session add to your bashrc
+or
+
+summon completion fish | source
+
+To configure your shell to load completions for each session add to your shell config file
 
 # ~/.bashrc or ~/.profile
 . <(summon completion bash)
 
 # ~/.zshrc
 . <(summon completion zsh)
+
+# ~/.config/fish/config.fish
+summon completion fish | source
+
 `,
-		ValidArgs: []string{"bash", "zsh"},
+		ValidArgs: []string{"bash", "zsh", "fish"},
 		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cOpts.out = cmd.OutOrStdout()
@@ -68,6 +76,8 @@ func (c completionCmdOpts) run(shell string) error {
 		return c.cmd.Root().GenBashCompletionV2(c.out, true)
 	case "zsh":
 		return c.cmd.Root().GenZshCompletion(c.out)
+	case "fish":
+		return c.cmd.Root().GenFishCompletion(c.out, true)
 	}
 
 	return nil
